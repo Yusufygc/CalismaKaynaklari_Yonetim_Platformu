@@ -32,6 +32,8 @@ Python `TypeVar` + `Generic` ile tüm modellere hizmet veren CRUD sınıfı.
 
 **N+1 önleme (2026-07-03):** Tüm sorgu metotları tek bir private `_base_query()` helper'ından geçer — `joinedload(Resource.category)` + `selectinload(Resource.tags)` ile ilişkiler eager-load edilir. Öncesinde her metot bağımsız `session.query(Resource)` açıyordu; kart render sırasında (`ContentWorkspace._render_resources`, `UrlShowcaseView.load_resources`) her kaynak için `.category`/`.tags` erişimi ayrı bir lazy-load sorgusuna yol açıyordu (N+1). `get_with_tags`/`get_pinned` (sıfır çağrısı olan ölü metotlar) kaldırıldı. **`highlights`/`vocabulary` bilerek bu eager-load setine eklenmedi (2026-07-06):** okuyucu paneli her zaman TEK bir `Resource` tutar (liste değil), bu yüzden `resource.highlights`/`resource.vocabulary` erişimi N+1 değil tek ekstra sorgudur — session app ömrü boyunca açık kaldığı için (`main.py`, bkz. [[mimari_kurallari]]) lazy-load sorunsuz çalışır. `resource_repo.py`'a dokunulmadı.
 
+**Test kapsamı (2026-09-28):** Diğer 5 repository'nin hepsi test edilmişken bu dosyanın hiç dedike testi yoktu (denetimde bulundu) — `tests/test_repositories/test_resource_repo.py` eklendi (16 test): tüm filtre metodları tekil, `query_filtered`'ın kombinasyonları (durum+öncelik birlikte, favori+url birlikte, etiket OR semantiği + `distinct()` tekrar önleme), `set_pinned`/`set_favorite` toggle + not-found durumu.
+
 ### HighlightRepository — `repositories/highlight_repo.py`
 | Metod | Açıklama |
 |-------|----------|

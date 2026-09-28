@@ -4,6 +4,14 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-28] REVIEW | resource_repo.py test kapsami eklendi
+
+Bulgu #6: `repositories/resource_repo.py` (proje icindeki en karmasik sorgu, `query_filtered` 53 satir) tek testsiz repository dosyasiydi. `tests/test_repositories/test_resource_repo.py` eklendi — 16 test: `get_all` (pinli-once sirasi), `get_by_status`, `search_by_keyword` (title/url/content ILIKE), `get_by_category`, `get_favorites`, `get_urls_only` (bos-string vs None ayrimi), `query_filtered` kombinasyonlari (durum+oncelik, favori+url, keyword, category_id, etiket OR semantigi + coklu-eslesmede `distinct()` tekrar onleme), `set_pinned`/`set_favorite` (toggle + eksik id'de `None`). 134 test yesil.
+
+Detay: [[core_servisler]].
+
+---
+
 ## [2026-09-28] REVIEW | MainController god-object bolundu (5 alt-controller)
 
 Bulgu #5: `MainController` 25 metod tasiyordu (Kaynak+Kategori+Etiket+Alinti+Kelime, 5 farkli alan tek sinifta) — SRP ihlali. Yeni dosyalar: `ui/controllers/resource_controller.py::ResourceController`, `category_controller.py::CategoryController`, `tag_controller.py::TagController`, `highlight_controller.py::HighlightController`, `vocabulary_controller.py::VocabularyController` — her biri kendi Service'ini kurar, ayni "try/except Exception: log.error + event_bus.error_occurred.emit" UI-siniri desenini (bkz. onceki REVIEW girdisi, bu desen kasitli/dogru bulunmustu) tasir.
