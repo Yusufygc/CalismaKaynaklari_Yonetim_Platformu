@@ -84,6 +84,15 @@ class ResourceCard(AccentFrame):
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(4)
 
+        layout.addLayout(self._build_top_row(resource))
+        layout.addWidget(self._build_title(resource))
+        description_label = self._build_description(resource)
+        if description_label is not None:
+            layout.addWidget(description_label)
+        layout.addStretch()
+        layout.addLayout(self._build_bottom_row(resource))
+
+    def _build_top_row(self, resource: Resource) -> QHBoxLayout:
         top_row = QHBoxLayout()
         top_row.setSpacing(6)
 
@@ -108,35 +117,37 @@ class ResourceCard(AccentFrame):
         self._favorite_btn = FavoriteButton(resource.id, bool(resource.is_favorite))
         top_row.addWidget(self._pin_btn)
         top_row.addWidget(self._favorite_btn)
-        layout.addLayout(top_row)
+        return top_row
 
+    def _build_title(self, resource: Resource) -> QLabel:
         title_font = _title_measure_font()
         title = QLabel(elide_to_lines(resource.title, title_font, _TEXT_AREA_WIDTH, _TITLE_MAX_LINES))
         title.setObjectName("CardTitle")
         title.setWordWrap(True)
         title.setMaximumHeight(QFontMetrics(title_font).lineSpacing() * _TITLE_MAX_LINES)
         title.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        layout.addWidget(title)
+        return title
 
+    def _build_description(self, resource: Resource) -> QLabel | None:
         description = self._description_text(resource)
-        if description:
-            desc_font = _desc_measure_font()
-            self._description_label = QLabel(
-                elide_to_lines(description, desc_font, _TEXT_AREA_WIDTH, _DESC_MAX_LINES)
-            )
-            self._description_label.setObjectName("CardDescription")
-            self._description_label.setWordWrap(True)
-            self._description_label.setMaximumHeight(
-                QFontMetrics(desc_font).lineSpacing() * _DESC_MAX_LINES
-            )
-            self._description_label.setSizePolicy(
-                QSizePolicy.Policy.Expanding,
-                QSizePolicy.Policy.Fixed,
-            )
-            layout.addWidget(self._description_label)
+        if not description:
+            return None
+        desc_font = _desc_measure_font()
+        self._description_label = QLabel(
+            elide_to_lines(description, desc_font, _TEXT_AREA_WIDTH, _DESC_MAX_LINES)
+        )
+        self._description_label.setObjectName("CardDescription")
+        self._description_label.setWordWrap(True)
+        self._description_label.setMaximumHeight(
+            QFontMetrics(desc_font).lineSpacing() * _DESC_MAX_LINES
+        )
+        self._description_label.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Fixed,
+        )
+        return self._description_label
 
-        layout.addStretch()
-
+    def _build_bottom_row(self, resource: Resource) -> QHBoxLayout:
         bottom_row = QHBoxLayout()
         bottom_row.setSpacing(4)
 
@@ -156,7 +167,7 @@ class ResourceCard(AccentFrame):
             self._tag_badges.append(badge)
             bottom_row.addWidget(badge)
 
-        layout.addLayout(bottom_row)
+        return bottom_row
 
     def mousePressEvent(self, event) -> None:
         # Pin/favori butonlari kendi tiklamasini yutar; buraya gelinmez.

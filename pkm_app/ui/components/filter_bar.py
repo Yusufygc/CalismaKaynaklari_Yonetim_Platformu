@@ -87,7 +87,18 @@ class FilterBar(QFrame):
         self.setLayout(layout)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # --- Kategori dropdown ---
+        self._build_category_filter(layout)
+        layout.addWidget(self._separator())
+        self._build_tag_filter(layout)
+        layout.addWidget(self._separator())
+        self._build_status_chips(layout)
+        layout.addWidget(self._separator())
+        self._build_priority_chips(layout)
+        layout.addWidget(self._separator())
+        self._build_favorite_chip(layout)
+        self._build_clear_button(layout)
+
+    def _build_category_filter(self, layout: FlowLayout) -> None:
         layout.addWidget(self._label(AppStrings.FILTER_CATEGORY))
         self._category_combo = QComboBox()
         self._category_combo.setObjectName("FilterCombo")
@@ -95,9 +106,7 @@ class FilterBar(QFrame):
         self._category_combo.currentIndexChanged.connect(self._emit_filters)
         layout.addWidget(self._category_combo)
 
-        layout.addWidget(self._separator())
-
-        # --- Etiket multi-select dropdown ---
+    def _build_tag_filter(self, layout: FlowLayout) -> None:
         layout.addWidget(self._label(AppStrings.FILTER_TAG))
         self._tag_button = QToolButton()
         self._tag_button.setObjectName("FilterTagButton")
@@ -115,9 +124,7 @@ class FilterBar(QFrame):
         self._tag_button.setMenu(self._tag_menu)
         layout.addWidget(self._tag_button)
 
-        layout.addWidget(self._separator())
-
-        # --- Durum chip'leri ---
+    def _build_status_chips(self, layout: FlowLayout) -> None:
         layout.addWidget(self._label(AppStrings.FILTER_STATUS))
         for status in ResourceStatus:
             chip = _ToggleChip(status_label(status))
@@ -125,9 +132,7 @@ class FilterBar(QFrame):
             self._status_chips[status] = chip
             layout.addWidget(chip)
 
-        layout.addWidget(self._separator())
-
-        # --- Oncelik chip'leri ---
+    def _build_priority_chips(self, layout: FlowLayout) -> None:
         layout.addWidget(self._label(AppStrings.FILTER_PRIORITY))
         for value, label in _PRIORITY_LABELS:
             chip = _ToggleChip(label)
@@ -135,13 +140,12 @@ class FilterBar(QFrame):
             self._priority_chips[value] = chip
             layout.addWidget(chip)
 
-        # --- Favoriler ---
-        layout.addWidget(self._separator())
+    def _build_favorite_chip(self, layout: FlowLayout) -> None:
         self._favorite_chip = _ToggleChip(AppStrings.FAVORITES)
         self._favorite_chip.toggled.connect(self._emit_filters)
         layout.addWidget(self._favorite_chip)
 
-        # --- Temizle ---
+    def _build_clear_button(self, layout: FlowLayout) -> None:
         self._clear_btn = QToolButton()
         self._clear_btn.setObjectName("FilterClearButton")
         self._clear_btn.setText(AppStrings.FILTER_CLEAR)

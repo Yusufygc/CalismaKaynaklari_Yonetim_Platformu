@@ -4,6 +4,25 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-28] REVIEW | Uzun _build_ui metodlari alt-metodlara bolundu
+
+Bulgu #9: 7 UI bilesen dosyasinda `_build_ui` (86-63 satir arasi) Long Method esigini asiyordu. Mekanik, davranis degistirmeyen refactor: her biri widget/section bazli alt-metodlara bolundu, hicbir attribute/sinyal/siralama degismedi.
+
+- `resource_card.py`: `_build_top_row`/`_build_title`/`_build_description`/`_build_bottom_row` (77→4 metod, hepsi <30 satir)
+- `url_rich_card.py`: `_build_thumbnail`/`_build_text_area`/`_build_bottom_row` (84→3 metod)
+- `sidebar.py`: `_build_top_bar`/`_build_nav_list`/`_build_toggle_row` (tema+sade-mod satirlari ayni sekle sahip oldugu icin tek parametrik helper'dan kuruluyor — **dikkat:** ilk taslakta `_theme_layout`/`_simple_mode_layout` attribute'larini kaybediyordum (collapse/expand kodu bunlara `.setAlignment()` cagiriyor, grep ile yakalandi), helper'a `layout_attr` parametresi eklenerek duzeltildi). Ayrica `ToggleSwitch` importu method-ici lazy import'tan modul-seviyesine tasindi (donguysel bagimlilik yok, dogrulandi).
+- `filter_bar.py`: `_build_category_filter`/`_build_tag_filter`/`_build_status_chips`/`_build_priority_chips`/`_build_favorite_chip`/`_build_clear_button` (66→6 metod, separator sayisi/sirasi birebir korundu)
+- `resource_detail_panel.py`: `_build_header`/`_build_url_button`/`_build_status_row`/`_build_notes_area`/`_build_action_row`/`_build_delete_confirm_button` (63→6 metod)
+- `resource_form.py`: `_build_category_field`/`_build_status_field`/`_build_priority_field`/`_build_content_field`/`_build_button_row` (86→5 metod)
+
+**Bilinclii kapsam disi (`flow_layout.py::_do_layout`, 57 satir):** bolunmedi. Tek bir stateful geometri algoritmasi (`x`/`y`/`row_height`/`row_items` dongude birlikte tasiniyor); alt-metodlara bolmek bu mutable state'i parametre/return degeri olarak elden ele tasimayi gerektirirdi — okunabilirligi artirmaz, azaltir. Esigi sadece 7 satir asiyor, YAGNI/KISS geregi dokunulmadi.
+
+**Dogrulama:** her dosyadan sonra `py_compile` + tam test suite (148 yesil sabit kaldi) + kritik olanlarda (sidebar collapse/expand, ResourceForm) ayrica offscreen smoke script; en sonda tum uygulama offscreen modda baslatilip sidebar/filter_bar/card zincirinden gecen bir sorgu calistirilarak crash olmadigi dogrulandi.
+
+Detay: [[ui_layout]].
+
+---
+
 ## [2026-09-28] REVIEW | Tema fallback'lerindeki hardcoded hex kaldirildi
 
 Bulgu #8: `ui/components/toggle_switch.py` (`.get("accent_color", "#38BDF8")` vb. 3 yer) ve `color_picker_button.py` (`QColor("#3B82F6")` — QColorDialog baslangic rengi) `CLAUDE.md`'nin "no hardcoded colors" kuralini ihlal ediyordu. Ikisi de zaten projede var olan `ui/theme_utils.py::resolve_theme_color(theme_data, key)` helper'ina gecirildi (`theme_data` bossa/eksikse `Colors.THEMES["dark"][key]`'e duser — ayni fallback semantigi, artik merkezi). `color_picker_button.py`'deki sabit mavi, tema `accent_color`'una baglandi (artik tema degisiminde de tutarli).

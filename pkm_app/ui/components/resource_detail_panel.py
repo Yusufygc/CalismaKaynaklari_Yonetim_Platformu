@@ -61,6 +61,14 @@ class ResourceDetailPanel(QWidget):
         root.setContentsMargins(12, 12, 12, 12)
         root.setSpacing(10)
 
+        root.addLayout(self._build_header())
+        self._build_url_button(root)
+        root.addLayout(self._build_status_row())
+        self._build_notes_area(root)
+        root.addLayout(self._build_action_row())
+        self._build_delete_confirm_button(root)
+
+    def _build_header(self) -> QHBoxLayout:
         header = QHBoxLayout()
         self._title_label = QLabel("—")
         self._title_label.setObjectName("DetailTitle")
@@ -75,8 +83,9 @@ class ResourceDetailPanel(QWidget):
         )
         self._close_btn.setToolTip(AppStrings.CLOSE_PANEL)
         header.addWidget(self._close_btn)
-        root.addLayout(header)
+        return header
 
+    def _build_url_button(self, root: QVBoxLayout) -> None:
         self._url_btn = QPushButton()
         self._url_btn.setObjectName("DetailUrlButton")
         self._url_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -86,6 +95,7 @@ class ResourceDetailPanel(QWidget):
         self._url_btn.hide()
         root.addWidget(self._url_btn, alignment=Qt.AlignmentFlag.AlignLeft)
 
+    def _build_status_row(self) -> QHBoxLayout:
         status_row = QHBoxLayout()
         status_row.addWidget(QLabel(AppStrings.STATUS_LABEL))
         self._status_combo = QComboBox()
@@ -93,8 +103,9 @@ class ResourceDetailPanel(QWidget):
         for s in ResourceStatus:
             self._status_combo.addItem(status_label(s), s)
         status_row.addWidget(self._status_combo, stretch=1)
-        root.addLayout(status_row)
+        return status_row
 
+    def _build_notes_area(self, root: QVBoxLayout) -> None:
         self._notes_edit = QTextEdit()
         self._notes_edit.setObjectName("NotesEdit")
         self._notes_edit.setPlaceholderText("Notlar (Markdown destekli)...")
@@ -104,6 +115,7 @@ class ResourceDetailPanel(QWidget):
         self._save_notes_btn.setObjectName("SaveNotesButton")
         root.addWidget(self._save_notes_btn)
 
+    def _build_action_row(self) -> QHBoxLayout:
         action_row = QHBoxLayout()
         self._read_btn = QPushButton(AppStrings.READ_RESOURCE)
         self._read_btn.setObjectName("ReadResourceButton")
@@ -114,8 +126,9 @@ class ResourceDetailPanel(QWidget):
         action_row.addWidget(self._read_btn)
         action_row.addWidget(self._edit_btn)
         action_row.addWidget(self._delete_btn)
-        root.addLayout(action_row)
+        return action_row
 
+    def _build_delete_confirm_button(self, root: QVBoxLayout) -> None:
         self._delete_confirm_btn = QPushButton(AppStrings.CONFIRM_DELETE_RESOURCE)
         self._delete_confirm_btn.setObjectName("DeleteResourceConfirmButton")
         self._delete_confirm_btn.hide()

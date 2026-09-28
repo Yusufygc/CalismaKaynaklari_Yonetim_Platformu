@@ -164,6 +164,12 @@ class UrlRichCard(AccentFrame):
         layout.setContentsMargins(0, 0, 0, 10)
         layout.setSpacing(0)
 
+        layout.addWidget(self._build_thumbnail(resource))
+        layout.addLayout(self._build_text_area(resource))
+        layout.addStretch()
+        layout.addLayout(self._build_bottom_row(resource))
+
+    def _build_thumbnail(self, resource: Resource) -> QLabel:
         self._thumb_label = QLabel()
         self._thumb_label.setObjectName("CardThumbnail")
         self._thumb_label.setFixedHeight(_THUMB_HEIGHT)
@@ -177,8 +183,9 @@ class UrlRichCard(AccentFrame):
         else:
             self._set_thumbnail_placeholder()
 
-        layout.addWidget(self._thumb_label)
+        return self._thumb_label
 
+    def _build_text_area(self, resource: Resource) -> QVBoxLayout:
         text_area = QVBoxLayout()
         text_area.setContentsMargins(14, 10, 14, 6)
         text_area.setSpacing(6)
@@ -210,9 +217,9 @@ class UrlRichCard(AccentFrame):
             self._desc_label.setMaximumHeight(QFontMetrics(desc_font).lineSpacing() * _DESC_MAX_LINES)
             text_area.addWidget(self._desc_label)
 
-        layout.addLayout(text_area)
-        layout.addStretch()
+        return text_area
 
+    def _build_bottom_row(self, resource: Resource) -> QHBoxLayout:
         bottom = QHBoxLayout()
         bottom.setContentsMargins(14, 0, 14, 0)
         bottom.setSpacing(8)
@@ -243,7 +250,7 @@ class UrlRichCard(AccentFrame):
         self._update_open_icon()
         bottom.addWidget(self._open_btn)
 
-        layout.addLayout(bottom)
+        return bottom
 
     def mousePressEvent(self, event) -> None:
         consumed_by_button = (

@@ -50,6 +50,17 @@ class ResourceForm(QFrame):
         self._title_input = self._field(root, AppStrings.FORM_FIELD_TITLE)
         self._url_input = self._field(root, AppStrings.FORM_FIELD_URL)
 
+        self._build_category_field(root)
+        self._build_status_field(root)
+        self._build_priority_field(root)
+
+        self._tags_input = self._field(root, AppStrings.FORM_FIELD_TAGS)
+
+        self._build_content_field(root)
+        root.addStretch(1)
+        self._build_button_row(root)
+
+    def _build_category_field(self, root: QVBoxLayout) -> None:
         category_label_row = QHBoxLayout()
         category_label_row.addWidget(QLabel(AppStrings.FORM_FIELD_CATEGORY), stretch=1)
         self._cat_add_toggle_btn = IconActionButton(
@@ -87,6 +98,7 @@ class ResourceForm(QFrame):
         self._cat_add_panel.hide()
         root.addWidget(self._cat_add_panel)
 
+    def _build_status_field(self, root: QVBoxLayout) -> None:
         root.addWidget(QLabel(AppStrings.FORM_FIELD_STATUS))
         self._status_combo = QComboBox()
         self._status_combo.setObjectName("FormCombo")
@@ -96,6 +108,7 @@ class ResourceForm(QFrame):
         self._status_combo.addItem(AppStrings.FORM_STATUS_COMPLETED, ResourceStatus.COMPLETED)
         root.addWidget(self._status_combo)
 
+    def _build_priority_field(self, root: QVBoxLayout) -> None:
         root.addWidget(QLabel(AppStrings.FORM_FIELD_PRIORITY))
         self._priority_combo = QComboBox()
         self._priority_combo.setObjectName("FormCombo")
@@ -104,16 +117,14 @@ class ResourceForm(QFrame):
         self._priority_combo.addItem(AppStrings.FORM_PRIORITY_LOW, 3)
         root.addWidget(self._priority_combo)
 
-        self._tags_input = self._field(root, AppStrings.FORM_FIELD_TAGS)
-
+    def _build_content_field(self, root: QVBoxLayout) -> None:
         root.addWidget(QLabel(AppStrings.FORM_FIELD_CONTENT))
         self._content_input = QTextEdit()
         self._content_input.setObjectName("FormTextEdit")
         self._content_input.setMaximumHeight(100)
         root.addWidget(self._content_input)
 
-        root.addStretch(1)
-
+    def _build_button_row(self, root: QVBoxLayout) -> None:
         btn_row = QHBoxLayout()
         self._save_btn = QPushButton(AppStrings.SAVE)
         self._save_btn.setObjectName("SaveButton")

@@ -16,6 +16,7 @@ from core.constants.colors import Colors
 from core.constants.icons import QtAwesomeIcons
 from core.constants.strings import AppStrings
 from core.events import event_bus
+from ui.components.toggle_switch import ToggleSwitch
 from ui.theme_utils import resolve_theme_color, load_theme_svg
 
 
@@ -53,6 +54,20 @@ class Sidebar(QFrame):
         layout.setContentsMargins(8, 16, 8, 8)
         layout.setSpacing(4)
 
+        layout.addLayout(self._build_top_bar())
+        layout.addSpacing(12)
+        layout.addWidget(self._build_nav_list())
+        layout.addStretch()
+        layout.addLayout(self._build_toggle_row(
+            "_theme_layout", "_theme_label", AppStrings.TOGGLE_THEME,
+            "ThemeToggleLabel", "_theme_switch"
+        ))
+        layout.addLayout(self._build_toggle_row(
+            "_simple_mode_layout", "_simple_mode_label", AppStrings.TOGGLE_SIMPLE_MODE,
+            "SimpleModeToggleLabel", "_simple_mode_switch"
+        ))
+
+    def _build_top_bar(self) -> QHBoxLayout:
         # Baslik ve Hamburger menü butonu icin yatay duzen
         self._top_layout = QHBoxLayout()
         self._top_layout.setContentsMargins(4, 0, 4, 0)
@@ -68,10 +83,9 @@ class Sidebar(QFrame):
         self._hamburger_btn.setFixedSize(32, 32)
         self._top_layout.addWidget(self._hamburger_btn)
 
-        layout.addLayout(self._top_layout)
+        return self._top_layout
 
-        layout.addSpacing(12)
-
+    def _build_nav_list(self) -> QListWidget:
         self._nav_list = QListWidget()
         self._nav_list.setObjectName("SidebarNavList")
         self._nav_list.setSpacing(2)
@@ -86,38 +100,37 @@ class Sidebar(QFrame):
             item.setIcon(qta.icon(icon_name, color=icon_color))
             self._nav_icons.append(icon_name)
             self._nav_list.addItem(item)
-        layout.addWidget(self._nav_list)
 
-        layout.addStretch()
+        return self._nav_list
 
-        # Tema degisimi ToggleSwitch yatay duzeni
-        self._theme_layout = QHBoxLayout()
-        self._theme_layout.setContentsMargins(4, 0, 4, 0)
-        self._theme_layout.setSpacing(8)
+    def _build_toggle_row(
+        self,
+        layout_attr: str,
+        label_attr: str,
+        label_text: str,
+        label_object_name: str,
+        switch_attr: str,
+    ) -> QHBoxLayout:
+        """Tema/Sade Mod satirlari ayni yatay duzen sekline sahip -- tek helper'dan kurulur.
 
-        self._theme_label = QLabel(AppStrings.TOGGLE_THEME)
-        self._theme_label.setObjectName("ThemeToggleLabel")
-        self._theme_layout.addWidget(self._theme_label, stretch=1)
+        Layout/label/switch attribute olarak saklanir: _on_collapse_toggled
+        daraltma/genisletmede bunlarin alignment'ini ve gorunurlugunu degistirir.
+        """
+        row_layout = QHBoxLayout()
+        row_layout.setContentsMargins(4, 0, 4, 0)
+        row_layout.setSpacing(8)
+        setattr(self, layout_attr, row_layout)
 
-        from ui.components.toggle_switch import ToggleSwitch
-        self._theme_switch = ToggleSwitch()
-        self._theme_layout.addWidget(self._theme_switch)
+        label = QLabel(label_text)
+        label.setObjectName(label_object_name)
+        setattr(self, label_attr, label)
+        row_layout.addWidget(label, stretch=1)
 
-        layout.addLayout(self._theme_layout)
+        switch = ToggleSwitch()
+        setattr(self, switch_attr, switch)
+        row_layout.addWidget(switch)
 
-        # Sade Mod ToggleSwitch yatay duzeni
-        self._simple_mode_layout = QHBoxLayout()
-        self._simple_mode_layout.setContentsMargins(4, 0, 4, 0)
-        self._simple_mode_layout.setSpacing(8)
-
-        self._simple_mode_label = QLabel(AppStrings.TOGGLE_SIMPLE_MODE)
-        self._simple_mode_label.setObjectName("SimpleModeToggleLabel")
-        self._simple_mode_layout.addWidget(self._simple_mode_label, stretch=1)
-
-        self._simple_mode_switch = ToggleSwitch()
-        self._simple_mode_layout.addWidget(self._simple_mode_switch)
-
-        layout.addLayout(self._simple_mode_layout)
+        return row_layout
 
     def select_by_key(self, key: str) -> None:
         """Verilen filtre anahtarina karsilik gelen nav item'ini sinyal firlatmadan secer."""
