@@ -4,6 +4,18 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-28] REVIEW | CI/CD eklendi (GitHub Actions)
+
+Bulgu #10: 148 test var ama hicbir otomatik calistirma mekanizmasi yoktu — commit sonrasi kirilan bir test fark edilmeden birikebilirdi. `.github/workflows/tests.yml` eklendi: `push` (main) ve her `pull_request`'te `windows-latest` runner uzerinde `requirements.lock` + `pytest` kurup `pytest pkm_app/tests/` calistirir.
+
+**Runner secimi:** `windows-latest` — proje CLAUDE.md'de Windows-only conda ortami (`C:\Users\ysfygc\anaconda3\envs\KaynakYonetim`) uzerinden tanimli, gelistirici gercek workflow'u budur. `ubuntu-latest` de teknik olarak calisabilir ama PySide6'nin offscreen platform plugin'i icin ek apt bagimliliklari (libegl1/libxkbcommon0 vb.) gerekebilir ve bu ortamda dogrulanamadi — spekulatif/dogrulanmamis Linux adimlarindan kacinildi (YAGNI).
+
+**Dogrulama:** Workflow'daki komutlar (`pip install -r requirements.lock` + `pip install pytest` + `pytest pkm_app/tests/`, repo kokunden) tamamen izole, sifirdan bir venv'de (`.venv_ci_check`, sonradan silindi) birebir calistirilip 148 test yesil alindi — sadece dosya yazilip "calisir umuyorum" denmedi.
+
+Detay: yok (proje-geneli altyapi, tek wiki sayfasina baglanmiyor).
+
+---
+
 ## [2026-09-28] REVIEW | Uzun _build_ui metodlari alt-metodlara bolundu
 
 Bulgu #9: 7 UI bilesen dosyasinda `_build_ui` (86-63 satir arasi) Long Method esigini asiyordu. Mekanik, davranis degistirmeyen refactor: her biri widget/section bazli alt-metodlara bolundu, hicbir attribute/sinyal/siralama degismedi.

@@ -4,6 +4,8 @@
 
 Proje kök dizini `pkm_app/` altında çalışır. Yeni modül/sınıf oluştururken bu yapıya sadık kalınmalıdır.
 
+**CI:** `.github/workflows/tests.yml` (repo kökü, `pkm_app/` dışında) — push/PR'da `pytest pkm_app/tests/` otomatik çalışır (2026-09-28).
+
 ```
 pkm_app/
 ├── main.py                 # Giriş noktası (Entry point)
