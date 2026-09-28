@@ -4,6 +4,20 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-28] REVIEW | ThumbnailWorker: SSRF korumasi yok + TLS dogrulamasi kapaliydi (kritik)
+
+`except Exception` denetimi sirasinda tesadufen bulunan, plandaki listeye dahil olmayan bulgu: `ui/components/url_rich_card.py::ThumbnailWorker` (og:image thumbnail indirme) `ScraperService`'ten tamamen bagimsiz, ayri bir HTTP istemcisi (`urllib.request`) kullaniyordu ve:
+- `is_blocked_host` SSRF kontrolu **hic cagrilmiyordu** — `resource.extra_metadata["thumbnail"]` taranan sayfanin `og:image`/`twitter:image` meta etiketinden geliyor, yani saldirgan etkisindeki bir URL; iç ag/loopback/cloud-metadata adreslerine (`169.254.169.254` vb.) korumasiz istek atilabiliyordu.
+- `ssl._create_unverified_context()` ile TLS sertifika dogrulamasi **tamamen kapaliydi** (yorum: "Platform bazli sertifika hatalarini asmak icin") — MITM ile gorsel verisi degistirilebilirdi.
+
+**Duzeltme:** `urllib.request`/`ssl` kaldirildi, `requests` kutuphanesine (proje genelinde zaten kullanilan) gecirildi. `ScraperService._safe_get` ile ayni desen: `_safe_get()` her redirect hop'unda `is_blocked_host` tekrar kontrol ediyor, `_MAX_REDIRECTS=5`, `verify` parametresi hic dokunulmadi (requests varsayilani = sertifika dogrulamasi acik, certifi CA bundle kullanir — platform sertifika deposu sorununu da yan etki olarak cozer).
+
+**Yeni test dosyasi:** `tests/test_components/__init__.py` + `test_url_rich_card.py` (proje ilk kez `ui/components/` icin test icerdi) — basarili indirme, ic adrese blok, redirect-ile-ic-adrese-kacis blok, TLS dogrulamasinin kapatilmadigini dogrulayan 3 test. **Not:** `pkm_app.ui.components.url_rich_card....` string yolu ile monkeypatch, `pkm_app/__init__.py`'daki sys.modules alias mekanizmasi (sadece `core/models/repositories/services/ui/utils` ust seviyesini kapsiyor, `ui.components` gibi iki-hop alt paketleri kapsamiyor) yuzunden basarisiz oldu — modul referansi (`url_rich_card_module.requests`) ile patch edilerek cozuldu; ayni deseni kullanacak gelecekteki `ui/components/` testleri icin not dusuldu.
+
+Detay: [[url_vitrin]] · [[core_servisler]].
+
+---
+
 ## [2026-09-28] REVIEW | `except Exception` denetimi + MainController.delete_resource bug fix
 
 Bulgu #4 (38x `except Exception`) tek tek okunarak değerlendirildi — grep sayımı yanıltıcıydı:

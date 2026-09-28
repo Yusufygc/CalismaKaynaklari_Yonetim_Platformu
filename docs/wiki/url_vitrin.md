@@ -39,7 +39,7 @@ Sidebar'daki "Tüm Kaynaklar" nav öğesi (`_STATIC_ITEMS`'taki `"all"` anahtar�
 ## Görsel Dinamikler
 - **Dinamik Çerçeve:** `border-left: 4px solid {kategori/etiket rengi}` — renk kullanıcıya konu kodlaması sunar (Mavi=Yazılım, Yeşil=Finans…).
 - **Hover Efekti:** Kartın hafif yukarı kalkması veya DropShadow belirginleşmesi (QSS).
-- **Thumbnail:** `extra_metadata.thumbnail` varsa `UrlRichCard` Qt network ile async yükler; hata veya metadata yoksa placeholder ikon kalır.
+- **Thumbnail:** `extra_metadata.thumbnail` varsa `UrlRichCard` async yükler; hata veya metadata yoksa placeholder ikon kalır. **`ThumbnailWorker` (2026-09-28 önce/sonra):** önceden `urllib.request` + `ssl._create_unverified_context()` (TLS sertifika doğrulaması tamamen kapalıydı) ile, `is_blocked_host` SSRF kontrolü hiç çağrılmadan indiriyordu — `og:image` değeri taranan sayfadan geldiği için saldırgan etkisindeki bir URL'ye korumasız istek riski vardı. `ScraperService._safe_get` ile aynı desene (`requests`, `is_blocked_host` her redirect hop'unda tekrar kontrol, `_MAX_REDIRECTS=5`, varsayılan/açık TLS doğrulaması) geçirildi. Test: `tests/test_components/test_url_rich_card.py`.
 
 ## Metadata Akışı
 - URL'li kaynak eklendiğinde/güncellendiğinde tarama **arka planda** çalışır (`ResourceFlow._schedule_scrape` → `QThreadPool`), UI thread'i bloklamaz. Sonuç `extra_metadata` olarak DB'ye yazılınca `_on_scrape_finished` kaynağı günceller.

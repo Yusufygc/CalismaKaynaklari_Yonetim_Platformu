@@ -1,5 +1,6 @@
-import ssl
-import urllib.request
+from urllib.parse import urljoin
+
+import requests
 
 from PySide6.QtCore import QRunnable, QObject, Signal, Slot, QThreadPool, Qt, QUrl
 from PySide6.QtGui import QDesktopServices, QFont, QFontMetrics, QPixmap
@@ -19,6 +20,7 @@ from core.constants.icons import QtAwesomeIcons
 from core.constants.strings import AppStrings
 from core.events import event_bus
 from core.logger import log
+from core.net_utils import is_blocked_host
 from models import Resource
 from ui.components.card_icon_button import FavoriteButton, PinButton
 from ui.components.painted import AccentFrame, ColorBadge
@@ -63,7 +65,16 @@ class WorkerSignals(QObject):
 
 
 class ThumbnailWorker(QRunnable):
-    """Arka planda görsel indirip ana thread'e ileten işçi."""
+    """Arka planda görsel indirip ana thread'e ileten işçi.
+
+    Gorsel URL'si kaynagi taranan (dolayisiyla saldirgan etkisindeki) sayfanin
+    og:image/twitter:image meta etiketinden geliyor -- ScraperService._safe_get
+    ile ayni SSRF/redirect disiplinine tabi olmali (bkz. core/net_utils.py).
+    """
+
+    _TIMEOUT_SECONDS = 8
+    _MAX_REDIRECTS = 5
+    _HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
     def __init__(self, url: str):
         super().__init__()
@@ -78,22 +89,36 @@ class ThumbnailWorker(QRunnable):
         if self._is_aborted:
             return
         try:
-            req = urllib.request.Request(
-                self.url,
-                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-            )
-            # Platform bazlı sertifika doğrulaması hatalarını aşmak için SSL doğrulamasını devre dışı bırak
-            context = ssl._create_unverified_context()
-            with urllib.request.urlopen(req, timeout=8, context=context) as response:
-                if self._is_aborted:
-                    return
-                data = response.read()
-                if self._is_aborted:
-                    return
-                self.signals.finished.emit(self.url, data)
+            response = self._safe_get(self.url)
+            if response is None:
+                raise ValueError("URL reddedildi (ic ag/loopback veya yonlendirme siniri)")
+            if self._is_aborted:
+                return
+            self.signals.finished.emit(self.url, response.content)
         except Exception as e:
             if not self._is_aborted:
                 self.signals.error.emit(self.url, str(e))
+
+    def _safe_get(self, url: str) -> requests.Response | None:
+        current_url = url
+        for _ in range(self._MAX_REDIRECTS + 1):
+            if is_blocked_host(current_url):
+                return None
+            response = requests.get(
+                current_url,
+                headers=self._HEADERS,
+                timeout=self._TIMEOUT_SECONDS,
+                allow_redirects=False,
+            )
+            if response.is_redirect:
+                location = response.headers.get("Location")
+                if not location:
+                    return None
+                current_url = urljoin(current_url, location)
+                continue
+            response.raise_for_status()
+            return response
+        return None
 
 
 class UrlRichCard(AccentFrame):
