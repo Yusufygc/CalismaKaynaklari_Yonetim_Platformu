@@ -111,7 +111,9 @@ Aynı desen: `create_vocabulary(resource_id, word, translation, context_sentence
 
 **Bilinen/kapsam dışı risk:** `trafilatura.fetch_url` kendi içinde `urllib3 Retry(redirect=...)` ile redirect takip ediyor; `ScraperService._safe_get`'teki gibi her hop'ta `is_blocked_host` tekrar çağrılmıyor — aynı TOCTOU/SSRF riski burada da var, henüz düzeltilmedi (ayrı bulgu olarak backlog'da).
 
-**Paylaşılan SSRF koruması — `core/net_utils.py::is_blocked_host(url)` (2026-07-06):** Önceden `ScraperService._is_blocked_host` olarak tek yerde yaşıyordu; `ArticleExtractionService` de aynı korumaya ihtiyaç duyunca `core/net_utils.py`'a çıkarıldı — iki serviste ayrı ayrı tutulup zamanla birbirinden sapması (güvenlik-kritik bir kontrolde) riskini önler.
+**Paylaşılan SSRF koruması — `core/net_utils.py::is_blocked_host(url)` (2026-07-06):** Önceden `ScraperService._is_blocked_host` olarak tek yerde yaşıyordu; `ArticleExtractionService` de aynı korumaya ihtiyaç duyunca `core/net_utils.py`'a çıkarıldı — iki serviste ayrı ayrı tutulup zamanla birbirinden sapması (güvenlik-kritik bir kontrolde) riskini önler. `ScraperService` ve `ThumbnailWorker`'ın (`ui/components/url_rich_card.py`) `_safe_get` metodları da bunu redirect hop başına kullanır.
+
+**Test kapsamı (2026-09-28):** Bu dosya güvenlik-kritik olmasına rağmen sadece scraper/extraction testleri üzerinden dolaylı test ediliyordu (denetimde bulundu) — `tests/test_core/test_net_utils.py` eklendi (13 test): public IPv4/IPv6 izin, loopback/private (RFC1918)/link-local/reserved/multicast/IPv6-loopback blok, DNS rebinding senaryosu (dönen adreslerden biri bile iç ağsa blok), DNS çözümleme hatası, hostname'siz URL.
 
 ---
 

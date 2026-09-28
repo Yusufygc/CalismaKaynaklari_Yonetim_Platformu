@@ -4,6 +4,14 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-28] REVIEW | net_utils.py (SSRF guard) test kapsami eklendi
+
+Bulgu #7: `core/net_utils.py::is_blocked_host` — projedeki en guvenlik-kritik fonksiyon — sadece scraper/extraction testleri uzerinden dolayli test ediliyordu, dedike testi yoktu. `tests/test_core/test_net_utils.py` eklendi (13 test): public IPv4/IPv6 izin veriliyor; loopback/private (RFC1918 10.x/172.16.x/192.168.x)/link-local (bulut metadata 169.254.169.254 dahil)/reserved/multicast/IPv6-loopback engelleniyor; **DNS rebinding senaryosu** (bir hostname birden fazla A kaydina cozumlenip biri bile ic ag ise engellenmeli) ayri test edildi; DNS cozumleme hatasi (`gaierror`) ve hostname'siz URL de engelleniyor. 147 test yesil.
+
+Detay: [[core_servisler]].
+
+---
+
 ## [2026-09-28] REVIEW | resource_repo.py test kapsami eklendi
 
 Bulgu #6: `repositories/resource_repo.py` (proje icindeki en karmasik sorgu, `query_filtered` 53 satir) tek testsiz repository dosyasiydi. `tests/test_repositories/test_resource_repo.py` eklendi — 16 test: `get_all` (pinli-once sirasi), `get_by_status`, `search_by_keyword` (title/url/content ILIKE), `get_by_category`, `get_favorites`, `get_urls_only` (bos-string vs None ayrimi), `query_filtered` kombinasyonlari (durum+oncelik, favori+url, keyword, category_id, etiket OR semantigi + coklu-eslesmede `distinct()` tekrar onleme), `set_pinned`/`set_favorite` (toggle + eksik id'de `None`). 134 test yesil.
