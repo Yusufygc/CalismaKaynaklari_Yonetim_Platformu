@@ -23,6 +23,14 @@ class _EventBus(QObject):
     tag_updated = Signal(int)
     tag_deleted = Signal(int)
 
+    # --- Alinti (Highlight) sinyalleri ---
+    highlight_added = Signal(int)
+    highlight_deleted = Signal(int)
+
+    # --- Kelime (Vocabulary) sinyalleri ---
+    vocabulary_added = Signal(int)
+    vocabulary_deleted = Signal(int)
+
     # --- UI etkilesim sinyalleri ---
     resource_selected = Signal(int)       # karta tiklandı → sag panel ac
     search_query_changed = Signal(str)    # arama cubugu metni degisti

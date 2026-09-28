@@ -30,4 +30,5 @@ LIGHT_THEME: dict[str, str] = {
     "warning_color": "#D97706",
     "button_pressed": "#1D4ED8",
     "nav_selected_bg": "#E8F0FF",
+    "highlight_color": "#FDE68A",
 }

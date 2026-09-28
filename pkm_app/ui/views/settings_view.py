@@ -271,7 +271,7 @@ class SettingsView(QFrame):
         color = self._cat_color_picker.value()
         icon = self._cat_icon_input.text().strip()
         if not name:
-            self._banner.show_error("Kategori adı zorunludur.")
+            self._banner.show_error(AppStrings.ERR_CATEGORY_NAME_REQUIRED)
             return
         if not color:
             self._banner.show_error(AppStrings.ERR_COLOR_REQUIRED)

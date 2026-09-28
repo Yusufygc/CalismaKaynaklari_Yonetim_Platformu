@@ -18,12 +18,13 @@ class DetailView(QFrame):
     isimle relay eder; MainWindow tarafindaki cagiranlar etkilenmez.
     """
 
-    progress_updated = Signal(int, int)
     status_updated = Signal(int, object)
     content_updated = Signal(int, str)
     form_submitted = Signal(dict)
     edit_requested = Signal(int)
     delete_requested = Signal(int)
+    read_requested = Signal(int)
+    category_create_requested = Signal(str, str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -53,14 +54,15 @@ class DetailView(QFrame):
 
     def _wire_signals(self) -> None:
         self._view_page.close_requested.connect(self.clear)
-        self._view_page.progress_updated.connect(self.progress_updated)
         self._view_page.status_updated.connect(self.status_updated)
         self._view_page.content_updated.connect(self.content_updated)
         self._view_page.edit_requested.connect(self.edit_requested)
         self._view_page.delete_requested.connect(self.delete_requested)
+        self._view_page.read_requested.connect(self.read_requested)
 
         self._form_page.submitted.connect(self.form_submitted)
         self._form_page.cancelled.connect(self.clear)
+        self._form_page.category_create_requested.connect(self.category_create_requested)
 
     # ------------------------------------------------------------------ #
     # Public API
@@ -89,3 +91,6 @@ class DetailView(QFrame):
 
     def current_resource_id(self) -> int | None:
         return self._view_page.current_resource_id()
+
+    def set_categories(self, categories: list, select_id: int | None = None) -> None:
+        self._form_page.set_categories(categories, select_id)

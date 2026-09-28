@@ -108,40 +108,21 @@ def test_update_url_adds_new_url_tag_and_preserves_existing_tags(session):
 
 
 @pytest.mark.parametrize(
-    ("progress", "expected_status"),
+    "status",
     [
-        (0, ResourceStatus.PLANNED),
-        (25, ResourceStatus.IN_PROGRESS),
-        (100, ResourceStatus.COMPLETED),
+        ResourceStatus.INBOX,
+        ResourceStatus.PLANNED,
+        ResourceStatus.IN_PROGRESS,
+        ResourceStatus.COMPLETED,
     ],
 )
-def test_progress_updates_status(session, progress, expected_status):
-    service = ResourceService(session)
-    resource = service.add_new_resource(ResourceCreateSchema(title="Progress"))
-
-    updated = service.update_resource_progress(resource.id, progress)
-
-    assert updated.progress == progress
-    assert updated.status == expected_status
-
-
-@pytest.mark.parametrize(
-    ("status", "expected_progress"),
-    [
-        (ResourceStatus.INBOX, 0),
-        (ResourceStatus.PLANNED, 0),
-        (ResourceStatus.IN_PROGRESS, 25),
-        (ResourceStatus.COMPLETED, 100),
-    ],
-)
-def test_status_updates_progress(session, status, expected_progress):
+def test_status_update_is_manual(session, status):
     service = ResourceService(session)
     resource = service.add_new_resource(ResourceCreateSchema(title="Status"))
 
     updated = service.update_resource(resource.id, ResourceUpdateSchema(status=status))
 
     assert updated.status == status
-    assert updated.progress == expected_progress
 
 
 @pytest.mark.parametrize(

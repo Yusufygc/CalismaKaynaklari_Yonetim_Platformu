@@ -21,6 +21,7 @@ from ui.theme_utils import resolve_theme_color, load_theme_svg
 
 _STATIC_ITEMS = [
     (AppStrings.URL_SHOWCASE, QtAwesomeIcons.URL_SHOWCASE, "url_showcase"),
+    (AppStrings.KNOWLEDGE_POOL, QtAwesomeIcons.KNOWLEDGE_POOL, "knowledge_pool"),
     (AppStrings.SETTINGS, QtAwesomeIcons.SETTINGS, "settings"),
 ]
 
@@ -76,7 +77,7 @@ class Sidebar(QFrame):
         self._nav_list.setSpacing(2)
         self._nav_list.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._nav_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        
+
         icon_color = resolve_theme_color(None, Colors.ICON)
         for label, icon_name, key in _STATIC_ITEMS:
             item = QListWidgetItem(label)

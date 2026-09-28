@@ -65,6 +65,18 @@ class FlowLayout(QLayout):
         effective = rect.adjusted(margins.left(), margins.top(), -margins.right(), -margins.bottom())
         x, y = effective.x(), effective.y()
         row_height = 0
+        row_items: list[tuple[object, QSize, int]] = []  # (item, size, sonraki_bosluk)
+
+        def flush_row(row_y: int, height: int) -> None:
+            if test_only:
+                return
+            cx = effective.x()
+            for row_item, size, space_x in row_items:
+                # Satirdaki en uzun oge disindakiler dikeyde ortalanir (yazi/kutu
+                # hizasizligi onceden: hepsi satirin ustune yapisik kalirdi).
+                item_y = row_y + (height - size.height()) // 2
+                row_item.setGeometry(QRect(QPoint(cx, item_y), size))
+                cx += size.width() + space_x
 
         for item in self._items:
             widget = item.widget()
@@ -93,17 +105,18 @@ class FlowLayout(QLayout):
             next_x = x + item_size.width() + space_x
 
             if next_x - space_x > effective.right() and row_height > 0:
+                flush_row(y, row_height)
+                row_items = []
                 x = effective.x()
                 y += row_height + space_y
                 next_x = x + item_size.width() + space_x
                 row_height = 0
 
-            if not test_only:
-                item.setGeometry(QRect(QPoint(x, y), item_size))
-
+            row_items.append((item, item_size, space_x))
             x = next_x
             row_height = max(row_height, item_size.height())
 
+        flush_row(y, row_height)
         return y + row_height - rect.y() + margins.bottom()
 
 

@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QSpinBox,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -22,6 +21,7 @@ from core.constants.strings import AppStrings
 from core.events import event_bus
 from models import Resource, ResourceStatus
 from ui.theme_utils import resolve_theme_color
+from utils.url_utils import format_display_url
 
 
 @contextmanager
@@ -37,11 +37,11 @@ class ResourceDetailPanel(QWidget):
     """Kaynak detay/duzenleme paneli (stack icindeki 'view' sayfasi)."""
 
     close_requested = Signal()
-    progress_updated = Signal(int, int)
     status_updated = Signal(int, object)
     content_updated = Signal(int, str)
     edit_requested = Signal(int)
     delete_requested = Signal(int)
+    read_requested = Signal(int)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -79,10 +79,12 @@ class ResourceDetailPanel(QWidget):
 
         self._url_btn = QPushButton()
         self._url_btn.setObjectName("DetailUrlButton")
-        self._url_btn.setFlat(True)
         self._url_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._url_btn.setIcon(
+            qta.icon(QtAwesomeIcons.OPEN_BROWSER, color=resolve_theme_color(None, Colors.ACCENT))
+        )
         self._url_btn.hide()
-        root.addWidget(self._url_btn)
+        root.addWidget(self._url_btn, alignment=Qt.AlignmentFlag.AlignLeft)
 
         status_row = QHBoxLayout()
         status_row.addWidget(QLabel(AppStrings.STATUS_LABEL))
@@ -92,16 +94,6 @@ class ResourceDetailPanel(QWidget):
             self._status_combo.addItem(status_label(s), s)
         status_row.addWidget(self._status_combo, stretch=1)
         root.addLayout(status_row)
-
-        progress_row = QHBoxLayout()
-        progress_row.addWidget(QLabel(AppStrings.PROGRESS_LABEL))
-        self._progress_spin = QSpinBox()
-        self._progress_spin.setObjectName("ProgressSpin")
-        self._progress_spin.setRange(0, 100)
-        self._progress_spin.setSingleStep(5)
-        self._progress_spin.setSuffix(" %")
-        progress_row.addWidget(self._progress_spin, stretch=1)
-        root.addLayout(progress_row)
 
         self._notes_edit = QTextEdit()
         self._notes_edit.setObjectName("NotesEdit")
@@ -113,10 +105,13 @@ class ResourceDetailPanel(QWidget):
         root.addWidget(self._save_notes_btn)
 
         action_row = QHBoxLayout()
+        self._read_btn = QPushButton(AppStrings.READ_RESOURCE)
+        self._read_btn.setObjectName("ReadResourceButton")
         self._edit_btn = QPushButton(AppStrings.EDIT_RESOURCE)
         self._edit_btn.setObjectName("EditResourceButton")
         self._delete_btn = QPushButton(AppStrings.DELETE_RESOURCE)
         self._delete_btn.setObjectName("DeleteResourceButton")
+        action_row.addWidget(self._read_btn)
         action_row.addWidget(self._edit_btn)
         action_row.addWidget(self._delete_btn)
         root.addLayout(action_row)
@@ -130,8 +125,8 @@ class ResourceDetailPanel(QWidget):
         self._close_btn.clicked.connect(self.close_requested)
         self._url_btn.clicked.connect(self._open_url)
         self._status_combo.currentIndexChanged.connect(self._on_status_changed)
-        self._progress_spin.valueChanged.connect(self._on_progress_changed)
         self._save_notes_btn.clicked.connect(self._on_save_notes)
+        self._read_btn.clicked.connect(self._on_read_clicked)
         self._edit_btn.clicked.connect(self._on_edit_clicked)
         self._delete_btn.clicked.connect(self._on_delete_first_click)
         self._delete_confirm_btn.clicked.connect(self._on_delete_confirmed)
@@ -147,7 +142,8 @@ class ResourceDetailPanel(QWidget):
         self._title_label.setText(resource.title)
 
         if resource.url:
-            self._url_btn.setText(resource.url)
+            self._url_btn.setText(format_display_url(resource.url))
+            self._url_btn.setToolTip(resource.url)
             self._url_btn.setProperty("url", resource.url)
             self._url_btn.show()
         else:
@@ -157,9 +153,6 @@ class ResourceDetailPanel(QWidget):
         if index >= 0:
             with _signals_blocked(self._status_combo):
                 self._status_combo.setCurrentIndex(index)
-
-        with _signals_blocked(self._progress_spin):
-            self._progress_spin.setValue(int(resource.progress))
 
         self._notes_edit.setPlainText(resource.content or "")
 
@@ -193,14 +186,14 @@ class ResourceDetailPanel(QWidget):
             status: ResourceStatus = self._status_combo.currentData()
             self.status_updated.emit(self._resource_id, status)
 
-    def _on_progress_changed(self, value: int) -> None:
-        if self._resource_id is not None:
-            self.progress_updated.emit(self._resource_id, value)
-
     def _on_save_notes(self) -> None:
         if self._resource_id is not None:
             text = self._notes_edit.toPlainText()
             self.content_updated.emit(self._resource_id, text)
+
+    def _on_read_clicked(self) -> None:
+        if self._resource_id is not None:
+            self.read_requested.emit(self._resource_id)
 
     def _on_edit_clicked(self) -> None:
         if self._resource_id is not None:
@@ -218,3 +211,5 @@ class ResourceDetailPanel(QWidget):
     def _on_theme_changed(self, theme_data: dict) -> None:
         color = resolve_theme_color(theme_data, Colors.ICON)
         self._close_btn.setIcon(qta.icon(QtAwesomeIcons.CLOSE, color=color))
+        accent = resolve_theme_color(theme_data, Colors.ACCENT)
+        self._url_btn.setIcon(qta.icon(QtAwesomeIcons.OPEN_BROWSER, color=accent))

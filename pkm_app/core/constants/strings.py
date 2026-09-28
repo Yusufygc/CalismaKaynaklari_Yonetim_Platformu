@@ -33,7 +33,6 @@ class AppStrings:
     OPEN_IN_BROWSER = "Tarayıcıda Aç"
     CLOSE_PANEL = "Kapat"
     STATUS_LABEL = "Durum"
-    PROGRESS_LABEL = "İlerleme (%)"
 
     # Status values
     STATUS_PLANNED = "Planlandı"
@@ -55,6 +54,7 @@ class AppStrings:
     FORM_PRIORITY_MEDIUM = "2 — Orta"
     FORM_PRIORITY_HIGH = "1 — Yüksek"
     FORM_CATEGORY_NONE = "— Seçiniz —"
+    FORM_ADD_CATEGORY_TOOLTIP = "Yeni kategori ekle"
     SAVE = "Kaydet"
     CANCEL = "İptal"
 
@@ -73,6 +73,7 @@ class AppStrings:
     # Errors
     ERR_TITLE_REQUIRED = "Başlık boş bırakılamaz."
     ERR_COLOR_REQUIRED = "Renk seçilmelidir."
+    ERR_CATEGORY_NAME_REQUIRED = "Kategori adı zorunludur."
 
     # Renk seçici
     PICK_COLOR_PLACEHOLDER = "Renk seç..."
@@ -92,3 +93,18 @@ class AppStrings:
     UNPIN_TOOLTIP = "Sabitlemeyi kaldır"
     FAVORITE_TOOLTIP = "Favoriye ekle"
     UNFAVORITE_TOOLTIP = "Favoriden çıkar"
+
+    # Okuyucu
+    READ_RESOURCE = "Oku"
+    READER_HIGHLIGHT_ACTION = "Alıntı olarak kaydet"
+    READER_VOCAB_ACTION = "Kelime olarak kaydet"
+    READER_BACK = "Geri"
+    READER_EMPTY_MSG = "Bu kaynak için henüz metin yok."
+    READER_VOCAB_TRANSLATION_PLACEHOLDER = "Türkçe çeviri"
+
+    # Bilgi Havuzu
+    KNOWLEDGE_POOL = "Bilgi Havuzu"
+    KNOWLEDGE_POOL_HIGHLIGHTS_TAB = "Alıntılar"
+    KNOWLEDGE_POOL_VOCAB_TAB = "Kelime Dağarcığı"
+    EMPTY_HIGHLIGHTS_MSG = "Henüz alıntı kaydedilmedi."
+    EMPTY_VOCAB_MSG = "Henüz kelime kaydedilmedi."

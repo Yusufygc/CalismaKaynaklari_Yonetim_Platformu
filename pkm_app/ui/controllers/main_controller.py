@@ -4,8 +4,10 @@ from core.events import event_bus
 from core.logger import log
 from models import Resource
 from services.category_service import CategoryService
+from services.highlight_service import HighlightService
 from services.resource_service import ResourceService
 from services.tag_service import TagService
+from services.vocabulary_service import VocabularyService
 from services.schemas import ResourceCreateSchema, ResourceUpdateSchema
 
 
@@ -17,6 +19,8 @@ class MainController:
         self._resource_svc = ResourceService(session)
         self._category_svc = CategoryService(session)
         self._tag_svc = TagService(session)
+        self._highlight_svc = HighlightService(session)
+        self._vocabulary_svc = VocabularyService(session)
 
         self._connect_events()
 
@@ -74,13 +78,6 @@ class MainController:
         except Exception as exc:
             log.error("Favori durumu degistirilemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
-
-    def update_progress(self, resource_id: int, progress: float) -> None:
-        try:
-            self._resource_svc.update_resource_progress(resource_id, progress)
-            event_bus.resource_updated.emit(resource_id)
-        except Exception as exc:
-            log.error("Ilerleme guncellenemedi: %s", exc)
 
     def delete_resource(self, resource_id: int) -> None:
         try:
@@ -159,6 +156,66 @@ class MainController:
             log.error("Etiket silinemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
             return False
+
+    # ------------------------------------------------------------------ #
+    # Alinti (Highlight) / Kelime (Vocabulary)
+    # ------------------------------------------------------------------ #
+
+    def create_highlight(self, resource_id: int, content: str, color: str | None = None) -> object:
+        try:
+            highlight = self._highlight_svc.create_highlight(resource_id, content, color)
+            event_bus.highlight_added.emit(highlight.id)
+            return highlight
+        except Exception as exc:
+            log.error("Alinti eklenemedi: %s", exc)
+            event_bus.error_occurred.emit(str(exc))
+            return None
+
+    def delete_highlight(self, highlight_id: int) -> bool:
+        try:
+            self._highlight_svc.delete_highlight(highlight_id)
+            event_bus.highlight_deleted.emit(highlight_id)
+            return True
+        except Exception as exc:
+            log.error("Alinti silinemedi: %s", exc)
+            event_bus.error_occurred.emit(str(exc))
+            return False
+
+    def load_resource_highlights(self, resource_id: int) -> list:
+        return self._highlight_svc.get_by_resource(resource_id)
+
+    def load_all_highlights(self) -> list:
+        return self._highlight_svc.get_all()
+
+    def create_vocabulary(
+        self, resource_id: int, word: str, translation: str, context_sentence: str | None = None
+    ) -> object:
+        try:
+            vocabulary = self._vocabulary_svc.create_vocabulary(
+                resource_id, word, translation, context_sentence
+            )
+            event_bus.vocabulary_added.emit(vocabulary.id)
+            return vocabulary
+        except Exception as exc:
+            log.error("Kelime eklenemedi: %s", exc)
+            event_bus.error_occurred.emit(str(exc))
+            return None
+
+    def delete_vocabulary(self, vocabulary_id: int) -> bool:
+        try:
+            self._vocabulary_svc.delete_vocabulary(vocabulary_id)
+            event_bus.vocabulary_deleted.emit(vocabulary_id)
+            return True
+        except Exception as exc:
+            log.error("Kelime silinemedi: %s", exc)
+            event_bus.error_occurred.emit(str(exc))
+            return False
+
+    def load_resource_vocabulary(self, resource_id: int) -> list:
+        return self._vocabulary_svc.get_by_resource(resource_id)
+
+    def load_all_vocabulary(self) -> list:
+        return self._vocabulary_svc.get_all()
 
     # ------------------------------------------------------------------ #
     # Slot'lar

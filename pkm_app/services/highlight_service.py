@@ -1,0 +1,50 @@
+from sqlalchemy.orm import Session
+
+from core.exceptions import ResourceNotFoundError, ValidationError
+from core.logger import log
+from models import Highlight
+from repositories.highlight_repo import HighlightRepository
+from repositories.resource_repo import ResourceRepository
+
+
+class HighlightService:
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+        self._repo = HighlightRepository(session)
+        self._resource_repo = ResourceRepository(session)
+
+    def create_highlight(self, resource_id: int, content: str, color: str | None = None) -> Highlight:
+        content = (content or "").strip()
+        if not content:
+            raise ValidationError("Alinti metni bos olamaz.")
+        if self._resource_repo.get_by_id(resource_id) is None:
+            raise ResourceNotFoundError(f"Kaynak bulunamadi: id={resource_id}")
+        try:
+            highlight = Highlight(resource_id=resource_id, content=content, color=color)
+            self._repo.create(highlight)
+            self._session.commit()
+            log.info("Yeni alinti eklendi: resource_id=%d", resource_id)
+            return highlight
+        except Exception:
+            self._session.rollback()
+            log.exception("Alinti eklenirken hata olustu.")
+            raise
+
+    def get_by_resource(self, resource_id: int) -> list[Highlight]:
+        return self._repo.get_by_resource(resource_id)
+
+    def get_all(self) -> list[Highlight]:
+        return self._repo.get_all_with_resource()
+
+    def delete_highlight(self, highlight_id: int) -> None:
+        try:
+            deleted = self._repo.delete(highlight_id)
+            if not deleted:
+                raise ResourceNotFoundError(f"Alinti bulunamadi: id={highlight_id}")
+            self._session.commit()
+            log.info("Alinti silindi: id=%d", highlight_id)
+        except Exception:
+            self._session.rollback()
+            log.exception("Alinti silinirken hata olustu.")
+            raise

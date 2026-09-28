@@ -22,3 +22,6 @@ class QtAwesomeIcons:
     DELETE = "fa5s.trash-alt"
     EDIT = "fa5s.pen"
     FILTER_CLEAR = "fa5s.times-circle"
+    KNOWLEDGE_POOL = "fa5s.book"
+    READ = "fa5s.book-open"
+    BACK = "fa5s.arrow-left"

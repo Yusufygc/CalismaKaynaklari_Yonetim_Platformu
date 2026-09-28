@@ -3,7 +3,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
     QGraphicsDropShadowEffect,
-    QHBoxLayout,
     QLabel,
     QListWidget,
     QListWidgetItem,
@@ -22,6 +21,7 @@ from core.constants.status import status_label
 from core.constants.strings import AppStrings
 from core.events import event_bus
 from models import ResourceStatus
+from ui.components.flow_layout import FlowLayout
 from ui.theme_utils import resolve_theme_color, to_qcolor
 
 
@@ -83,9 +83,9 @@ class FilterBar(QFrame):
     # ------------------------------------------------------------------ #
 
     def _build_ui(self) -> None:
-        layout = QHBoxLayout(self)
+        layout = FlowLayout(self, h_spacing=8, v_spacing=6)
+        self.setLayout(layout)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
 
         # --- Kategori dropdown ---
         layout.addWidget(self._label(AppStrings.FILTER_CATEGORY))
@@ -140,8 +140,6 @@ class FilterBar(QFrame):
         self._favorite_chip = _ToggleChip(AppStrings.FAVORITES)
         self._favorite_chip.toggled.connect(self._emit_filters)
         layout.addWidget(self._favorite_chip)
-
-        layout.addStretch(1)
 
         # --- Temizle ---
         self._clear_btn = QToolButton()

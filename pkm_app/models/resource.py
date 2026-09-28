@@ -5,7 +5,6 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Enum,
-    Float,
     ForeignKey,
     Integer,
     JSON,
@@ -49,10 +48,10 @@ class Resource(Base):
         Enum(ResourceStatus), nullable=False, default=ResourceStatus.PLANNED, index=True
     )
     priority: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
-    progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     is_pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    full_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     extra_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=func.now()

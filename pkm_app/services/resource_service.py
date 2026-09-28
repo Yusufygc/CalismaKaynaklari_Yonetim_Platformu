@@ -78,24 +78,6 @@ def _merge_tag_names(tag_names: list[str], url: str | None) -> list[str]:
     return _normalize_tag_names([*tag_names, *_url_tag_names(url)])
 
 
-def _status_for_progress(progress: float) -> ResourceStatus:
-    if progress >= 100:
-        return ResourceStatus.COMPLETED
-    if progress > 0:
-        return ResourceStatus.IN_PROGRESS
-    return ResourceStatus.PLANNED
-
-
-def _progress_for_status(status: ResourceStatus, current_progress: float) -> float:
-    if status in (ResourceStatus.INBOX, ResourceStatus.PLANNED):
-        return 0.0
-    if status == ResourceStatus.COMPLETED:
-        return 100.0
-    if status == ResourceStatus.IN_PROGRESS:
-        return current_progress if 0.0 < current_progress < 100.0 else 25.0
-    return current_progress
-
-
 class ResourceService:
 
     def __init__(self, session: Session) -> None:
@@ -174,7 +156,6 @@ class ResourceService:
             category_id=category_id,
             status=initial_status,
             priority=priority,
-            progress=_progress_for_status(initial_status, 0.0),
             content=payload.content,
             extra_metadata=payload.extra_metadata,
         )
@@ -205,11 +186,13 @@ class ResourceService:
         self._apply_title(resource, payload, fields)
         self._apply_url(resource, payload, fields)
         self._apply_category(resource, payload, fields)
-        self._apply_status_and_progress(resource, payload, fields)
+        self._apply_status(resource, payload, fields)
         self._apply_priority(resource, payload, fields)
 
         if "content" in fields:
             resource.content = payload.content
+        if "full_text" in fields:
+            resource.full_text = payload.full_text
         if "is_pinned" in fields:
             resource.is_pinned = bool(payload.is_pinned)
 
@@ -262,20 +245,11 @@ class ResourceService:
         resource.category_id = cat_id
 
     @staticmethod
-    def _apply_status_and_progress(
+    def _apply_status(
         resource: Resource, payload: ResourceUpdateSchema, fields: set[str]
     ) -> None:
         if "status" in fields:
             resource.status = payload.status
-            if "progress" not in fields:
-                resource.progress = _progress_for_status(resource.status, resource.progress)
-
-        if "progress" in fields:
-            progress = payload.progress
-            if not (0.0 <= progress <= 100.0):
-                raise ValueError("Ilerleme degeri 0-100 arasinda olmalidir.")
-            resource.progress = progress
-            resource.status = _status_for_progress(progress)
 
     @staticmethod
     def _apply_priority(resource: Resource, payload: ResourceUpdateSchema, fields: set[str]) -> None:
@@ -290,27 +264,6 @@ class ResourceService:
     def _apply_metadata(resource: Resource, payload: ResourceUpdateSchema, fields: set[str]) -> None:
         if "extra_metadata" in fields:
             resource.extra_metadata = payload.extra_metadata
-
-    def update_resource_progress(self, resource_id: int, progress: float) -> Resource:
-        if not (0.0 <= progress <= 100.0):
-            raise ValueError("Ilerleme degeri 0-100 arasinda olmalidir.")
-
-        resource = self.get_by_id(resource_id)
-        resource.progress = progress
-        resource.status = _status_for_progress(progress)
-
-        if progress >= 100.0:
-            log.info("Kaynak tamamlandi: id=%d", resource_id)
-
-        try:
-            self._resource_repo.update(resource)
-            self._session.commit()
-        except Exception:
-            self._session.rollback()
-            log.exception("Ilerleme guncellenirken hata olustu.")
-            raise
-
-        return resource
 
     def toggle_pin(self, resource_id: int) -> Resource:
         resource = self.get_by_id(resource_id)

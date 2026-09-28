@@ -86,6 +86,13 @@ QComboBox:focus {
 
 QComboBox::drop-down {
     border: none;
+    width: 22px;
+}
+
+QComboBox::down-arrow {
+    image: url("{{combo_arrow_path}}");
+    width: 10px;
+    height: 10px;
 }
 
 QTextEdit {

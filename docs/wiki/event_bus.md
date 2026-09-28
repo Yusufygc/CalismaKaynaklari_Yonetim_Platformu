@@ -31,10 +31,20 @@
 | `tag_updated` | `Signal(int)` | Etiket güncellendi |
 | `tag_deleted` | `Signal(int)` | Etiket silindi |
 
+### Alıntı (Highlight) / Kelime (Vocabulary) Sinyalleri — 2026-07-06
+| Sinyal | Tip | Tetiklenme |
+|--------|-----|-----------|
+| `highlight_added` | `Signal(int)` | Okuyucuda metin seçilip "Alıntı olarak kaydet" ile oluşturuldu |
+| `highlight_deleted` | `Signal(int)` | Bilgi Havuzu'nda 2-tıkla silindi |
+| `vocabulary_added` | `Signal(int)` | Okuyucuda kelime seçilip çeviri girilerek oluşturuldu |
+| `vocabulary_deleted` | `Signal(int)` | Bilgi Havuzu'nda 2-tıkla silindi |
+
+Not: düzenleme sinyali yok (`_updated`) — bu iki varlık bu turda sadece oluşturulup silinebiliyor. `KnowledgePoolView` bu 4 sinyale abone olup listesini otomatik tazeler.
+
 ### UI / Navigasyon Sinyalleri
 | Sinyal | Tip | Tetiklenme |
 |--------|-----|-----------|
-| `sidebar_filter_changed` | `Signal(str)` | Nav item seçildi veya arama yapıldı. Değer: `"all"`, `"inbox"`, `"planned"`, `"favorites"`, `"url_showcase"`, `"settings"`, `"search:<keyword>"`, `"category:<id>"` |
+| `sidebar_filter_changed` | `Signal(str)` | Nav item seçildi veya arama yapıldı. Değer: `"all"`, `"inbox"`, `"planned"`, `"favorites"`, `"url_showcase"`, `"knowledge_pool"` (2026-07-06), `"settings"`, `"search:<keyword>"`, `"category:<id>"` |
 | `search_query_changed` | `Signal(str)` | SearchBar metnin değişti → `MainController._on_search` yönlendirir |
 | `resource_pin_toggle_requested` | `Signal(int)` | Kart pin ikonu tıklandı → `ResourceFlow → controller.toggle_pin` |
 | `resource_favorite_toggle_requested` | `Signal(int)` | Kart yıldız ikonu tıklandı → `ResourceFlow → controller.toggle_favorite` |

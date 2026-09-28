@@ -11,9 +11,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core.constants.colors import Colors
+from core.constants.icons import QtAwesomeIcons
 from core.constants.strings import AppStrings
 from core.events import event_bus
 from models import ResourceStatus
+from ui.components.color_picker_button import ColorPickerButton
+from ui.components.icon_action_button import IconActionButton
 
 
 class ResourceForm(QFrame):
@@ -21,6 +25,7 @@ class ResourceForm(QFrame):
 
     submitted = Signal(dict)
     cancelled = Signal()
+    category_create_requested = Signal(str, str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -45,10 +50,42 @@ class ResourceForm(QFrame):
         self._title_input = self._field(root, AppStrings.FORM_FIELD_TITLE)
         self._url_input = self._field(root, AppStrings.FORM_FIELD_URL)
 
-        root.addWidget(QLabel(AppStrings.FORM_FIELD_CATEGORY))
+        category_label_row = QHBoxLayout()
+        category_label_row.addWidget(QLabel(AppStrings.FORM_FIELD_CATEGORY), stretch=1)
+        self._cat_add_toggle_btn = IconActionButton(
+            QtAwesomeIcons.ADD,
+            Colors.ACCENT,
+            AppStrings.FORM_ADD_CATEGORY_TOOLTIP,
+            "FormInlineAddButton",
+        )
+        self._cat_add_toggle_btn.clicked.connect(self._toggle_category_add_panel)
+        category_label_row.addWidget(self._cat_add_toggle_btn)
+        root.addLayout(category_label_row)
+
         self._category_combo = QComboBox()
         self._category_combo.setObjectName("FormCombo")
         root.addWidget(self._category_combo)
+
+        self._cat_add_panel = QWidget()
+        cat_add_row = QHBoxLayout(self._cat_add_panel)
+        cat_add_row.setContentsMargins(0, 4, 0, 0)
+        cat_add_row.setSpacing(6)
+        self._new_cat_name_input = QLineEdit()
+        self._new_cat_name_input.setObjectName("FormField")
+        self._new_cat_name_input.setPlaceholderText(AppStrings.CATEGORY_NAME)
+        cat_add_row.addWidget(self._new_cat_name_input, stretch=1)
+        self._new_cat_color_picker = ColorPickerButton()
+        self._new_cat_color_picker.setFixedWidth(110)
+        self._new_cat_color_picker.setToolTip(AppStrings.CATEGORY_COLOR)
+        cat_add_row.addWidget(self._new_cat_color_picker)
+        self._new_cat_confirm_btn = QPushButton(AppStrings.ADD)
+        self._new_cat_confirm_btn.setObjectName("SaveButton")
+        self._new_cat_confirm_btn.setFixedWidth(60)
+        cat_add_row.addWidget(self._new_cat_confirm_btn)
+        self._new_cat_confirm_btn.clicked.connect(self._on_confirm_new_category)
+        self._new_cat_name_input.returnPressed.connect(self._on_confirm_new_category)
+        self._cat_add_panel.hide()
+        root.addWidget(self._cat_add_panel)
 
         root.addWidget(QLabel(AppStrings.FORM_FIELD_STATUS))
         self._status_combo = QComboBox()
@@ -108,9 +145,23 @@ class ResourceForm(QFrame):
         for cat in categories:
             self._category_combo.addItem(cat.name, cat.id)
 
+    def set_categories(self, categories: list, select_id: int | None = None) -> None:
+        """Kategori listesini yeniler; verilirse `select_id`'yi secili yapar.
+
+        Formdaki diger alanlara dokunmaz — inline "yeni kategori ekle"
+        akisindan sonra sadece kategori combo'sunu tazelemek icin kullanilir.
+        """
+        self.load_categories(categories)
+        if select_id is not None:
+            idx = self._category_combo.findData(select_id)
+            if idx >= 0:
+                self._category_combo.setCurrentIndex(idx)
+        self._hide_category_add_panel()
+
     def load_resource(self, resource, categories: list) -> None:
         """Edit modu: alanlari mevcut degerlerle doldur."""
         self.load_categories(categories)
+        self._hide_category_add_panel()
         self._resource_id = resource.id
         self._header.setText(AppStrings.FORM_HEADER_EDIT)
         self._title_input.setText(resource.title)
@@ -139,10 +190,34 @@ class ResourceForm(QFrame):
         self._priority_combo.setCurrentIndex(1)  # Orta
         self._category_combo.setCurrentIndex(0)
         self._status_combo.setCurrentIndex(0)   # Gelen Kutusu
+        self._hide_category_add_panel()
 
     # ------------------------------------------------------------------ #
     # Slot
     # ------------------------------------------------------------------ #
+
+    def _toggle_category_add_panel(self) -> None:
+        if self._cat_add_panel.isVisible():
+            self._hide_category_add_panel()
+        else:
+            self._cat_add_panel.show()
+            self._new_cat_name_input.setFocus()
+
+    def _hide_category_add_panel(self) -> None:
+        self._cat_add_panel.hide()
+        self._new_cat_name_input.clear()
+        self._new_cat_color_picker.clear()
+
+    def _on_confirm_new_category(self) -> None:
+        name = self._new_cat_name_input.text().strip()
+        color = self._new_cat_color_picker.value()
+        if not name:
+            event_bus.error_occurred.emit(AppStrings.ERR_CATEGORY_NAME_REQUIRED)
+            return
+        if not color:
+            event_bus.error_occurred.emit(AppStrings.ERR_COLOR_REQUIRED)
+            return
+        self.category_create_requested.emit(name, color)
 
     def _on_save(self) -> None:
         title = self._title_input.text().strip()

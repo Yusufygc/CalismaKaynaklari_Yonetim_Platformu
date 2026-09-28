@@ -30,7 +30,16 @@ Python `TypeVar` + `Generic` ile tüm modellere hizmet veren CRUD sınıfı.
 | `get_urls_only()` | URL alanı dolu kaynaklar (Vitrin için) |
 | `query_filtered(...)` | Kombinasyonel filtre (durum+kategori+etiket+öncelik+favori+url+arama) — `ContentWorkspace` tarafından kullanılan asıl sorgu yolu |
 
-**N+1 önleme (2026-07-03):** Tüm sorgu metotları tek bir private `_base_query()` helper'ından geçer — `joinedload(Resource.category)` + `selectinload(Resource.tags)` ile ilişkiler eager-load edilir. Öncesinde her metot bağımsız `session.query(Resource)` açıyordu; kart render sırasında (`ContentWorkspace._render_resources`, `UrlShowcaseView.load_resources`) her kaynak için `.category`/`.tags` erişimi ayrı bir lazy-load sorgusuna yol açıyordu (N+1). `get_with_tags`/`get_pinned` (sıfır çağrısı olan ölü metotlar) kaldırıldı.
+**N+1 önleme (2026-07-03):** Tüm sorgu metotları tek bir private `_base_query()` helper'ından geçer — `joinedload(Resource.category)` + `selectinload(Resource.tags)` ile ilişkiler eager-load edilir. Öncesinde her metot bağımsız `session.query(Resource)` açıyordu; kart render sırasında (`ContentWorkspace._render_resources`, `UrlShowcaseView.load_resources`) her kaynak için `.category`/`.tags` erişimi ayrı bir lazy-load sorgusuna yol açıyordu (N+1). `get_with_tags`/`get_pinned` (sıfır çağrısı olan ölü metotlar) kaldırıldı. **`highlights`/`vocabulary` bilerek bu eager-load setine eklenmedi (2026-07-06):** okuyucu paneli her zaman TEK bir `Resource` tutar (liste değil), bu yüzden `resource.highlights`/`resource.vocabulary` erişimi N+1 değil tek ekstra sorgudur — session app ömrü boyunca açık kaldığı için (`main.py`, bkz. [[mimari_kurallari]]) lazy-load sorunsuz çalışır. `resource_repo.py`'a dokunulmadı.
+
+### HighlightRepository — `repositories/highlight_repo.py`
+| Metod | Açıklama |
+|-------|----------|
+| `get_by_resource(resource_id)` | Kaynağa scope'lu, `created_at.desc(), id.desc()` sıralı (aynı-saniye timestamp çakışmasında `id` tiebreaker — testte yakalandı) |
+| `get_all_with_resource()` | Bilgi Havuzu için `joinedload(Highlight.resource)` ile eager-load |
+
+### VocabularyRepository — `repositories/vocabulary_repo.py`
+Aynı şekil: `get_by_resource(resource_id)`, `get_all_with_resource()`.
 
 ---
 
@@ -48,8 +57,7 @@ Python `TypeVar` + `Generic` ile tüm modellere hizmet veren CRUD sınıfı.
 | `get_by_category(id)` | Kategoriye göre |
 | `get_urls_only()` | URL alanı dolu |
 | `add_new_resource(data: dict)` | URL varsa regex doğrula (scheme zorunlu: `https?://`). Kategori ID varsa kontrol et. `tag_names` normalize + dedupe + get-or-create. `extra_metadata` verilmemişse URL metadata çekilir. `flush()` sonra `commit()`. Hata da `rollback()`. |
-| `update_resource(id, data: dict)` | Sadece dict'te bulunan anahtarları günceller. URL validasyonu. `tag_names` varsa etiket ilişkilerini tam senkronize eder; boş liste tüm etiketleri kaldırır. `commit()`. |
-| `update_resource_progress(id, progress)` | 0–100 dışı → `ValueError`. Progress=100 → status=COMPLETED. |
+| `update_resource(id, data: dict)` | Sadece dict'te bulunan anahtarları günceller. URL validasyonu. `tag_names` varsa etiket ilişkilerini tam senkronize eder; boş liste tüm etiketleri kaldırır. `status` artık tamamen manuel (2026-07-06'da `progress` alanı ve ona bağlı otomatik status türetme kaldırıldı). `commit()`. |
 | `delete_resource(id)` | Bulunamazsa `ResourceNotFoundError`. Cascade ile etiket linkleri de silinir. |
 
 **URL Validasyonu (`_validate_url`):** `^https?://` zorunlu — scheme'siz URL'ler reddedilir. Ayrı `_URL_RE` regex ile host+path doğrulanır.
@@ -80,6 +88,23 @@ Python `TypeVar` + `Generic` ile tüm modellere hizmet veren CRUD sınıfı.
 | `get_all()` | Tüm kategoriler |
 | `get_by_id(id)` | Tek kategori |
 
+### HighlightService — `services/highlight_service.py` (2026-07-06)
+`TagService` deseni (validate → try/commit/log → except/rollback/log.exception/raise). Duzenleme yok — sadece olustur/sil.
+
+| Metod | Açıklama |
+|-------|----------|
+| `create_highlight(resource_id, content, color=None)` | `content` boşsa `ValidationError`, `resource_id` yoksa `ResourceNotFoundError`. |
+| `get_by_resource(resource_id)` / `get_all()` | Kaynağa scope'lu / tüm alıntılar (Bilgi Havuzu) |
+| `delete_highlight(id)` | Bulunamazsa `ResourceNotFoundError` |
+
+### VocabularyService — `services/vocabulary_service.py` (2026-07-06)
+Aynı desen: `create_vocabulary(resource_id, word, translation, context_sentence=None)` (`word`/`translation` boşsa `ValidationError`), `get_by_resource`/`get_all`, `delete_vocabulary`. `mastery_level` bu turda UI'da yok, model default 0'da kalır.
+
+### ArticleExtractionService — `services/article_extraction_service.py` (2026-07-06)
+`ScraperService`'ten bilerek ayrı: `ScraperService` hafif og:meta scraping yapar, bu servis `trafilatura` ile tüm sayfayı indirip boilerplate-temizleme sezgiseli çalıştırır — farklı sorumluluk/hata modu (`None` döner, dict fallback değil). `extract_full_text(url) -> str | None` — SSRF koruması için `core/net_utils.py::is_blocked_host()` paylaşılır (bkz. aşağıda).
+
+**Paylaşılan SSRF koruması — `core/net_utils.py::is_blocked_host(url)` (2026-07-06):** Önceden `ScraperService._is_blocked_host` olarak tek yerde yaşıyordu; `ArticleExtractionService` de aynı korumaya ihtiyaç duyunca `core/net_utils.py`'a çıkarıldı — iki serviste ayrı ayrı tutulup zamanla birbirinden sapması (güvenlik-kritik bir kontrolde) riskini önler.
+
 ---
 
 ## Controller Katmanı (`ui/controllers/main_controller.py`)
@@ -92,11 +117,14 @@ UI ile service arasındaki köprü. Her method try/except ile sarılır; hata �
 | `get_resource(id)` | Tek kaynak |
 | `add_resource(data)` | `resource_added` emit |
 | `update_resource(id, data)` | `resource_updated` emit |
-| `update_progress(id, progress)` | progress güncelle |
 | `delete_resource(id)` | `resource_deleted` emit |
 | `load_categories()` / `load_tags()` | Tüm liste |
 | `create/update/delete_category(...)` | `category_added/updated/deleted` emit |
 | `create/update/delete_tag(...)` | `tag_added/updated/deleted` emit |
+| `create_highlight(resource_id, content, color)` / `delete_highlight(id)` | `highlight_added/deleted` emit (2026-07-06) |
+| `load_resource_highlights(resource_id)` / `load_all_highlights()` | Kaynağa scope'lu / Bilgi Havuzu için tümü |
+| `create_vocabulary(resource_id, word, translation, context_sentence)` / `delete_vocabulary(id)` | `vocabulary_added/deleted` emit |
+| `load_resource_vocabulary(resource_id)` / `load_all_vocabulary()` | Kaynağa scope'lu / Bilgi Havuzu için tümü |
 
 ---
 

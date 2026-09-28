@@ -2,11 +2,15 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QStackedWidget, QVBoxLayout, QWidget
 
 from core.events import event_bus
+from ui.views.knowledge_pool_view import KnowledgePoolView
+from ui.views.reader_view import ReaderView
 from ui.views.settings_view import SettingsView
 from ui.views.url_showcase_view import UrlShowcaseView
 
 _PAGE_SETTINGS = 0
 _PAGE_URL_SHOWCASE = 1
+_PAGE_READER = 2
+_PAGE_KNOWLEDGE_POOL = 3
 
 
 class ContentWorkspace(QWidget):
@@ -24,6 +28,7 @@ class ContentWorkspace(QWidget):
         super().__init__(parent)
         self._controller = controller
         self._active_filters: dict = {}
+        self._active_key: str = "url_showcase"
         self._simple_mode: bool = False
 
         self._build_ui()
@@ -54,9 +59,13 @@ class ContentWorkspace(QWidget):
         self._stack = QStackedWidget()
         self._settings_view = SettingsView(self._controller)
         self._url_showcase = UrlShowcaseView()
+        self._reader_view = ReaderView()
+        self._knowledge_pool = KnowledgePoolView(self._controller)
 
         self._stack.addWidget(self._settings_view)   # _PAGE_SETTINGS
         self._stack.addWidget(self._url_showcase)    # _PAGE_URL_SHOWCASE
+        self._stack.addWidget(self._reader_view)     # _PAGE_READER
+        self._stack.addWidget(self._knowledge_pool)  # _PAGE_KNOWLEDGE_POOL
 
         root.addWidget(self._stack)
 
@@ -66,20 +75,36 @@ class ContentWorkspace(QWidget):
     # Public API
     # ------------------------------------------------------------------ #
 
+    @property
+    def reader(self) -> ReaderView:
+        return self._reader_view
+
+    @property
+    def knowledge_pool(self) -> KnowledgePoolView:
+        return self._knowledge_pool
+
     def apply_filter(self, filter_key: str) -> None:
         # Sidebar geçişi yeni bağlam → FilterBar ve SearchBar resetle.
+        self._active_key = filter_key
         self._active_filters = {}
         self._url_showcase.filter_bar.clear(notify=False)
         self._url_showcase.search_bar.clear()
 
         if filter_key == "settings":
             self._show_settings()
+        elif filter_key == "knowledge_pool":
+            self._show_knowledge_pool()
         else:
             self._show_url_showcase()
 
     def refresh(self) -> None:
-        if self._stack.currentIndex() == _PAGE_SETTINGS:
+        current = self._stack.currentIndex()
+        if current == _PAGE_SETTINGS:
             self._show_settings()
+        elif current == _PAGE_KNOWLEDGE_POOL:
+            self._show_knowledge_pool()
+        elif current == _PAGE_READER:
+            pass  # okuyucu kendi verisini yonetir, kart-gridi yenilemesi gerekmez
         else:
             self._show_url_showcase()
 
@@ -89,6 +114,15 @@ class ContentWorkspace(QWidget):
     def show_error_banner(self, message: str) -> None:
         self._url_showcase.show_error_banner(message)
 
+    def open_reader(self, resource) -> None:
+        """Filter-dispatch disi, kaynak-ozel sayfa gecisi — geri donuste
+        `close_reader()` en son aktif olan filtre sayfasina (`_active_key`) doner."""
+        self._reader_view.load_resource(resource)
+        self._stack.setCurrentIndex(_PAGE_READER)
+
+    def close_reader(self) -> None:
+        self.apply_filter(self._active_key)
+
     # ------------------------------------------------------------------ #
     # Sayfa gostericiler
     # ------------------------------------------------------------------ #
@@ -96,6 +130,10 @@ class ContentWorkspace(QWidget):
     def _show_settings(self) -> None:
         self._stack.setCurrentIndex(_PAGE_SETTINGS)
         self._settings_view.load_all()
+
+    def _show_knowledge_pool(self) -> None:
+        self._stack.setCurrentIndex(_PAGE_KNOWLEDGE_POOL)
+        self._knowledge_pool.load_all()
 
     def _show_url_showcase(self) -> None:
         self._stack.setCurrentIndex(_PAGE_URL_SHOWCASE)

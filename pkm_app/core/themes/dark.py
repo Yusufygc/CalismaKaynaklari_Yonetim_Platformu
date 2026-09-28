@@ -30,4 +30,5 @@ DARK_THEME: dict[str, str] = {
     "warning_color": "#FBBF24",
     "button_pressed": "#1D4ED8",
     "nav_selected_bg": "#17324A",
+    "highlight_color": "#B45309",
 }

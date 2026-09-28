@@ -40,6 +40,7 @@ class Colors:
     WARNING = "warning_color"
     BUTTON_PRESSED = "button_pressed"
     NAV_SELECTED_BG = "nav_selected_bg"
+    HIGHLIGHT_COLOR = "highlight_color"
 
     THEMES = {
         "dark": DARK_THEME,

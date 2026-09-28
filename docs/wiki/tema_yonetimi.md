@@ -61,6 +61,9 @@ def on_theme_changed(self, theme_data: dict):
 2. `currentColor` yer tutucularını hedef renk hex kodu ile değiştirir.
 3. SVG içeriğini `QSvgRenderer` ile bir `QPixmap` üzerine çizer ve `QIcon` olarak döner.
 
+## QComboBox Ok İkonu (2026-07-06)
+`QComboBox`'a herhangi bir QSS (border/background/padding) uygulanınca Qt native ok ikonunu tamamen kaybediyor (bilinen Qt davranışı) — `base.qss`'teki `QComboBox { ... }` kuralı yüzünden tüm combo'larda (StatusCombo, FormCombo, FilterCombo) ok görünmüyordu. `QSS::down-arrow { image: url(...) }` bir **QIcon değil dosya yolu** istediği için `load_theme_svg`'nin QIcon-döndüren mantığı burada kullanılamıyor. Çözüm: `theme_manager.py::apply_theme()`, her tema uygulamasında `assets/icons/chevron_down.svg`'yi (currentColor içerir) o temanın `icon_color`'iyla boyayıp `%APPDATA%/PKM/cache/combo_arrow.svg`'ye yazan bir private `_write_themed_svg()` çalıştırır; sonra `_build_qss()`'e ekstra `combo_arrow_path` anahtarını geçirir, `base.qss`'teki `QComboBox::down-arrow { image: url("{{combo_arrow_path}}"); }` bu dosyayı referans verir. Bu yardımcı bilerek `ui/theme_utils.py`'a değil `core/theme_manager.py`'a eklendi — core katmanının ui'a bağımlı olmaması için (`load_theme_svg` ile ayni boyama mantığını tekrarlar, DRY ihlali kabul edilebilir çünkü katman sınırını korumak öncelikli).
+
 ## Özel Tema Geçiş Düğmesi (ToggleSwitch)
 Geleneksel buton yerine `ui/components/toggle_switch.py` altında tanımlanmış animasyonlu `ToggleSwitch` bileşeni kullanılır. Bu bileşen:
 - `QPropertyAnimation` ile butonun kayma hareketini akıcı şekilde canlandırır.

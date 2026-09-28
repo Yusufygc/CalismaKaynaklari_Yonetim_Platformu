@@ -1,0 +1,114 @@
+/* reader.qss — okuyucu sayfasi + secim toolbar/popover */
+
+#ReaderView {
+    background-color: {{bg_primary}};
+}
+
+#ReaderTopBar {
+    background-color: {{surface_elevated}};
+    border-bottom: 1px solid {{border_color}};
+}
+
+#ReaderBackButton {
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: {{text_primary}};
+    font-weight: 600;
+}
+
+#ReaderBackButton:hover {
+    background-color: {{surface_hover}};
+}
+
+#ReaderTitleLabel {
+    color: {{text_primary}};
+    font-size: 14px;
+    font-weight: 700;
+}
+
+#ReaderTextEdit {
+    background-color: {{bg_secondary}};
+    color: {{text_primary}};
+    border: none;
+    padding: 16px;
+    font-size: 13px;
+}
+
+#SelectionToolbar {
+    background-color: {{surface_elevated}};
+    border: 1px solid {{border_color}};
+    border-radius: 8px;
+}
+
+#SelectionToolbarButton {
+    background: transparent;
+    color: {{accent_color}};
+    border: none;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+#SelectionToolbarButton:hover {
+    background-color: {{surface_hover}};
+    border-radius: 6px;
+}
+
+#VocabPopover {
+    background-color: {{surface_elevated}};
+    border: 1px solid {{border_color}};
+    border-radius: 8px;
+}
+
+#VocabPopoverLabel {
+    color: {{text_secondary}};
+    font-size: 11px;
+}
+
+/* --- Bilgi Havuzu satirlari (HighlightRow / VocabularyRow) --- */
+
+#HighlightRow, #VocabularyRow {
+    background-color: {{bg_secondary}};
+    border: 1px solid {{border_color}};
+    border-radius: 8px;
+}
+
+#HighlightRow:hover, #VocabularyRow:hover {
+    border-color: {{accent_color}};
+    background-color: {{surface_hover}};
+}
+
+#HighlightContentLabel, #VocabularyWordLabel {
+    color: {{text_primary}};
+    font-size: 12px;
+}
+
+#VocabularyContextLabel {
+    color: {{text_secondary}};
+    font-style: italic;
+    font-size: 11px;
+}
+
+#HighlightPageBadge {
+    background-color: {{muted_badge_bg}};
+    color: {{text_secondary}};
+    border-radius: 8px;
+    padding: 1px 6px;
+    font-size: 10px;
+}
+
+#RowResourceLink {
+    background: transparent;
+    border: none;
+    color: {{accent_color}};
+    font-size: 11px;
+    font-weight: 600;
+    text-align: left;
+    padding: 0;
+}
+
+#RowResourceLink:hover {
+    text-decoration: underline;
+}

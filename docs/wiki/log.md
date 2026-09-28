@@ -4,6 +4,48 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-07-06] FEAT | Uygulama içi Okuyucu + Bilgi Havuzu (alıntı/kelime)
+
+Kaynağı uygulama dışına çıkmadan okuyup, metin seçerek doğrudan alıntı/kelime çıkarma özelliği eklendi (Kindle/Instapaper tarzı) — önceden planlanan "sağ panelde sekmeli manuel ekleme formu" yaklaşımı kullanıcı tarafından iptal edilip bu yönde revize edildi.
+
+**Veri katmanı:** `Highlight`/`Vocabulary` modelleri ve tabloları zaten vardı (baseline migration'dan beri), hiç kullanılmıyordu — `repositories/highlight_repo.py`/`vocabulary_repo.py` (`tag_repo.py` deseni, `get_by_resource`/`get_all_with_resource` eager-load), `services/highlight_service.py`/`vocabulary_service.py` (`tag_service.py` deseni, validate→commit/rollback) sıfırdan yazıldı. `resources.full_text` (Text, nullable) kolonu eklendi (migration `73989d002a5c`) — kullanıcının kendi notu olan `content`'ten ayrı, kaynağın okunacak ham metni.
+
+**Tam metin çıkarma:** Yeni `services/article_extraction_service.py::ArticleExtractionService` (`trafilatura` bağımlılığı) URL'den makale gövdesini çıkarır — `ScraperService`'ten kasıtlı ayrı (farklı sorumluluk/hata modu). `resource_flow.py`'deki mevcut `_ScrapeWorker` (`QRunnable`) deseni `_ExtractWorker` olarak tekrarlandı, arka planda çalışır. SSRF koruması (`ScraperService._is_blocked_host`) `core/net_utils.py::is_blocked_host()`'a çıkarılıp iki serviste paylaşıldı (güvenlik-kritik kontrol tek yerde).
+
+**UI:** Yeni `ui/views/reader_view.py::ReaderView` — salt-okunur `QTextEdit`, metin seçilince Kindle-tarzı yüzen mini toolbar (`_SelectionToolbar`, top-level olmayan child widget — `QDialog` yasağına uygun) çıkıyor; "Alıntı olarak kaydet" direkt kaydediyor, "Kelime olarak kaydet" çeviri isteyen inline popover (`_VocabPopover`, `resource_form.py`'deki kategori-ekleme panelinin aynı deseni) açıyor. Mevcut alıntılar `document().find()` ile yeniden vurgulanıyor (bilinen sınırlama: aynı alt-dizi tekrar ediyorsa sadece ilk eşleşme). Yeni `ui/views/knowledge_pool_view.py::KnowledgePoolView` — tüm kaynaklardaki alıntı/kelimeleri sekmeli listeleyen, aranabilir, silinebilir yeni bir sidebar sayfası (`ui/components/highlight_row.py`/`vocabulary_row.py`, yeni `ui/components/list_stack.py` — `FlowLayout` yerine `QVBoxLayout` tabanlı liste konteyneri, tam-genişlik satırlar için). `ResourceDetailPanel`'e "Oku" butonu eklendi (`read_requested` → `ContentWorkspace.open_reader(resource)`).
+
+**Bilinmeyen risk, yakalanan bug:** `HighlightRepository`/`VocabularyRepository`'nin `created_at.desc()` sıralaması, ayni saniye içinde eklenen kayıtlarda kararsızdı (SQLite `func.now()` çözünürlüğü) — repo testi bunu yakaladı, `id.desc()` tiebreaker eklendi.
+
+Detay: [[veritabani_semasi]] · [[core_servisler]] · [[ui_layout]] · [[event_bus]] · [[veritabani_migrasyonlari]].
+
+---
+
+## [2026-07-06] FIX+STYLE | Dropdown ok ikonu eklendi + detay panelindeki URL şıklaştırıldı
+
+**Dropdown ok ikonu (FIX):** `QComboBox`'a QSS uygulanınca (bu projede hepsine uygulanıyor) Qt native ok ikonunu tamamen kaybediyor — StatusCombo/FormCombo/FilterCombo hiçbirinde ok yoktu. `assets/icons/chevron_down.svg` (currentColor) eklendi; `theme_manager.py`'daki yeni `_write_themed_svg()` her tema uygulamasında bu SVG'yi o temanın `icon_color`'iyla boyayip `%APPDATA%/PKM/cache/combo_arrow.svg`'ye yaziyor, `base.qss::QComboBox::down-arrow` bu dosyayi `image: url(...)` ile referans veriyor (QSS dosya yolu ister, `load_theme_svg`'nin dondurdugu QIcon degil). Detay: [[tema_yonetimi]].
+
+**URL gösterimi (STYLE):** `ResourceDetailPanel`'deki URL butonu artik ham/uzun URL yerine sadece alan adini (`utils/url_utils.py::format_display_url()`, örn. `github.com`) gösteriyor, tam URL tooltip'te duruyor; duz alt-cizili link yerine `OPEN_BROWSER` ikonlu bir chip/pill gorunumu aldi (`#DetailUrlButton` — `tag_badge_bg` arka plan, yuvarlak kenar, hover'da accent cerceve). Detay: [[ui_layout]].
+
+---
+
+## [2026-07-06] FIX+FEAT | FlowLayout dikey ortalama + formdan inline kategori ekleme
+
+**FlowLayout dikey ortalama (FIX):** `ui/components/flow_layout.py::FlowLayout._do_layout()` her ögeyi satırın en boy'una göre değil, satırın tepesine yapıştırıp kendi `sizeHint` yüksekliğiyle konumlandırıyordu — farklı yükseklikteki etiket/kutu/chip karışımında (örn. FilterBar) satır içi hizasızlık oluşuyordu. Artık layout iki geçişli: önce bir satırın tüm ögeleri toplanıyor, satır tamamlanınca (`flush_row`) her öge `(satır_yüksekliği - öge_yüksekliği) / 2` kadar dikeyde ortalanarak yerleştiriliyor. `FlowLayout` kullanan her yer (FilterBar, kart gridleri, Ayarlar kategori/etiket gridleri) bu düzeltmeden otomatik faydalanıyor.
+
+**Formdan inline kategori ekleme (FEAT):** Önceden yeni kategori sadece Ayarlar sayfasından eklenebiliyordu; "Yeni Kaynak Ekle" formunda kategori yoksa kullanıcı formu terk edip Ayarlar'a gitmek zorundaydı. `ResourceForm`'a Kategori etiketinin yanına bir `+` butonu (`IconActionButton`) eklendi; tıklanınca isim + renk seçiciden oluşan kompakt bir ekle-paneli açılıyor (Ayarlar'daki kategori ekleme deseniyle aynı bileşenler, DRY). Yeni sinyal `ResourceForm.category_create_requested(name, color)` → `DetailView` relay → `ResourceFlow._on_category_create_requested` → mevcut `MainController.create_category(...)` (Ayarlar'ın kullandığı ile birebir aynı metot — aynı `event_bus.category_added` emit'i sayesinde FilterBar/Ayarlar kategori listeleri de otomatik güncelleniyor). Basarili olunca yeni `ResourceForm.set_categories(categories, select_id)` combo'yu tazeliyor, yeni kategoriyi seçili yapıyor ve ekle-panelini kapatıyor.
+
+**Not (ilgisiz, aksiyon alınmadı):** Uygulama loglarında görülen `QFont::setPointSize: Point size <= 0 (-1)` uyarısı proje kodunda hiçbir yerde (`grep -r setPointSize`) bulunmuyor — qtawesome/Qt font-icon motorunun kendi iç uyarısı, zararsız gürültü.
+
+---
+
+## [2026-07-06] FIX | İlerleme (%) özelliği komple kaldırıldı + filtre çubuğu daralınca kesiliyordu
+
+**İlerleme kaldırma:** Sağ detay panelindeki İlerleme (%) `QSpinBox`'ı sadece UI'dan değil, komple sistemden kaldırıldı: `Resource.progress` model kolonu (yeni Alembic migration `6e58af46d8a6` ile `op.batch_alter_table` kullanarak drop edildi — SQLite `DROP COLUMN`'u desteklemiyor), `ResourceUpdateSchema.progress`, `ResourceService._status_for_progress`/`_progress_for_status`/`update_resource_progress`, `MainController.update_progress`, `ResourceDetailPanel`/`DetailView`'daki `progress_updated` sinyali ve wiring'i, `#ProgressSpin` QSS kuralı, `PROGRESS_LABEL` string sabiti. Status artık progress'e bağlı otomatik türetilmiyor — tamamen `Durum` combo'sundan manuel seçiliyor (zaten var olan bir kontrol). Gerçek kullanıcı veritabanı (`%APPDATA%/PKM/pkm_app.db`) yedeklendikten sonra migration uygulandı ve doğrulandı.
+
+**Filtre çubuğu responsive sarma:** `FilterBar` tek satırlık `QHBoxLayout` yerine kart gridinde zaten kullanılan `FlowLayout` deseniyle kuruldu; pencere daraldığında kategori/etiket/durum/öncelik kontrolleri artık kesilmek yerine alt satıra sarıyor.
+
+---
+
 ## [2026-07-04] FIX | Kart içinde başlık/açıklama metni ortadan kesiliyordu
 
 `UrlRichCard`/`ResourceCard` başlık/açıklama etiketleri sabit piksel `setMaximumHeight` kullanıyordu; bu deger fontun satır yüksekliğinin tam katı olmadığından son görünür satır yarım glyph ile kesiliyordu (scrape edilen ham metindeki embedded `\n`'ler kesilme ihtimalini artırıyordu). Yeni `ui/text_utils.py::elide_to_lines()` metni en fazla N satıra düzgünce diziyor, taşarsa "…" ile bitiriyor, taşmıyorsa orijinal string'i aynen koruyor (mevcut testler bunu doğruladı). `setMaximumHeight` artık `lineSpacing()*max_lines` (tam satır, sıfır kesme payı). Ölçüm için `cards.qss` değerleriyle senkron tutulması gereken, sadece hesap amaçlı yerel `QFont` kullanılıyor (gerçek render QSS'ten gelmeye devam ediyor).

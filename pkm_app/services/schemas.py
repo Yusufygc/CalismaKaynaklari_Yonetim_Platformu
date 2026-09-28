@@ -30,9 +30,9 @@ class ResourceUpdateSchema(BaseModel):
     url: Optional[str] = None
     category_id: Optional[int] = None
     status: Optional[ResourceStatus] = None
-    progress: Optional[float] = None
     priority: Optional[int] = None
     content: Optional[str] = None
+    full_text: Optional[str] = None
     is_pinned: Optional[bool] = None
     tag_names: Optional[list[str]] = None
     extra_metadata: Optional[dict] = None

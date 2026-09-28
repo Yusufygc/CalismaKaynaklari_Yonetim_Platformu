@@ -6,12 +6,35 @@ from PySide6.QtWidgets import QApplication
 
 from core.constants.colors import Colors
 from core.logger import log
-from core.paths import resource_path
+from core.paths import resource_path, user_data_dir
 
 if TYPE_CHECKING:
     pass
 
 _STYLES_DIR = resource_path("assets", "styles")
+_ICONS_DIR = resource_path("assets", "icons")
+_COMBO_ARROW_PATH = user_data_dir() / "cache" / "combo_arrow.svg"
+
+
+def _write_themed_svg(svg_name: str, color_hex: str, out_path) -> None:
+    """`currentColor` icerikli bir SVG'yi verilen renkle boyayip diske yazar.
+
+    QSS `url()` yalnizca dosya yolu kabul eder (QIcon degil) -- bu yuzden
+    QComboBox ok ikonu gibi QSS'ten referans verilen ikonlar icin
+    `ui/theme_utils.py::load_theme_svg`'deki boyama mantigi burada diske
+    yazilabilir sekilde tekrarlanir (core katmani ui'a bagimli olmasin diye
+    ayri tutuldu).
+    """
+    svg_path = _ICONS_DIR / svg_name
+    if not svg_path.exists():
+        return
+    try:
+        content = svg_path.read_text(encoding="utf-8")
+        colored_content = content.replace("currentColor", color_hex)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(colored_content, encoding="utf-8")
+    except OSError as exc:
+        log.error("Tema ikonu yazilamadi: %s — %s", out_path, exc)
 
 
 class _ThemeManager:
@@ -36,7 +59,12 @@ class _ThemeManager:
             theme = Colors.THEMES["dark"]
 
         self._current_theme = theme
-        qss = self._build_qss(theme)
+
+        # ComboBox ok ikonu: QSS `url()` dosya yolu ister, QIcon kabul etmez --
+        # her tema uygulamasinda `chevron_down.svg`'yi o temanin icon_color'iyla
+        # boyayip sabit bir dosyaya yaziyoruz, QSS de o dosyayi referans veriyor.
+        _write_themed_svg("chevron_down.svg", theme["icon_color"], _COMBO_ARROW_PATH)
+        qss = self._build_qss({**theme, "combo_arrow_path": _COMBO_ARROW_PATH.as_posix()})
         QApplication.instance().setStyleSheet(qss)  # type: ignore[union-attr]
 
         # Event Bus burada import ediliyor — dairesel import'tan kacmak icin.
