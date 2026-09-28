@@ -74,7 +74,8 @@ class ColorPickerButton(QPushButton):
     # ------------------------------------------------------------------ #
 
     def _open_dialog(self) -> None:
-        initial = QColor(self._color) if self._color else QColor("#3B82F6")
+        default_color = resolve_theme_color(self._theme_data, Colors.ACCENT)
+        initial = QColor(self._color) if self._color else QColor(default_color)
         chosen = QColorDialog.getColor(
             initial,
             self,

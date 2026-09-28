@@ -34,6 +34,17 @@ def test_ui_code_has_no_inline_stylesheet_calls():
     assert offenders == []
 
 
+def test_ui_code_does_not_hardcode_hex_colors():
+    hex_re = re.compile(r"#[0-9A-Fa-f]{6}\b")
+    offenders = {
+        file.name: hex_re.findall(file.read_text(encoding="utf-8"))
+        for file in _read_sources(UI_DIR, "*.py")
+        if hex_re.search(file.read_text(encoding="utf-8"))
+    }
+
+    assert offenders == {}
+
+
 def test_qss_files_do_not_contain_hardcoded_hex_colors():
     hex_re = re.compile(r"#[0-9A-Fa-f]{3,8}")
     offenders = {

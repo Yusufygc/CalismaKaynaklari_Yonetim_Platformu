@@ -2,6 +2,9 @@ from PySide6.QtCore import Property, QPropertyAnimation, Qt
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QAbstractButton
 
+from core.constants.colors import Colors
+from ui.theme_utils import resolve_theme_color
+
 
 class ToggleSwitch(QAbstractButton):
     def __init__(self, parent=None) -> None:
@@ -49,9 +52,9 @@ class ToggleSwitch(QAbstractButton):
 
         # Arka plan rengi
         if self.isChecked():
-            track_color = QColor(self._theme.get("accent_color", "#38BDF8"))
+            track_color = QColor(resolve_theme_color(self._theme, Colors.ACCENT))
         else:
-            track_color = QColor(self._theme.get("border_color", "#334155"))
+            track_color = QColor(resolve_theme_color(self._theme, Colors.BORDER))
 
         # Arka plani ciz
         painter.setBrush(track_color)
@@ -59,7 +62,7 @@ class ToggleSwitch(QAbstractButton):
         painter.drawRoundedRect(self.rect(), 12, 12)
 
         # Yuvarlak dugme (thumb) rengi
-        thumb_color = QColor(self._theme.get("bg_primary", "#ffffff"))
+        thumb_color = QColor(resolve_theme_color(self._theme, Colors.BG_PRIMARY))
         painter.setBrush(thumb_color)
         # Dugmeyi ciz
         painter.drawEllipse(int(self._thumb_position), 3, 18, 18)

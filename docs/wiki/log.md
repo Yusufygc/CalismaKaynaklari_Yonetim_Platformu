@@ -4,6 +4,16 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-28] REVIEW | Tema fallback'lerindeki hardcoded hex kaldirildi
+
+Bulgu #8: `ui/components/toggle_switch.py` (`.get("accent_color", "#38BDF8")` vb. 3 yer) ve `color_picker_button.py` (`QColor("#3B82F6")` — QColorDialog baslangic rengi) `CLAUDE.md`'nin "no hardcoded colors" kuralini ihlal ediyordu. Ikisi de zaten projede var olan `ui/theme_utils.py::resolve_theme_color(theme_data, key)` helper'ina gecirildi (`theme_data` bossa/eksikse `Colors.THEMES["dark"][key]`'e duser — ayni fallback semantigi, artik merkezi). `color_picker_button.py`'deki sabit mavi, tema `accent_color`'una baglandi (artik tema degisiminde de tutarli).
+
+**Regresyon kilidi:** `tests/test_ui_style_debt.py`'ye `test_ui_code_does_not_hardcode_hex_colors` eklendi (`ui/**/*.py` icinde `#RRGGBB` deseni arar) — `test_ui_code_has_no_inline_stylesheet_calls` ile ayni desen. 148 test yesil.
+
+Detay: [[core_servisler]] · [[mimari_kurallari]].
+
+---
+
 ## [2026-09-28] REVIEW | net_utils.py (SSRF guard) test kapsami eklendi
 
 Bulgu #7: `core/net_utils.py::is_blocked_host` — projedeki en guvenlik-kritik fonksiyon — sadece scraper/extraction testleri uzerinden dolayli test ediliyordu, dedike testi yoktu. `tests/test_core/test_net_utils.py` eklendi (13 test): public IPv4/IPv6 izin veriliyor; loopback/private (RFC1918 10.x/172.16.x/192.168.x)/link-local (bulut metadata 169.254.169.254 dahil)/reserved/multicast/IPv6-loopback engelleniyor; **DNS rebinding senaryosu** (bir hostname birden fazla A kaydina cozumlenip biri bile ic ag ise engellenmeli) ayri test edildi; DNS cozumleme hatasi (`gaierror`) ve hostname'siz URL de engelleniyor. 147 test yesil.
