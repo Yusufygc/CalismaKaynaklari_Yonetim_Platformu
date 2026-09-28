@@ -14,14 +14,27 @@ def _fake_dns(monkeypatch):
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))]
 
     monkeypatch.setattr(
-        "pkm_app.services.scraper_service.socket.getaddrinfo", _fake_getaddrinfo
+        "pkm_app.core.net_utils.socket.getaddrinfo", _fake_getaddrinfo
     )
 
 
 class _Response:
+    is_redirect = False
+
     def __init__(self, text: str, url: str = "https://example.com/page") -> None:
         self.text = text
         self.url = url
+        self.headers: dict = {}
+
+    def raise_for_status(self) -> None:
+        return None
+
+
+class _RedirectResponse:
+    is_redirect = True
+
+    def __init__(self, location: str) -> None:
+        self.headers = {"Location": location}
 
     def raise_for_status(self) -> None:
         return None
@@ -129,11 +142,44 @@ def _refuse_network_call(*args, **kwargs):
 def test_extract_metadata_blocks_internal_addresses(monkeypatch, resolved_ip):
     monkeypatch.setattr("pkm_app.services.scraper_service.requests.get", _refuse_network_call)
     monkeypatch.setattr(
-        "pkm_app.services.scraper_service.socket.getaddrinfo",
+        "pkm_app.core.net_utils.socket.getaddrinfo",
         lambda host, *a, **k: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (resolved_ip, 0))],
     )
 
     assert ScraperService().extract_metadata("http://internal.example/") == {}
+
+
+def test_extract_metadata_blocks_redirect_to_internal_address(monkeypatch):
+    """Disardan erisilebilir bir URL, ic ag adresine yonlendirirse istek durmali (SSRF/TOCTOU)."""
+
+    calls = []
+
+    def _fake_get(url, *args, **kwargs):
+        calls.append(url)
+        if url == "https://external.example/start":
+            return _RedirectResponse("http://internal.example/secret")
+        raise AssertionError("yonlendirme hedefi tekrar dogrulanmadan istek atildi")
+
+    def _fake_getaddrinfo(host, *a, **k):
+        if host == "internal.example":
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 0))]
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))]
+
+    monkeypatch.setattr("pkm_app.services.scraper_service.requests.get", _fake_get)
+    monkeypatch.setattr("pkm_app.core.net_utils.socket.getaddrinfo", _fake_getaddrinfo)
+
+    assert ScraperService().extract_metadata("https://external.example/start") == {}
+    assert calls == ["https://external.example/start"]
+
+
+def test_extract_metadata_stops_after_max_redirects(monkeypatch):
+    def _fake_get(url, *args, **kwargs):
+        n = int(url.rsplit("/", 1)[-1])
+        return _RedirectResponse(f"https://external.example/{n + 1}")
+
+    monkeypatch.setattr("pkm_app.services.scraper_service.requests.get", _fake_get)
+
+    assert ScraperService().extract_metadata("https://external.example/0") == {}
 
 
 def test_extract_metadata_blocks_when_dns_resolution_fails(monkeypatch):
@@ -143,7 +189,7 @@ def test_extract_metadata_blocks_when_dns_resolution_fails(monkeypatch):
         raise socket.gaierror("cozumlenemedi")
 
     monkeypatch.setattr(
-        "pkm_app.services.scraper_service.socket.getaddrinfo", _raise_gaierror
+        "pkm_app.core.net_utils.socket.getaddrinfo", _raise_gaierror
     )
 
     assert ScraperService().extract_metadata("http://does-not-resolve.invalid/") == {}

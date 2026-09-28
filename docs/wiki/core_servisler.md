@@ -68,6 +68,8 @@ Aynı şekil: `get_by_resource(resource_id)`, `get_all_with_resource()`.
 |-------|----------|
 | `extract_metadata(url)` | `og_title`, `og_description`, `thumbnail`, `favicon` çıkarır. Request/parse hatasında log yazar ve `{}` döndürür. |
 
+**SSRF redirect koruması (2026-09-28):** `is_blocked_host(url)` önceden sadece istek öncesi orijinal URL'e karşı kontrol ediliyordu — `requests.get` varsayılan olarak redirect'leri takip ettiğinden, dışarıdan erişilebilir bir URL iç ağ adresine yönlendirirse guard bunu göremiyordu (TOCTOU/SSRF bypass). `_safe_get()` eklendi: `allow_redirects=False` ile manuel redirect takibi yapıp her hop'ta `is_blocked_host` tekrar çağırıyor, `_MAX_REDIRECTS=5` sınırı var.
+
 ### TagService — `services/tag_service.py`
 
 | Metod | Açıklama |
@@ -102,6 +104,10 @@ Aynı desen: `create_vocabulary(resource_id, word, translation, context_sentence
 
 ### ArticleExtractionService — `services/article_extraction_service.py` (2026-07-06)
 `ScraperService`'ten bilerek ayrı: `ScraperService` hafif og:meta scraping yapar, bu servis `trafilatura` ile tüm sayfayı indirip boilerplate-temizleme sezgiseli çalıştırır — farklı sorumluluk/hata modu (`None` döner, dict fallback değil). `extract_full_text(url) -> str | None` — SSRF koruması için `core/net_utils.py::is_blocked_host()` paylaşılır (bkz. aşağıda).
+
+**İndirme timeout'u (2026-09-28):** `trafilatura.fetch_url(url)` öntanımlı olarak kendi `settings.cfg`'sindeki `DOWNLOAD_TIMEOUT=30` değerini kullanıyordu (proje genelinde belgesizdi). Modül seviyesinde `_build_config()` ile `DOWNLOAD_TIMEOUT=10`'a çekilen bir `ConfigParser` her çağrıya `config=` olarak geçiliyor — `ScraperService._TIMEOUT_SECONDS=5` ile aynı disiplin, tam sayfa indirmesi için biraz daha toleranslı.
+
+**Bilinen/kapsam dışı risk:** `trafilatura.fetch_url` kendi içinde `urllib3 Retry(redirect=...)` ile redirect takip ediyor; `ScraperService._safe_get`'teki gibi her hop'ta `is_blocked_host` tekrar çağrılmıyor — aynı TOCTOU/SSRF riski burada da var, henüz düzeltilmedi (ayrı bulgu olarak backlog'da).
 
 **Paylaşılan SSRF koruması — `core/net_utils.py::is_blocked_host(url)` (2026-07-06):** Önceden `ScraperService._is_blocked_host` olarak tek yerde yaşıyordu; `ArticleExtractionService` de aynı korumaya ihtiyaç duyunca `core/net_utils.py`'a çıkarıldı — iki serviste ayrı ayrı tutulup zamanla birbirinden sapması (güvenlik-kritik bir kontrolde) riskini önler.
 

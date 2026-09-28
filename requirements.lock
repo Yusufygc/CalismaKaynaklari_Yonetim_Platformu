@@ -7,3 +7,5 @@ beautifulsoup4==4.14.3
 pydantic-settings==2.14.1
 python-dotenv==1.2.2
 Markdown==3.10.2
+trafilatura==2.2.0
+lxml_html_clean==0.4.5

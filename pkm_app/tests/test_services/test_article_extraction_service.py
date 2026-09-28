@@ -18,7 +18,7 @@ def _fake_dns(monkeypatch):
 def test_extract_full_text_returns_extracted_content(monkeypatch):
     monkeypatch.setattr(
         "pkm_app.services.article_extraction_service.trafilatura.fetch_url",
-        lambda url: "<html>...</html>",
+        lambda url, **kwargs: "<html>...</html>",
     )
     monkeypatch.setattr(
         "pkm_app.services.article_extraction_service.trafilatura.extract",
@@ -30,10 +30,32 @@ def test_extract_full_text_returns_extracted_content(monkeypatch):
     assert result == "Makale govde metni."
 
 
+def test_extract_full_text_passes_configured_timeout(monkeypatch):
+    captured = {}
+
+    def _fake_fetch_url(url, **kwargs):
+        captured.update(kwargs)
+        return "<html>...</html>"
+
+    monkeypatch.setattr(
+        "pkm_app.services.article_extraction_service.trafilatura.fetch_url",
+        _fake_fetch_url,
+    )
+    monkeypatch.setattr(
+        "pkm_app.services.article_extraction_service.trafilatura.extract",
+        lambda downloaded, **kwargs: "Makale govde metni.",
+    )
+
+    ArticleExtractionService().extract_full_text("https://example.com/article")
+
+    assert "config" in captured
+    assert captured["config"].getint("DEFAULT", "DOWNLOAD_TIMEOUT") == 10
+
+
 def test_extract_full_text_returns_none_when_fetch_fails(monkeypatch):
     monkeypatch.setattr(
         "pkm_app.services.article_extraction_service.trafilatura.fetch_url",
-        lambda url: None,
+        lambda url, **kwargs: None,
     )
 
     assert ArticleExtractionService().extract_full_text("https://example.com/article") is None

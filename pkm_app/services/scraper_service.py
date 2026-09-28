@@ -1,17 +1,17 @@
-import ipaddress
-import socket
 from urllib.parse import parse_qs, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
 from core.logger import log
+from core.net_utils import is_blocked_host
 
 
 class ScraperService:
     """URL metadata extraction service for rich link cards."""
 
     _TIMEOUT_SECONDS = 5
+    _MAX_REDIRECTS = 5
     _HEADERS = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -21,19 +21,17 @@ class ScraperService:
     }
 
     def extract_metadata(self, url: str) -> dict:
-        if self._is_blocked_host(url):
-            log.warning("URL ic ag/loopback adresine cozumlendigi icin reddedildi: %s", url)
-            return self._platform_fallback(url)
-
         try:
-            response = requests.get(
-                url,
-                headers=self._HEADERS,
-                timeout=self._TIMEOUT_SECONDS,
-            )
-            response.raise_for_status()
+            response = self._safe_get(url)
         except requests.RequestException as exc:
             log.warning("URL metadata alinamadi: %s - %s", url, exc)
+            return self._platform_fallback(url)
+
+        if response is None:
+            log.warning(
+                "URL ic ag/loopback adresine cozumlendigi veya yonlendirme sinirini astigi icin reddedildi: %s",
+                url,
+            )
             return self._platform_fallback(url)
 
         try:
@@ -42,6 +40,28 @@ class ScraperService:
         except Exception as exc:
             log.warning("URL metadata parse edilemedi: %s - %s", url, exc)
             return self._platform_fallback(url)
+
+    def _safe_get(self, url: str) -> requests.Response | None:
+        """Her yonlendirme adiminda hedefi is_blocked_host ile tekrar dogrular (SSRF)."""
+        current_url = url
+        for _ in range(self._MAX_REDIRECTS + 1):
+            if is_blocked_host(current_url):
+                return None
+            response = requests.get(
+                current_url,
+                headers=self._HEADERS,
+                timeout=self._TIMEOUT_SECONDS,
+                allow_redirects=False,
+            )
+            if response.is_redirect:
+                location = response.headers.get("Location")
+                if not location:
+                    return None
+                current_url = urljoin(current_url, location)
+                continue
+            response.raise_for_status()
+            return response
+        return None
 
     def _parse_html(self, html: str, base_url: str) -> dict:
         soup = BeautifulSoup(html, "html.parser")
@@ -103,22 +123,6 @@ class ScraperService:
             return None
         href = tag.get("href")
         return href.strip() if isinstance(href, str) and href.strip() else None
-
-    @staticmethod
-    def _is_blocked_host(url: str) -> bool:
-        """Ic ag / loopback / link-local adreslere istek atilmasini engeller (SSRF)."""
-        hostname = urlparse(url).hostname
-        if not hostname:
-            return True
-        try:
-            addresses = {info[4][0] for info in socket.getaddrinfo(hostname, None)}
-        except socket.gaierror:
-            return True
-        for address in addresses:
-            ip = ipaddress.ip_address(address)
-            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
-                return True
-        return False
 
     @staticmethod
     def _absolute(value: str | None, base_url: str) -> str | None:

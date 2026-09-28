@@ -1,7 +1,16 @@
 import trafilatura
+from trafilatura.settings import use_config
 
 from core.logger import log
 from core.net_utils import is_blocked_host
+
+_TIMEOUT_SECONDS = 10
+
+
+def _build_config():
+    config = use_config()
+    config.set("DEFAULT", "DOWNLOAD_TIMEOUT", str(_TIMEOUT_SECONDS))
+    return config
 
 
 class ArticleExtractionService:
@@ -12,12 +21,14 @@ class ArticleExtractionService:
     sezgiseli calistirir -- farkli sorumluluk, farkli hata modu (None doner).
     """
 
+    _CONFIG = _build_config()
+
     def extract_full_text(self, url: str) -> str | None:
         if is_blocked_host(url):
             log.warning("URL ic ag/loopback adresine cozumlendigi icin reddedildi: %s", url)
             return None
         try:
-            downloaded = trafilatura.fetch_url(url)
+            downloaded = trafilatura.fetch_url(url, config=self._CONFIG)
             if not downloaded:
                 return None
             return trafilatura.extract(downloaded, include_comments=False, include_tables=False)

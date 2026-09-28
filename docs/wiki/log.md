@@ -4,6 +4,24 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-28] REVIEW | SSRF redirect açığı + bağımlılık/timeout düzeltmeleri
+
+Kapsamlı kod denetimi (V2-GenelSablon.md şablonuyla) sonrası bulunan bulguların sıralı düzeltmesi:
+
+**SSRF redirect açığı (Güvenlik):** `ScraperService.extract_metadata` sadece istek öncesi `is_blocked_host(url)` kontrolü yapıyordu; `requests.get` varsayılan redirect takibiyle dışarıdan erişilebilir bir URL iç ağ/loopback adresine yönlendirdiğinde guard bypass ediliyordu. `_safe_get()` eklendi — `allow_redirects=False` + her hop'ta yeniden `is_blocked_host` kontrolü + `_MAX_REDIRECTS=5`. `test_scraper_service.py`'ye 2 yeni test (redirect-to-internal engelleniyor, redirect limiti aşımı engelleniyor).
+
+**requirements.lock eksik paket:** `trafilatura` (`requirements.txt`'de vardı) `requirements.lock`'ta yoktu — pinned kurulum makale çıkarma özelliğinde `ImportError` ile çöküyordu. Ayrıca `trafilatura`'nın kendi bağımlılık listesi `lxml_html_clean`'i çekmiyor (lxml bu modülü ayrı pakete taşıdı) — bu da her iki dosyaya (`requirements.txt`, `requirements.lock`) eklendi. Temiz venv'den `requirements.lock` ile kurulum + tam test suite (114 test) ile doğrulandı.
+
+**article_extraction_service.py timeout:** `trafilatura.fetch_url(url)` açık timeout geçmiyordu (kütüphanenin kendi `DOWNLOAD_TIMEOUT=30` varsayılanına bağımlıydı). Modül seviyesinde `_build_config()` ile `DOWNLOAD_TIMEOUT=10` set edildi, her çağrıya `config=` geçiliyor.
+
+**Ortam:** Bu makinede `C:\Users\ysfygc\anaconda3\envs\KaynakYonetim` conda ortamı yok — proje kökünde `.venv/` (pip venv, zaten `.gitignore`'da) oluşturulup doğrulama buradan yapıldı.
+
+**Kapsam dışı bırakılan (backlog'da kalan):** `article_extraction_service.py`'deki aynı SSRF/redirect riski (trafilatura kendi içinde redirect takip ediyor, `is_blocked_host` hop başına tekrar çağrılmıyor) — ayrı bulgu, henüz dokunulmadı. `except Exception` genişliği, `MainController` god-object riski, test kapsam boşlukları (`resource_repo.py`, `net_utils.py`) — sıradaki adımlar.
+
+Detay: [[core_servisler]].
+
+---
+
 ## [2026-07-06] FEAT | Uygulama içi Okuyucu + Bilgi Havuzu (alıntı/kelime)
 
 Kaynağı uygulama dışına çıkmadan okuyup, metin seçerek doğrudan alıntı/kelime çıkarma özelliği eklendi (Kindle/Instapaper tarzı) — önceden planlanan "sağ panelde sekmeli manuel ekleme formu" yaklaşımı kullanıcı tarafından iptal edilip bu yönde revize edildi.
