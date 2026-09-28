@@ -44,6 +44,14 @@ def test_add_resource_failure_emits_error_and_returns_none(qapp, session):
         assert len(received) == 1
 
 
+def test_delete_resource_failure_emits_error(qapp, session):
+    controller = MainController(session)
+    with _capture(event_bus.error_occurred) as received:
+        controller.delete_resource(999)
+
+        assert len(received) == 1
+
+
 def test_toggle_pin_flips_value_and_emits_resource_updated(qapp, session):
     controller = MainController(session)
     resource = controller.add_resource({"title": "Pin Me"})

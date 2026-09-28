@@ -4,6 +4,20 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-28] REVIEW | `except Exception` denetimi + MainController.delete_resource bug fix
+
+Bulgu #4 (38x `except Exception`) tek tek okunarak değerlendirildi — grep sayımı yanıltıcıydı:
+
+**Sonuç: 37/38 site kasıtlı, doğru pattern — bug değil.** Servis katmanındaki 20 site (`resource_service.py`, `tag_service.py`, `category_service.py`, `highlight_service.py`, `vocabulary_service.py`) tutarlı `try/commit → except Exception: rollback + log.exception + raise` deseni — DB commit'i çevreleyen bu geniş yakalama **kasıtlı**: hangi exception türü olursa olsun rollback garanti edilmeli, orijinal exception değişmeden yeniden fırlatılıyor (yutma yok). Daraltmak (`except ValidationError` gibi) yanlış olur — beklenmeyen bir DB hatasında (ör. disk dolu) rollback atlanır. `main_controller.py`'deki 16 site UI sınırı: servisten gelen her exception'ı yakalayıp `event_bus.error_occurred` ile arayüze bildiriyor — bu da kasıtlı, doğru. `resource_flow.py`'deki 2 site (`QRunnable.run()` içinde) arka plan thread güvenliği için aynı şekilde doğru. `resource_card.py`/`theme_utils.py`'deki 2 site qtawesome/SVG render fallback'i — defansif, doğru.
+
+**Gerçek bulunan bug:** `MainController.delete_resource` diğer 12 yazma-metodunun (`add_resource`, `update_resource`, `toggle_pin`, `toggle_favorite`, `create_category`, ... vb.) hepsinde olan `event_bus.error_occurred.emit(str(exc))` çağrısını yapmıyordu — silme başarısız olduğunda kullanıcıya hiçbir geri bildirim gitmiyordu (loglanıyordu ama UI sessiz kalıyordu). Eklendi, `test_main_controller.py`'ye regresyon testi (`test_delete_resource_failure_emits_error`) eklendi.
+
+**Yeni bulunan, henüz dokunulmamış risk (öncelik değerlendirmesi bekliyor):** `ui/components/url_rich_card.py::ThumbnailWorker` — `resource.extra_metadata["thumbnail"]` (scrape edilen sayfanın `og:image`'inden, yani saldırgan etkisindeki bir URL) `urllib.request` ile indiriliyor; `is_blocked_host` SSRF kontrolü **hiç çağrılmıyor** ve `ssl._create_unverified_context()` ile TLS sertifika doğrulaması **tamamen kapalı**. `scraper_service.py`'deki redirect açığından daha ciddi — burada baştan hiç SSRF koruması yok. Ayrı bulgu olarak kullanıcıya bildirildi.
+
+Detay: [[core_servisler]] · [[ui_layout]].
+
+---
+
 ## [2026-09-28] REVIEW | SSRF redirect açığı + bağımlılık/timeout düzeltmeleri
 
 Kapsamlı kod denetimi (V2-GenelSablon.md şablonuyla) sonrası bulunan bulguların sıralı düzeltmesi:

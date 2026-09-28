@@ -85,6 +85,7 @@ class MainController:
             event_bus.resource_deleted.emit(resource_id)
         except Exception as exc:
             log.error("Kaynak silinemedi: %s", exc)
+            event_bus.error_occurred.emit(str(exc))
 
     # ------------------------------------------------------------------ #
     # Kategori / Etiket
