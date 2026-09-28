@@ -6,10 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Conda env:** `C:\Users\ysfygc\anaconda3\envs\KaynakYonetim`
 - **Activate:** `conda activate KaynakYonetim`
-- **Run app:** `python pkm_app/main.py`
+- **Run app:** `python main.py`
 - **Install deps:** `pip install -r requirements.txt`
-- **Run tests:** `pytest pkm_app/tests/`
-- **Single test:** `pytest pkm_app/tests/test_services/test_resource_service.py::TestClassName::test_method`
+- **Run tests:** `pytest tests/`
+- **Single test:** `pytest tests/test_services/test_resource_service.py::TestClassName::test_method`
 
 ## Wiki (Read First)
 
@@ -22,15 +22,16 @@ Operasyon komutları: `[INGEST]` yeni kaynak al → wiki güncelle, `[QUERY]` wi
 Three-layer separation — UI never touches the database directly:
 
 ```
-UI (PySide6 views/components)
-  └── Controllers  →  Services (business logic, validation, commit/rollback)
-                          └── Repositories (SQLAlchemy queries only, no business logic)
-                                  └── Models (SQLAlchemy declarative, models/ dir)
+QML UI (qml/ views, components, theme)
+  └── QmlBridge & Controllers (controllers/ dir)
+          └── Services (business logic, validation, commit/rollback)
+                  └── Repositories (SQLAlchemy queries only, no business logic)
+                          └── Models (SQLAlchemy declarative, models/ dir)
 ```
 
-**Event Bus** (`core/events.py`) — Singleton `_EventBus(QObject)`. UI components never reference each other directly; all state changes flow through `event_bus.signal.emit()` / `.connect()`. Add new signals here when needed.
+**QML UI & Theme** (`qml/`) — Notion / Linear / Craft minimalist tasarım dili. Singleton `Theme.qml` tüm renk, tipografi, kenarlık ve animasyon token'larını reaktif olarak yönetir.
 
-**Theme Manager** (`core/theme_manager.py`) — Singleton. QSS files use `{{ variable }}` placeholders; ThemeManager fills them from `core/themes/dark.py` / `light.py` dicts and calls `QApplication.setStyleSheet()`. Emits `event_bus.theme_changed` so components re-render qtawesome icons.
+**Event Bus** (`core/events.py`) — Singleton `_EventBus(QObject)`. Controller'lar ve servisler arası durum değişimleri `event_bus.signal.emit()` / `.connect()` üzerinden akar.
 
 **Session ownership:** `commit()` and `rollback()` belong in the Service layer, never in Repositories.
 
@@ -42,13 +43,11 @@ UI (PySide6 views/components)
 - **No hacks:** "Works for now" shortcuts are forbidden. Every module must be testable and isolated when written.
 
 **Styling:**
-- No inline `setStyleSheet`. All styles live in `assets/styles/*.qss`.
-- Each major window or component gets its own `.qss` file (e.g. `main_window.qss`, `resource_card.qss`).
-- Colors are read from `core/constants/colors.py` and dynamically formatted (string interpolation) into QSS before applying — never hardcoded HEX values in `.qss` files.
+- All design tokens live in `qml/theme/Theme.qml` (colors, spacing, radius, typography).
+- No hardcoded ad-hoc color codes in QML component bodies — reference `Theme.*`.
 
 **Assets:**
-- No hard-coded colors, fonts, or strings. Source from `core/constants/colors.py`, `fonts.py`, `strings.py`.
-- Standard icons: `qtawesome`. Custom icons/logos: SVG in `assets/icons/`, referenced via `core/constants/icons.py`.
+- Standard icons: `qtawesome` via `image://icon/<name>/<hex>` (`IconImageProvider`). Custom SVG icons in `assets/icons/`.
 
 **Error & observability:**
 - No `print()`. Use `core/logger.py` (logs to console + `app.log`).
@@ -75,15 +74,15 @@ Her kod değişikliği, yeni modül, kütüphane ekleme veya mimari karar sonras
 
 | Purpose | Path |
 |---------|------|
-| Entry point | `pkm_app/main.py` |
-| Event Bus | `core/events.py` |
-| Theme Manager | `core/theme_manager.py` |
-| Custom exceptions | `core/exceptions.py` |
-| DB session/utils | `utils/db_utils.py` |
-| Generic CRUD | `repositories/base_repository.py` |
-| Main resource queries | `repositories/resource_repo.py` |
+| Entry point | `main.py` |
+| QML Root Window | `qml/main.qml` |
+| Theme Singleton | `qml/theme/Theme.qml` |
+| Python-QML Bridge | `ui_qml/bridge.py` |
+| Virtualized List Model | `ui_qml/models/resource_list_model.py` |
+| Main Controller Facade | `controllers/main_controller.py` |
 | Core business logic | `services/resource_service.py` |
+| Background workers | `workers/` (`scrape_worker.py`, `extract_worker.py`) |
 
 ## Database
 
-SQLite + SQLAlchemy 2.0 declarative. Main tables: `resources` (has `extra_metadata JSON` for type-specific data), `categories`, `tags`, `resource_tags_link` (N:N). Future tables already in schema: `highlights`, `vocabulary`. All datetimes UTC via `default=func.now()`.
+SQLite + SQLAlchemy 2.0 declarative. Main tables: `resources` (has `extra_metadata JSON` for type-specific data), `categories`, `tags`, `resource_tags_link` (N:N), `highlights`, `vocabulary`. All datetimes UTC via `default=func.now()`.

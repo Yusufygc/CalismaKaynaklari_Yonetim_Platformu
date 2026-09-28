@@ -59,10 +59,10 @@
 | resource_id | FK | `resources.id`, `ondelete=CASCADE` |
 | content | Text | Required |
 | page_number | Integer | Nullable — bu turda kullanılmıyor (PDF modu için ayrılmış, ayrı bir gelecek görev) |
-| color | String | Nullable — okuyucudaki sabit `Colors.HIGHLIGHT_COLOR` varsayılanı kullanılıyor (renk paleti/chip bu turda yok) |
+| color | String | Nullable — kullanıcı seçim toolbar'ında `Colors.HIGHLIGHT_PALETTE`'ten renk seçer (2026-09-28); boşsa (legacy kayıt) tema `Colors.HIGHLIGHT_COLOR` varsayılanı kullanılır |
 | created_at | DateTime | |
 
-Repo/servis: `repositories/highlight_repo.py::HighlightRepository`, `services/highlight_service.py::HighlightService`. Okuyucu sayfasında (bkz. [[ui_layout]]) metin seçilip "Alıntı olarak kaydet" ile oluşturulur — manuel ekleme formu yok.
+Repo/servis: `repositories/highlight_repo.py::HighlightRepository`, `services/highlight_service.py::HighlightService`. Okuyucu sayfasında (bkz. [[ui_layout]]) metin seçilip renk paletinden birine tıklanarak oluşturulur, yine okuyucu içinden (alıntı üstüne tıklayıp "Sil") silinebilir (2026-09-28) — manuel ekleme formu yok, Bilgi Havuzu'ndan silme de ayrıca duruyor.
 
 ### `vocabulary` (Kelime Dağarcığı — 2026-07-06'da aktif edildi)
 | Alan | Tip | Not |

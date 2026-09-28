@@ -4,9 +4,9 @@
 
 ## Dosya Yerleşimi
 
-- `pkm_app/alembic.ini` — Alembic konfigürasyonu.
-- `pkm_app/migrations/env.py` — modelleri import edip `Base.metadata`'yı `target_metadata` yapar, DB URL'ini `core.config.settings.DATABASE_URL`'den okur (alembic.ini'deki placeholder ezilir).
-- `pkm_app/migrations/versions/` — revizyon dosyaları. İlk revizyon (`..._baseline.py`) mevcut 7 tabloyu (`categories`, `tags`, `resources`, `resource_tags_link`, `highlights`, `vocabulary`, `ideas`) `alembic revision --autogenerate` ile üretildi. İkinci revizyon (`..._ideas_tablosunu_kaldir.py`), Fikirler modülü kaldırılırken `ideas` tablosunu drop eder. Üçüncü revizyon (`ff016ad9bf6e_kaynak_filtre_kolonlarina_index_ekle.py`, 2026-07-03), N+1 sorgu denetimi sonrası `resources.status/category_id/is_favorite/is_pinned/url` kolonlarına index ekler (`query_filtered`'ın tam bu kolonlarda filtrelediği tespit edildi, önceden sadece PK indeksliydi). Dördüncü revizyon (`6e58af46d8a6_progress_kolonunu_kaldir.py`, 2026-07-06), İlerleme (%) özelliğinin komple kaldırılmasıyla artık kullanılmayan `resources.progress` kolonunu düşürür — SQLite `DROP COLUMN`'u desteklemediği için `op.batch_alter_table()` kullanılır (bu repo'daki ilk batch-mode migration). Beşinci revizyon (`73989d002a5c_resources_full_text_ekle.py`, 2026-07-06), okuyucu sayfası için `resources.full_text` (Text, nullable) kolonunu ekler — sadece `ADD COLUMN` olduğu için batch mode gerekmez, doğrudan `op.add_column`.
+- `alembic.ini` — Alembic konfigürasyonu (2026-09-28: `pkm_app/` klasörü kaldırıldı, kök dizine taşındı).
+- `migrations/env.py` — modelleri import edip `Base.metadata`'yı `target_metadata` yapar, DB URL'ini `core.config.settings.DATABASE_URL`'den okur (alembic.ini'deki placeholder ezilir).
+- `migrations/versions/` — revizyon dosyaları. İlk revizyon (`..._baseline.py`) mevcut 7 tabloyu (`categories`, `tags`, `resources`, `resource_tags_link`, `highlights`, `vocabulary`, `ideas`) `alembic revision --autogenerate` ile üretildi. İkinci revizyon (`..._ideas_tablosunu_kaldir.py`), Fikirler modülü kaldırılırken `ideas` tablosunu drop eder. Üçüncü revizyon (`ff016ad9bf6e_kaynak_filtre_kolonlarina_index_ekle.py`, 2026-07-03), N+1 sorgu denetimi sonrası `resources.status/category_id/is_favorite/is_pinned/url` kolonlarına index ekler (`query_filtered`'ın tam bu kolonlarda filtrelediği tespit edildi, önceden sadece PK indeksliydi). Dördüncü revizyon (`6e58af46d8a6_progress_kolonunu_kaldir.py`, 2026-07-06), İlerleme (%) özelliğinin komple kaldırılmasıyla artık kullanılmayan `resources.progress` kolonunu düşürür — SQLite `DROP COLUMN`'u desteklemediği için `op.batch_alter_table()` kullanılır (bu repo'daki ilk batch-mode migration). Beşinci revizyon (`73989d002a5c_resources_full_text_ekle.py`, 2026-07-06), okuyucu sayfası için `resources.full_text` (Text, nullable) kolonunu ekler — sadece `ADD COLUMN` olduğu için batch mode gerekmez, doğrudan `op.add_column`.
 
 ## `init_db()` Akışı (`utils/db_utils.py`)
 
@@ -21,7 +21,6 @@
 ## Yeni Migration Ekleme
 
 ```bash
-cd pkm_app
 alembic revision --autogenerate -m "kisa_aciklama"
 # uretilen dosyayi migrations/versions/ altinda incele, gerekirse elle duzelt
 ```

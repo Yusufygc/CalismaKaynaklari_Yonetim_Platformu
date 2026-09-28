@@ -11,28 +11,28 @@
 ## Merkezi Varlık Yönetimi
 | Kaynak | Dosya |
 |--------|-------|
-| Stringler | `core/constants/strings.py` |
-| Renkler | `core/constants/colors.py` |
-| Fontlar | `core/constants/fonts.py` |
-| İkonlar | `core/constants/icons.py` + `assets/icons/` (SVG) |
+| Stringler | `core/constants/strings.py` (`AppStrings`) |
+| Tasarım Token'ları | `qml/theme/Theme.qml` (renkler, fontlar, radius, gölgeler) |
+| İkonlar | `ui_qml/image_provider.py` (`image://icon/`) + `assets/icons/` (SVG) |
 
-## Stil Yönetimi (QSS)
-- `setStyleSheet` inline kullanımı YASAKTIR.
-- Stiller `assets/styles/` altında modüler `.qss` dosyalarında tutulur.
-- Renkler `colors.py` üzerinden dinamik formatlanarak QSS'e enjekte edilir.
+## Stil Yönetimi (QML Declarative Theme)
+- Bileşen içi inline hardcoded renk kullanımı YASAKTIR.
+- Tüm stil ve görsel token'lar `qml/theme/Theme.qml` singleton'ı üzerinden yönetilir.
+- Notion / Linear minimalist tasarım dili; reaktif `isDark` temalandırması kullanılır.
 
 ## Mimari Desenler
 - **MVC/MVP:** UI veritabanını doğrudan çağıramaz; her zaman Controller/Service üzerinden.
-- **Repository Pattern:** DB sorguları `repositories/` içinde izole edilir.
-- **Dependency Injection:** Session ve bağımlılıklar `__init__` üzerinden dışarıdan alınır.
-- **Event-Driven UI:** UI güncellemeleri için PySide6 `Signal/Slot` kullanılır → bkz. [[event_bus]].
+- **Repository Pattern:** DB sorguları `repositories/` içinde izole edilir. `commit()` ve `rollback()` sadece `services/` katmanındadır.
+- **Dependency Injection:** Bağımlılıklar `__init__` üzerinden dışarıdan alınır; bileşenler mock'lanabilir olmalıdır.
+- **Event-Driven UI:** UI güncellemeleri için PySide6 `Signal/Slot` ve `event_bus` kullanılır → bkz. [[event_bus]].
 
-## UI Katmanları (Compose → Workspace → Flow)
-- **Window (compose):** `MainWindow` yalnızca alt parçaları üretir ve `QSplitter` ile yerleştirir. İş mantığı yok.
-- **Workspace (page dispatcher):** `ContentWorkspace` çoklu sayfa + filter dispatcher (sözlük tabanlı, `if/elif` zinciri yok). `apply_filter`/`refresh` public API.
-- **Flow (coordinator):** `ResourceFlow` UI bileşenleri ile `MainController` arasındaki yaşam döngüsü sinyallerini bağlar — widget değil, koordinatör.
-- **Controller (facade + delegasyon, 2026-09-28):** `MainController` artik is mantigi tasimiyor — 25 metodluk god-object'ti (SRP ihlali), alan bazli 5 alt-controller'a bolundu: `ResourceController`, `CategoryController`, `TagController`, `HighlightController`, `VocabularyController` (hepsi `ui/controllers/`). Her biri kendi Service'ini enjekte eder + UI sinirindaki `try/except → log + event_bus.error_occurred.emit` desenini tasir. `MainController` sadece bunlari `__init__`'te kurup ayni public metod imzalariyla delege eden ince bir facade — `main.py`, `ResourceFlow`, `ContentWorkspace`, `SettingsView`, `KnowledgePoolView` gibi tuketiciler tek bir `controller` nesnesi enjekte etmeye devam eder, hicbiri degismedi (public API birebir korundu, testler degismeden gecti).
-- **Component sayfaları:** `DetailView` gibi stack koordinatörlerinde her sayfa bağımsız `QWidget` bileşeni olmalıdır (`EmptyDetail`, `ResourceDetailPanel`, `ResourceForm`). View koordinatörü alt sinyalleri dışarıya **aynı isimle relay** eder; dış API kırılmaz.
+## Katman Hiyerarşisi
+- `qml/` (Views, Components, Theme) -> `ui_qml/` (Bridge, List Models) -> `controllers/` (MainController Facade & Sub-controllers) -> `services/` (Business Logic & Transactions) -> `repositories/` (SQLAlchemy Queries) -> `models/` (Declarative Entities)
+- `workers/`: Arka plan iş parçacıkları (`scrape_worker.py`, `extract_worker.py`) `QThreadPool` ile yönetilir.
+- `core/`: En alt altyapı katmanıdır (logger, paths, config, exceptions, net_utils, events). Üst katmanlara bağımlılığı kesinlikle yoktur.
+
+## Controller Mimarisi
+- `MainController` (`controllers/main_controller.py`): Tek bir DI noktası sağlayan ince bir facade'dir. Alan bazlı 5 alt-controller'a delege eder: `ResourceController`, `CategoryController`, `TagController`, `HighlightController`, `VocabularyController` (hepsi `controllers/` altında).
 
 ## Konfigürasyon, Hata, Log
 - **Config:** `core/config.py` (Pydantic BaseSettings veya `os.environ`)
@@ -41,9 +41,9 @@
 
 ## Yol Çözümleme (Exe Uyumlu)
 - **Tek nokta:** `core/paths.py`. Doğrudan `__file__` + relative traversal **yasak**.
-- `resource_path(*parts)` → salt-okunur paket içi kaynaklar (QSS, ikon). Frozen exe'de `sys._MEIPASS`, dev'de `pkm_app/` kökü.
+- `resource_path(*parts)` → salt-okunur paket içi kaynaklar (QSS, ikon). Frozen exe'de `sys._MEIPASS`, dev'de proje kökü (2026-09-28: `pkm_app/` klasörü kaldırıldı, kod doğrudan kökte).
 - `user_data_dir()` → yazılabilir kullanıcı verisi (SQLite, `app.log`). Windows `%APPDATA%/PKM`, macOS `~/Library/Application Support/PKM`, Linux `$XDG_DATA_HOME/PKM`.
-- PyInstaller build örneği: `pyinstaller --onefile --windowed --add-data "pkm_app/assets;pkm_app/assets" pkm_app/main.py`.
+- PyInstaller build örneği: `pyinstaller --onefile --windowed --add-data "assets;assets" main.py`.
 
 ## İlgili Sayfalar
 [[dizin_yapisi]] · [[core_servisler]] · [[event_bus]] · [[tema_yonetimi]]

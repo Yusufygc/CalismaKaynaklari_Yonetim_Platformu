@@ -4,6 +4,96 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-28] REFACTOR | Mimari İhlaller, Tersine Bağımlılıklar ve Ölü Kodlar Temizlendi
+
+Kapsamlı mimari denetim sonucunda tespit edilen katman ihlalleri, tersine bağımlılıklar, DRY ihlalleri ve ölü kodlar temizlendi:
+
+- **Katman Ayrımı ve Tersine Bağımlılık:** `core/constants/status.py` dosyasındaki `from models import ResourceStatus` ters bağımlılığı giderildi; `ResourceStatus.label` özelliği ve `status_label` yardımcı fonksiyonu `models/resource.py` içerisine taşındı, `core/constants/status.py` kaldırıldı. `core` katmanının üst katmanlara bağımlılığı sıfırlandı.
+- **UI & DB İzolasyonu:** `ui_qml/bridge.py` içindeki `Session` bağımlılığı ve ölü `ArticleExtractionService` importu temizlendi. `main.py` composition root olarak `MainController(session)` nesnesini üreterek `QmlBridge(controller=controller)` şeklinde enjekte etmeye başladı.
+- **Thread & Worker Standartlaştırması:** `QmlBridge.scrapeUrl` içindeki ad-hoc `threading.Thread` ve doğrudan `ScraperService` çağrısı kaldırılarak `workers/scrape_worker.py` ve `QThreadPool` ile standartlaştırıldı; UI servis katmanından izole edildi.
+- **DRY (Merkezi Güvenli HTTP İstemcisi):** `scraper_service.py` ve `article_extraction_service.py` içinde kopyalanmış olan SSRF korumalı redirect döngüsü `core/net_utils.py::safe_http_get()` olarak ortaklaştırıldı ve servisler bu merkezi fonksiyona bağlandı.
+- **Tasarım Token'ları & Hardcoded Renkler:** QML bileşenlerinde (`main.qml`, `AppCard.qml`, `AppFilterChip.qml`, `AppIconButton.qml`, `AppButton.qml`, `AppSidebar.qml`, `ResourceFormModal.qml`, `ReaderView.qml`, `SettingsView.qml`, `ShowcaseView.qml`) yer alan tüm hardcoded HEX renkler `qml/theme/Theme.qml` içine eklenen yeni token'lara (`tooltipBg`, `overlayBg`, `backdropSubtle`, `chipUnselectedBg`, `badgeOverlay`, `gradientHeaderStart`, `fallbackCategoryColor`, `categoryPalette`) bağlandı. QML bileşen gövdelerinde hardcoded HEX sayısı sıfıra indirildi.
+- **Merkezi Bildirim Metinleri:** `bridge.py` içindeki tüm ham Türkçe bildirim ve hata stringleri `core/constants/strings.py` (`AppStrings`) altına taşındı.
+- **Ölü ve Yetim Kod Tasfiyesi:**
+  - Projede kullanılmayan ve testi olmayan `services/paper_market_service.py` (OpenAlex servisi) silindi.
+  - Eski QtWidgets QSS sisteminden kalan `core/constants/colors.py`, `core/themes/` (dark.py, light.py), `core/constants/fonts.py`, `core/constants/icons.py` modülleri silindi.
+  - `ui_qml/models/resource_list_model.py` içindeki çağrılmayan `get_resource_dict_by_id()` silindi.
+  - `core/config.py` Pydantic V2 `SettingsConfigDict` ile modernize edilerek tüm uyarılar (warnings) sıfırlandı.
+- **Testler:** 141 testin 141'i de sıfır uyarı ile yeşil geçmektedir (`pytest`).
+
+---
+
+## [2026-09-28] REFACTOR | Worker'lar SOLID/SRP uyarınca workers/ paketine izole edildi
+
+`core/workers.py` içinde birleştirilen arka plan iş parçacıkları ayrıştırılarak SOLID ilkelerine ve katman hiyerarşisine uygun hale getirildi:
+
+- **SRP (Tek Sorumluluk Prensibi):** URL metadata taraması (`ScrapeWorker`) ve makale tam metin çıkarma (`ExtractWorker`) birbirinden tamamen bağımsız iki sorumluluk olduğundan, ayrı modüllere ayrıldı: `workers/scrape_worker.py` ve `workers/extract_worker.py`.
+- **Katman Hiyerarşisi Temizliği:** `core/` temel katmanının üst `services/` katmanına (`ScraperService`, `ArticleExtractionService`) bağımlı olması mimari kural ihlali yaratıyordu. `workers/` kök paketi kurularak `core/` bağımsızlığı korundu ve `core/workers.py` silindi.
+- **OCP (Açık/Kapalı Prensibi):** Gelecekte eklenecek yeni arka plan görevleri (örn. AI özetleme, PDF aktarımı) mevcut dosyayı değiştirmeden `workers/` altına yeni modül olarak eklenebilecek.
+- **Testler:** `tests/test_workers/test_workers.py` eklenerek her iki worker mock servislerle test edildi. 141 testin tamamı geçmektedir.
+
+---
+
+## [2026-09-28] REFACTOR | Eski QtWidgets arayüzü kaldırıldı, QML tek ve ana arayüz yapıldı
+
+Kullanıcı onayıyla eski QtWidgets arayüzü ve ilgili bağımlılıklar temizlendi:
+
+- **Eski UI Dizinleri Temizlendi:** `ui/` dizini (QtWidgets views, components, layoutlar, qss enjeksiyonları) ve `assets/styles/` (.qss dosyaları) projeden tamamen silindi.
+- **Controllers Katmanı Bağımsızlaştırıldı:** `ui/controllers/` altındaki iş mantığı köprüleri (`MainController`, `ResourceController`, `CategoryController`, `TagController`, `HighlightController`, `VocabularyController`) kök dizindeki bağımsız `controllers/` paketine taşındı.
+- **Arka Plan Worker'ları Taşındı:** `_ScrapeWorker` ve `_ExtractWorker` `core/workers.py` içerisine taşındı.
+- **Ana Giriş Noktası:** `main.py` doğrudan modern QML arayüzünü başlatacak şekilde güncellendi; `main_qml.py` kaldırıldı.
+- **Testler:** Artık geçerli olmayan QtWidgets testleri temizlendi; `tests/test_qml/` altında `test_qml_bridge.py` ve `test_resource_list_model.py` ile QML altyapısı kapsama alındı. 139 testin tamamı geçmektedir.
+
+---
+
+## [2026-09-28] FEAT | QML ile modern Notion/Linear tarzı sıfırdan UI/UX mimarisi kuruldu
+
+Mevcut backend, veritabanı ve test paketine dokunulmadan, paralel olarak modern bir QML/QtQuick arayüzü inşa edildi (`python main_qml.py`):
+
+- **Tasarım Dili (Notion / Linear / Craft):** 1px ince zarif kenarlıklar, katmanlı yüzeyler (`bgBase`, `bgSidebar`, `bgSurface`, `bgElevated`), reaktif koyu/açık tema motoru (`Theme.qml` singleton).
+- **Slide-over Inspector Drawer:** Sabit ve sıkışık sağ splitter yerine, karta tıklandığında sağdan pürüzsüz animasyonla kayarak açılan detay ve notlar çekmecesi (`InspectorDrawer.qml`).
+- **Showcase (Vitrin):** `ResourceListModel` (`QAbstractListModel`) tabanlı 60 FPS akıcı kart ızgarası (`GridView`), küçük resim (thumbnail) / gradyan banner fallback'i, pin/favori mikro aksiyonları (`AppCard.qml`).
+- **Dikkat Dağıtmayan Okuyucu (ReaderView):** 760px ortalanmış okuma sütunu, okuma ilerleme çubuğu, A-/A+ yazı boyutu kontrolleri, metin seçildiği anda imlecin üstünde beliren Kindle tarzı 5 renkli fosforlu alıntı ve kelime ekleme araç çubuğu.
+- **Bilgi Havuzu & Ayarlar:** `KnowledgePoolView` (alıntı ve kelimeler) ve `SettingsView` (kategori renk paleti ve etiket yönetimi).
+- **Python ↔ QML Köprüsü:** `QmlBridge` ve `IconImageProvider` (qtawesome ikonlarını `image://icon/...` üzerinden yüksek çözünürlüklü sunar).
+- **Paralel Çalışma:** Eski QtWidgets yapısı (`python main.py`) korunarak `main_qml.py` bağımsız giriş noktası olarak eklendi. Test paketine `tests/test_qml/test_qml_bridge.py` eklendi; 160 testin tamamı geçmektedir.
+
+---
+
+## [2026-09-28] FEAT | Okuyucu sayfası sıfırdan tasarlandı
+
+Okuyucu (`ReaderView`) düz metin gösteren tek bir `QTextEdit`'ten pratik/verimli bir okuma deneyimine yükseltildi:
+
+- **Zengin HTML render:** `ArticleExtractionService.extract_full_text()` artık `trafilatura`'dan `output_format="html", include_formatting=True` ile gerçek başlık/paragraf/alıntı yapısı çeker (önceden düz metin). `QTextEdit.document().setDefaultStyleSheet(...)` ile tipografi (h1/h2/p/blockquote font-size, margin, line-height) uygulanır. Migration-öncesi düz-metin `full_text` kayıtları görüntüleme anında (`_looks_like_html` + `_plaintext_to_html`, ağ isteği yok) paragraflara sarılarak gösterilir — geriye dönük uyumlu.
+- **Okuma sütunu:** ~760px genişlikte ortalanmış, okunur satır uzunluğu.
+- **Meta şerit:** alan adı (`format_display_url` yeniden kullanıldı) + tahmini okuma süresi (kelime sayısı / 200 kelime-dk). Yazar/tarih bilinçli olarak dışarıda bırakıldı (trafilatura'da güvenilir gelmiyor).
+- **Okuma ilerleme çubuğu** ve **scroll pozisyonu hatırlama** (oturum içi, kaynak bazlı, sadece bellekte — kalıcı değil).
+- **Yazı tipi boyutu (A-/A+):** `QTextEdit.zoomIn()/zoomOut()`, oturum içi hatırlanır.
+- **Highlight renk paleti:** seçim toolbar'ında tek "kaydet" butonu yerine `Colors.HIGHLIGHT_PALETTE`'ten (5 sabit fosforlu-kalem tonu) renk yuvarlakları — tek tıkla renkli alıntı.
+- **Reader-içi alıntı silme:** render anında kurulan (kalıcı olmayan) id→pozisyon haritası ile imleç bir alıntının üstündeyken "Sil" butonu beliriyor; önceden sadece Bilgi Havuzu'ndan silinebiliyordu.
+
+Backend (`HighlightService.create_highlight(color=...)`, `delete_highlight`) zaten hazırdı, değişiklik yok — iş tamamen UI katmanında. Şema/migration değişikliği yok. Kapsam dışı bırakılanlar: görsel/medya render (SSRF yüzeyini büyütmemek için), yazar/tarih metadata, kalıcı font-size/scroll tercihi, highlight offset kolonu (aynı metin tekrarında hâlâ sadece ilk eşleşme vurgulanıyor), içindekiler (TOC).
+
+Doğrulama: `pytest tests/` yeşil (yeni `tests/test_components/test_reader_view.py` + güncellenmiş `test_article_extraction_service.py`), ayrıca offscreen smoke-test ile HTML render/legacy-wrap/highlight kaydet-sil akışları elle simüle edilip doğrulandı.
+
+---
+
+## [2026-09-28] REFACTOR | pkm_app/ klasörü kaldırıldı, kod kök dizine taşındı
+
+`pkm_app/` ve repo kökü olmak üzere iki ayrı dizin kökü vardı: kod `pkm_app/` altında, wiki/CI/config kökte. Bu ayrım tek faydası olmayan bir katmandı ve `pkm_app/__init__.py`'de bare (`core.x`) ile qualified (`pkm_app.core.x`) import yollarını eşitleyen bir `sys.modules` aliasing hack'i gerektiriyordu — bu hack test suite'te iki farklı modül/singleton instance'ı oluşabilme riski taşıyordu (bkz. `test_main_controller.py`, `test_resource_flow.py` eski yorumları).
+
+Yapılan değişiklik:
+- `pkm_app/{assets,core,models,repositories,services,ui,utils,tests,migrations,main.py,alembic.ini}` → repo köküne taşındı (`git mv`).
+- `pkm_app/__init__.py` (aliasing hack) ve onu doğrulayan `tests/test_package_imports.py` silindi.
+- Tüm test dosyalarında `from pkm_app.X import ...` / `import pkm_app.X` / `monkeypatch.setattr("pkm_app.X...")` → `pkm_app.` öneki kaldırıldı (regex ile, ~20 dosya).
+- `core/paths.py::_source_base()` ve `core/config.py::_ENV_FILE` derinlik hesapları yeni kök konuma göre doğrulandı/düzeltildi (`.env` artık `resource_path("..", ".env")` değil doğrudan `resource_path(".env")`).
+- `.github/workflows/tests.yml`: `pytest pkm_app/tests/` → `pytest tests/`.
+- `CLAUDE.md`, `README.md`: `python pkm_app/main.py` → `python main.py`, test komutları güncellendi.
+
+Doğrulama: `pytest tests/` yeni kök konumdan tam suite yeşil.
+
+---
+
 ## [2026-09-28] REVIEW | CI/CD eklendi (GitHub Actions)
 
 Bulgu #10: 148 test var ama hicbir otomatik calistirma mekanizmasi yoktu — commit sonrasi kirilan bir test fark edilmeden birikebilirdi. `.github/workflows/tests.yml` eklendi: `push` (main) ve her `pull_request`'te `windows-latest` runner uzerinde `requirements.lock` + `pytest` kurup `pytest pkm_app/tests/` calistirir.

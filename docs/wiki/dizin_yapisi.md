@@ -1,86 +1,110 @@
 # Dizin Yapısı ve Modül Haritası
 
-**Kaynak (Raw Source):** `dizin_yapisi.md` (kök dizin)
+Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya sadık kalınmalıdır.
 
-Proje kök dizini `pkm_app/` altında çalışır. Yeni modül/sınıf oluştururken bu yapıya sadık kalınmalıdır.
+**Stack:** PySide6 QML (QtQuick 6) · SQLAlchemy 2.0 · SQLite · Alembic
 
-**CI:** `.github/workflows/tests.yml` (repo kökü, `pkm_app/` dışında) — push/PR'da `pytest pkm_app/tests/` otomatik çalışır (2026-09-28).
+---
 
-```
-pkm_app/
-├── main.py                 # Giriş noktası (Entry point)
+## Dizin Ağacı
+
+```text
+(repo kökü)/
+├── main.py                     # Ana giriş noktası (QML motorunu başlatır)
+├── alembic.ini
 ├── requirements.txt
-├── .env.example
 │
 ├── assets/
-│   ├── icons/              # Özel SVG/PNG ikonlar
-│   └── styles/             # Modüler .qss dosyaları
+│   └── icons/                  # Özel SVG ikonlar
 │
-├── core/                   # Yapılandırma, sabitler, temel araçlar
+├── core/                       # Yapılandırma, sabitler, temel araçlar
 │   ├── config.py
 │   ├── logger.py
 │   ├── exceptions.py
-│   ├── events.py           # Event Bus singleton
-│   ├── theme_manager.py    # Dinamik QSS enjeksiyonu
-│   ├── themes/             # dark.py, light.py
+│   ├── events.py               # Event Bus singleton
+│   ├── paths.py
+│   ├── net_utils.py            # SSRF koruması ve merkezi safe_http_get
 │   └── constants/
-│       ├── strings.py
-│       ├── colors.py
-│       ├── fonts.py
-│       └── icons.py
+│       └── strings.py          # AppStrings merkezi metinler ve bildirimler
 │
-├── models/                 # SQLAlchemy domain modelleri
+├── workers/                    # Arka plan QRunnable iş parçacıkları (SRP izole)
+│   ├── scrape_worker.py        # URL OpenGraph metadata taraması
+│   └── extract_worker.py       # Makale tam metin çıkarma
+│
+├── models/                     # SQLAlchemy declarative modelleri
 │   ├── base.py
 │   ├── category.py
 │   ├── tag.py
 │   └── resource.py
 │
-├── repositories/           # Veri erişim katmanı
-│   ├── base_repository.py  # Generic CRUD
-│   └── resource_repo.py    # Özelleşmiş sorgular
+├── repositories/               # Veri erişim katmanı (SQLAlchemy sorguları)
+│   ├── base_repository.py
+│   ├── resource_repo.py
+│   ├── category_repo.py
+│   ├── tag_repo.py
+│   ├── highlight_repo.py
+│   └── vocabulary_repo.py
 │
-├── services/               # İş mantığı katmanı
+├── services/                   # İş mantığı ve doğrulama katmanı
 │   ├── resource_service.py
-│   └── scraper_service.py  # URL meta verisi çekme (gelecek faz)
+│   ├── category_service.py
+│   ├── tag_service.py
+│   ├── highlight_service.py
+│   ├── vocabulary_service.py
+│   ├── scraper_service.py      # URL OpenGraph ve meta veri çekici
+│   ├── article_extraction_service.py # Trafilatura ile zengin tam metin çıkarıcı
+│   └── schemas.py              # Pydantic modelleri
 │
-├── ui/
-│   ├── controllers/
-│   │   ├── main_controller.py       (facade, delege eder)
-│   │   ├── resource_controller.py
-│   │   ├── category_controller.py
-│   │   ├── tag_controller.py
-│   │   ├── highlight_controller.py
-│   │   ├── vocabulary_controller.py
-│   │   └── resource_flow.py
-│   ├── views/
-│   │   ├── main_window.py
-│   │   ├── grid_view.py
-│   │   ├── detail_view.py
-│   │   └── url_showcase_view.py
-│   └── components/
-│       ├── resource_card.py
-│       ├── url_rich_card.py
-│       ├── sidebar.py
-│       └── search_bar.py
+├── controllers/                # UI-agnostik denetleyiciler (Hata yakalama, sinyal fırlatma)
+│   ├── main_controller.py      # Facade controller
+│   ├── resource_controller.py
+│   ├── category_controller.py
+│   ├── tag_controller.py
+│   ├── highlight_controller.py
+│   └── vocabulary_controller.py
 │
-├── utils/
-│   ├── date_utils.py
-│   └── db_utils.py
+├── ui_qml/                     # Python ↔ QML köprü katmanı
+│   ├── bridge.py               # QmlBridge (State, filtreler, Q_PROPERTY/Slot'lar)
+│   ├── image_provider.py       # IconImageProvider (qtawesome vektörel ikon sağlayıcı)
+│   └── models/
+│       └── resource_list_model.py # ResourceListModel (QAbstractListModel)
 │
-└── tests/
-    ├── test_models/
+├── qml/                        # Saf QML / QtQuick Arayüzü (Notion/Linear stili)
+│   ├── main.qml                # Ana ApplicationWindow
+│   ├── theme/
+│   │   ├── Theme.qml           # Reaktif Singleton tema motoru (renkler, tipografi)
+│   │   └── qmldir
+│   ├── components/             # Reusable QML bileşenleri
+│   │   ├── AppCard.qml         # Modern zengin kart
+│   │   ├── AppSidebar.qml      # Katlanabilir sol navigasyon
+│   │   ├── InspectorDrawer.qml # Sağdan kayan detay paneli
+│   │   ├── ResourceFormModal.qml # Ekleme/düzenleme modalı
+│   │   ├── AppButton.qml
+│   │   ├── AppIconButton.qml
+│   │   ├── AppBadge.qml
+│   │   ├── AppSearchBar.qml
+│   │   └── AppFilterChip.qml
+│   └── views/                  # Sayfa görünümleri
+│       ├── ShowcaseView.qml    # Bağlantı vitrini
+│       ├── ReaderView.qml      # Dikkat dağıtmayan okuyucu
+│       ├── KnowledgePoolView.qml # Bilgi havuzu (alıntılar/kelimeler)
+│       └── SettingsView.qml    # Kategori ve etiket yönetimi
+│
+├── migrations/                 # Alembic veritabanı migrasyonları
+└── tests/                      # Pytest test paketi
+    ├── test_controllers/
+    ├── test_qml/
     ├── test_repositories/
-    └── test_services/
+    ├── test_services/
+    └── test_core/
 ```
 
-## Katman Sorumlulukları
-| Katman | Dizin | Görev |
-|--------|-------|-------|
-| Sunum | `ui/` | Sadece PySide6 kodu, iş mantığı içermez |
-| Kontrol | `ui/controllers/` | Sinyal yakala, servisi çağır |
-| İş Mantığı | `services/` | Validation, iş kuralları |
-| Veri Erişim | `repositories/` | SQLAlchemy sorguları |
-| Domain | `models/` | Tablo tanımları |
+---
 
-## İlgili Sayfalar
-[[mimari_kurallari]] · [[core_servisler]] · [[veritabani_semasi]] · [[ui_layout]]
+## Katman Kuralları (Hard Rules)
+
+1. **QML Katmanı (`qml/`):** Yalnızca görünüm ve kullanıcı etkileşimini yönetir. Doğrudan veritabanı veya servislere erişmez; tüm işlemler `bridge` (`QmlBridge`) nesnesi üzerinden yürütülür.
+2. **Bridge Katmanı (`ui_qml/`):** QML'e Qt Property'leri, `QAbstractListModel` sanallaştırmasını ve Slot'ları sunar. İş mantığını `controllers/` katmanına delege eder.
+3. **Controllers Katmanı (`controllers/`):** Kullanıcı girdisini doğrular, `services/` fonksiyonlarını çağırır, UI sınırında hataları yakalar ve `event_bus` sinyalleri fırlatır.
+4. **Services Katmanı (`services/`):** İş mantığını barındırır. `session.commit()` ve `rollback()` yalnızca burada yönetilir.
+5. **Repositories Katmanı (`repositories/`):** Yalnızca veritabanı sorgularını yürütür, iş mantığı içermez.

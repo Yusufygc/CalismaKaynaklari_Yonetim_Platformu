@@ -1,0 +1,128 @@
+from datetime import datetime
+from PySide6.QtCore import QAbstractListModel, QByteArray, QModelIndex, Qt
+
+from models import Resource, ResourceStatus, status_label
+from utils.url_utils import format_display_url
+
+
+class ResourceListModel(QAbstractListModel):
+    """QML GridView ve ListView için optimize edilmiş sanallaştırılmış liste modeli."""
+
+    IdRole = Qt.ItemDataRole.UserRole + 1
+    TitleRole = Qt.ItemDataRole.UserRole + 2
+    UrlRole = Qt.ItemDataRole.UserRole + 3
+    DomainRole = Qt.ItemDataRole.UserRole + 4
+    CategoryIdRole = Qt.ItemDataRole.UserRole + 5
+    CategoryNameRole = Qt.ItemDataRole.UserRole + 6
+    CategoryColorRole = Qt.ItemDataRole.UserRole + 7
+    StatusRole = Qt.ItemDataRole.UserRole + 8
+    StatusLabelRole = Qt.ItemDataRole.UserRole + 9
+    PriorityRole = Qt.ItemDataRole.UserRole + 10
+    IsPinnedRole = Qt.ItemDataRole.UserRole + 11
+    IsFavoriteRole = Qt.ItemDataRole.UserRole + 12
+    ContentRole = Qt.ItemDataRole.UserRole + 13
+    FullTextRole = Qt.ItemDataRole.UserRole + 14
+    ThumbnailUrlRole = Qt.ItemDataRole.UserRole + 15
+    DescriptionRole = Qt.ItemDataRole.UserRole + 16
+    ReadingMinutesRole = Qt.ItemDataRole.UserRole + 17
+    TagsRole = Qt.ItemDataRole.UserRole + 18
+    CreatedAtRole = Qt.ItemDataRole.UserRole + 19
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self._resources: list[Resource] = []
+
+    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        return len(self._resources)
+
+    def roleNames(self) -> dict[int, QByteArray]:
+        return {
+            self.IdRole: b"id",
+            self.TitleRole: b"title",
+            self.UrlRole: b"url",
+            self.DomainRole: b"domain",
+            self.CategoryIdRole: b"categoryId",
+            self.CategoryNameRole: b"categoryName",
+            self.CategoryColorRole: b"categoryColor",
+            self.StatusRole: b"status",
+            self.StatusLabelRole: b"statusLabel",
+            self.PriorityRole: b"priority",
+            self.IsPinnedRole: b"isPinned",
+            self.IsFavoriteRole: b"isFavorite",
+            self.ContentRole: b"content",
+            self.FullTextRole: b"fullText",
+            self.ThumbnailUrlRole: b"thumbnailUrl",
+            self.DescriptionRole: b"description",
+            self.ReadingMinutesRole: b"readingMinutes",
+            self.TagsRole: b"tags",
+            self.CreatedAtRole: b"createdAt",
+        }
+
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
+        if not index.isValid() or not (0 <= index.row() < len(self._resources)):
+            return None
+
+        resource = self._resources[index.row()]
+        meta = resource.extra_metadata or {}
+
+        if role == self.IdRole:
+            return resource.id
+        elif role == self.TitleRole:
+            return resource.title or "İsimsiz Kaynak"
+        elif role == self.UrlRole:
+            return resource.url or ""
+        elif role == self.DomainRole:
+            return format_display_url(resource.url) if resource.url else ""
+        elif role == self.CategoryIdRole:
+            return resource.category_id or 0
+        elif role == self.CategoryNameRole:
+            return resource.category.name if resource.category else ""
+        elif role == self.CategoryColorRole:
+            return resource.category.color_hex if resource.category and resource.category.color_hex else "#64748B"
+        elif role == self.StatusRole:
+            return resource.status.value if hasattr(resource.status, "value") else str(resource.status)
+        elif role == self.StatusLabelRole:
+            return status_label(resource.status)
+        elif role == self.PriorityRole:
+            return resource.priority
+        elif role == self.IsPinnedRole:
+            return bool(resource.is_pinned)
+        elif role == self.IsFavoriteRole:
+            return bool(resource.is_favorite)
+        elif role == self.ContentRole:
+            return resource.content or ""
+        elif role == self.FullTextRole:
+            return resource.full_text or ""
+        elif role == self.ThumbnailUrlRole:
+            thumb = meta.get("image") or meta.get("og:image") or meta.get("thumbnail") or ""
+            return str(thumb) if thumb else ""
+        elif role == self.DescriptionRole:
+            return meta.get("description") or ""
+        elif role == self.ReadingMinutesRole:
+            if "reading_time" in meta and meta["reading_time"]:
+                try:
+                    return int(meta["reading_time"])
+                except Exception:
+                    pass
+            word_count = len((resource.full_text or resource.content or "").split())
+            return max(1, round(word_count / 200)) if word_count > 0 else 0
+        elif role == self.TagsRole:
+            return [{"id": t.id, "name": t.name} for t in resource.tags]
+        elif role == self.CreatedAtRole:
+            if resource.created_at:
+                return resource.created_at.strftime("%d.%m.%Y")
+            return ""
+
+        return None
+
+    def set_resources(self, resources: list[Resource]) -> None:
+        self.beginResetModel()
+        self._resources = list(resources)
+        self.endResetModel()
+
+    def get_resource_by_id(self, resource_id: int) -> Resource | None:
+        for r in self._resources:
+            if r.id == resource_id:
+                return r
+        return None
+

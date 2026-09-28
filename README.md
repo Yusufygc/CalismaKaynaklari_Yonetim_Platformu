@@ -56,7 +56,7 @@ Proje içerisindeki veri akışı ve arayüz güncellemeleri, PySide6 tabanlı m
 - **Dinamik QSS:** QSS dosyalarında doğrudan renk kodu yazmak yerine (`color: #fff;`), uygulama başlatıldığında veya tema değiştiğinde aktif temanın renk paletini okuyan özel değişkenler kullanılır. `resolve_theme_color` gibi yardımcı metotlarla tema değişimleri pürüzsüzce gerçekleştirilir.
 
 ### 4. Custom Painting (Özel Çizim)
-Standart Qt widget'larının yetersiz kaldığı noktalarda `pkm_app/ui/components/painted.py` modülü altında `paintEvent` metotları ezilerek (override) özel UI çizimleri yapılmıştır (örn: ColorBadge, Avatar vb.).
+Standart Qt widget'larının yetersiz kaldığı noktalarda `ui/components/painted.py` modülü altında `paintEvent` metotları ezilerek (override) özel UI çizimleri yapılmıştır (örn: ColorBadge, Avatar vb.).
 
 ---
 
@@ -94,7 +94,7 @@ Uygulamayı kendi ortamınızda çalıştırmak için aşağıdaki adımları iz
 
 4. **Uygulamayı Başlatın:**
    ```bash
-   python pkm_app/main.py
+   python main.py
    ```
 
 ---

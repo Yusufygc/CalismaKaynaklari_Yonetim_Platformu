@@ -24,4 +24,4 @@ jobs:
       - name: Testleri calistir
         env:
           QT_QPA_PLATFORM: offscreen
-        run: pytest pkm_app/tests/
+        run: pytest tests/

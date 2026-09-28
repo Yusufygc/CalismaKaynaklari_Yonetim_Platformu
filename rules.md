@@ -12,16 +12,14 @@ proje ortamı:C:\Users\ysfygc\anaconda3\envs\KaynakYonetim
 
 ## 2. Merkezi Varlık ve Tema Yönetimi (Central Asset Management)
 Tüm UI bileşenleri hard-coded değerler yerine aşağıdaki merkezi dosyalardan beslenmelidir:
-- **Stringler:** `core/constants/strings.py` (Gelecekte i18n desteği için tüm metinler buradan çekilecek).
-- **Renkler ve Palet:** `core/constants/colors.py` (Örn: `Colors.PRIMARY_BACKGROUND = "#1E1E2E"`).
-- **Fontlar:** `core/constants/fonts.py` (Örn: `Fonts.H1 = QFont("Inter", 24, QFont.Bold)`).
-- **İkonlar:** Standart ikonlar için `qtawesome` kütüphanesi kullanılacaktır. Özel ikonlar veya logolar `assets/icons/` klasöründe SVG formatında tutulacak ve `core/constants/icons.py` üzerinden yönetilecektir.
+- **Stringler:** `core/constants/strings.py` (`AppStrings` — Gelecekte i18n desteği için tüm metinler ve bildirimler buradan çekilecek).
+- **Tasarım Token'ları (Renkler, Fontlar, Radius, Boşluklar):** `qml/theme/Theme.qml` (Singleton QML nesnesi; reaktif dark/light tema yönetimi).
+- **İkonlar:** Standart ikonlar için `qtawesome` kütüphanesi (`image://icon/<name>/<hex>` şemasıyla `IconImageProvider` üzerinden). Özel ikonlar `assets/icons/` klasöründe SVG formatında tutulur.
 
-## 3. Stil Yönetimi (QSS / Stylesheets)
-- Inline styling (kod içinde `setStyleSheet`) KULLANILMAYACAKTIR.
-- Stiller `assets/styles/` dizini altında modüler `.qss` dosyaları olarak tutulacaktır.
-- Her büyük pencere veya bileşenin kendi QSS dosyası olmalıdır (Örn: `assets/styles/main_window.qss`, `assets/styles/resource_card.qss`).
-- Renkler QSS dosyalarına enjekte edilmeden önce `colors.py` üzerinden okunup dinamik olarak formatlanmalıdır.
+## 3. Stil ve Görünüm Yönetimi (QML & Theme)
+- Bileşen gövdelerinde ad-hoc / hardcoded HEX renk kullanımı KESİNLİKLE YASAKTIR (`Theme.*` token'ları kullanılır).
+- Notion / Linear / Craft minimalist tasarım dili uygulanır.
+- Tüm görsel katmanlar (bgBase, bgSidebar, bgSurface, bgElevated, borderSubtle, borderStrong, accent vb.) `Theme.qml` üzerinden dinamik ve reaktif olarak yönetilir.
 
 ## 4. Mimari Desenler (Design Patterns)
 - **Model-View-Controller (MVC) / Model-View-Presenter (MVP):** UI (View) veritabanı veya iş mantığını (Model) doğrudan ÇAĞIRAMAZ. İletişim her zaman Controller/Presenter veya Servis katmanı üzerinden olmalıdır.

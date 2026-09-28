@@ -1,6 +1,6 @@
 # Wiki İçerik Haritası — PKM / Kaynak Yönetim Platformu
 
-**Stack:** PySide6 · SQLAlchemy 2.0 · SQLite · qtawesome  
+**Stack:** PySide6 QML · SQLAlchemy 2.0 · SQLite · Alembic  
 **Ortam:** `C:\Users\ysfygc\anaconda3\envs\KaynakYonetim`
 
 ---
@@ -25,19 +25,17 @@
 |-------|------|
 | [[core_servisler]] | Repository/Service/Controller katmanları, ResourceService.update_resource, TagService CRUD, URL regex, custom exceptions |
 
-## Arayüz (UI)
+## Arayüz (UI/UX)
 
 | Sayfa | Özet |
 |-------|------|
-| [[ui_layout]] | Three-Pane mimari, main_stack (3 sayfa), Sidebar (5 nav item), kart tipleri, DetailView (görüntüle/form/sil/düzenle), boş durum |
-| [[url_vitrin]] | URL Showcase sekmesi (main_stack index 2), UrlRichCard, MainWindow tetikler |
+| [[qml_arayuz]] | QML/QtQuick mimarisi: Notion/Linear tasarım dili, Slide-over Inspector, QmlBridge, ResourceListModel |
 
 ## Altyapı
 
 | Sayfa | Özet |
 |-------|------|
 | [[event_bus]] | Singleton+Observer event sistemi, sinyaller, emit/connect kuralları |
-| [[tema_yonetimi]] | Dinamik QSS enjeksiyonu, ThemeManager, Dark/Light toggle, qtawesome ikon güncelleme |
 
 ## Meta
 
