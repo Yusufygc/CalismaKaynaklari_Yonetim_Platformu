@@ -1,4 +1,6 @@
 import QtQuick
+import QtQuick.Controls
+import QtQuick.Window
 import "../theme"
 
 Rectangle {
@@ -11,6 +13,7 @@ Rectangle {
     property color activeBgColor: Theme.bgHover
     property bool isActive: false
     property string tooltip: ""
+    property string tooltipPosition: "auto" // "auto", "bottom", "top", "left", "right"
 
     signal clicked()
 
@@ -45,28 +48,65 @@ Rectangle {
         onClicked: root.clicked()
     }
 
-    // Basit şık tooltip
-    Rectangle {
-        id: tooltipRect
+    // Modern QtQuick.Controls ToolTip (Pencere seviyesinde kayan overlay popup)
+    ToolTip {
+        id: tooltipPopup
         visible: root.tooltip !== "" && mouseArea.containsMouse
-        z: 999
-        anchors.bottom: parent.top
-        anchors.bottomMargin: 6
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: tipText.implicitWidth + 12
-        height: tipText.implicitHeight + 6
-        radius: Theme.radiusXs
-        color: Theme.tooltipBg
-        border.width: 1
-        border.color: Theme.borderStrong
+        text: root.tooltip
+        delay: 350
+        timeout: 5000
 
-        Text {
-            id: tipText
-            anchors.centerIn: parent
-            text: root.tooltip
+        // Yatay Konumlandırma (Pencere kenarlarından taşmayı engelle)
+        x: {
+            if (root.tooltipPosition === "right") return root.width + 6
+            if (root.tooltipPosition === "left") return -width - 6
+
+            var idealX = Math.round((root.width - width) / 2)
+            var pt = root.mapToItem(null, 0, 0)
+            if (!pt) return idealX
+
+            var winX = pt.x + idealX
+            if (winX < 8) {
+                idealX += (8 - winX)
+            }
+            var winW = root.Window.width
+            if (winW > 0 && (winX + width > winW - 8)) {
+                idealX -= (winX + width - (winW - 8))
+            }
+            return idealX
+        }
+
+        // Dikey Konumlandırma (Üst çubuk veya üstteki logolarla çakışmayı engelle)
+        y: {
+            if (root.tooltipPosition === "bottom") return root.height + 6
+            if (root.tooltipPosition === "top") return -height - 6
+            if (root.tooltipPosition === "left" || root.tooltipPosition === "right") {
+                return Math.round((root.height - height) / 2)
+            }
+
+            // "auto" modu:
+            // Butonun pencere dikey konumu üst 100px içindeyse (başlık, üst çubuk, daraltılmış logo altı),
+            // yukarıdaki öğelerle çakışmaması için daima butonun altında aç
+            var pt = root.mapToItem(null, 0, 0)
+            if (!pt || pt.y < 100) {
+                return root.height + 6
+            }
+            return -height - 6
+        }
+
+        contentItem: Text {
+            text: tooltipPopup.text
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontXs
             color: Theme.textOnAccent
         }
+
+        background: Rectangle {
+            color: Theme.tooltipBg
+            border.color: Theme.borderStrong
+            border.width: 1
+            radius: Theme.radiusXs
+        }
     }
 }
+

@@ -195,3 +195,37 @@ def test_extract_full_text_detects_pdf_from_url_extension(monkeypatch):
     ArticleExtractionService().extract_full_text("https://example.com/paper.pdf")
 
     assert captured.get("used") is True
+
+
+def test_extract_full_text_reads_local_pdf_without_network(tmp_path, monkeypatch):
+    class _FakePage:
+        def __init__(self, text: str) -> None:
+            self._text = text
+
+        def extract_text(self) -> str:
+            return self._text
+
+    class _FakeReader:
+        def __init__(self, _stream) -> None:
+            self.pages = [_FakePage("Yerel sayfa metni.")]
+
+    def _refuse_network_call(*args, **kwargs):
+        raise AssertionError("Yerel PDF icin ag istegi atilmamali")
+
+    monkeypatch.setattr("services.article_extraction_service.PdfReader", _FakeReader)
+    monkeypatch.setattr("services.article_extraction_service.requests.get", _refuse_network_call)
+
+    pdf_path = tmp_path / "makale.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4 fake local pdf bytes")
+
+    result = ArticleExtractionService().extract_full_text(pdf_path.as_uri())
+
+    assert result == "<h3>Sayfa 1</h3><p>Yerel sayfa metni.</p>"
+
+
+def test_extract_full_text_returns_none_when_local_pdf_missing(tmp_path):
+    missing_path = tmp_path / "yok.pdf"
+
+    result = ArticleExtractionService().extract_full_text(missing_path.as_uri())
+
+    assert result is None

@@ -34,70 +34,73 @@ Item {
             width: parent.width
             height: 64
 
-            Row {
-                anchors.fill: parent
+            // Sol Taraf: Arama Kutusu
+            AppSearchBar {
+                id: searchBar
+                anchors.left: parent.left
                 anchors.leftMargin: 24
+                anchors.verticalCenter: parent.verticalCenter
+                width: 280
+                placeholder: "Kaynaklarda ara (başlık, not veya URL)..."
+                onSearchChanged: function(q) {
+                    root.searchQuery = q
+                    root.updateFilters()
+                }
+                onSearchCleared: {
+                    root.searchQuery = ""
+                    root.updateFilters()
+                }
+            }
+
+            // Sağ Taraf: Görünüm Seçici & Yeni Ekle Aksiyonları
+            Row {
+                id: rightActionsRow
+                anchors.right: parent.right
                 anchors.rightMargin: 24
+                anchors.verticalCenter: parent.verticalCenter
                 spacing: 12
 
-                // Arama Kutusu
-                AppSearchBar {
+                // Görünüm Modu Seçici (Zengin / Sade Görünüm Kapsülü)
+                Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 320
-                    placeholder: "Kaynaklarda ara (başlık, not veya URL)..."
-                    onSearchChanged: function(q) {
-                        root.searchQuery = q
-                        root.updateFilters()
-                    }
-                    onSearchCleared: {
-                        root.searchQuery = ""
-                        root.updateFilters()
-                    }
-                }
-
-                // Yatay Kaydırılabilir Kategori Filtreleri
-                Flickable {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - 320 - 150 - 24
                     height: 32
-                    contentWidth: catRow.implicitWidth
-                    clip: true
+                    width: 68
+                    radius: Theme.radiusSm
+                    color: Theme.bgElevated
+                    border.width: 1
+                    border.color: Theme.borderSubtle
 
                     Row {
-                        id: catRow
-                        spacing: 8
-                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.centerIn: parent
+                        spacing: 2
 
-                        AppFilterChip {
-                            text: "Tüm Kategoriler"
-                            isSelected: root.selectedCategoryId === 0
-                            onClicked: {
-                                root.selectedCategoryId = 0
-                                root.updateFilters()
-                            }
+                        AppIconButton {
+                            iconName: "fa5s.th-large"
+                            iconSize: 12
+                            implicitWidth: 30
+                            implicitHeight: 26
+                            tooltip: "Zengin Görünüm"
+                            tooltipPosition: "bottom"
+                            isActive: !bridge.isSimpleMode
+                            activeBgColor: Theme.accentSubtle
+                            iconColor: !bridge.isSimpleMode ? Theme.accent : Theme.textSecondary
+                            onClicked: bridge.setSimpleMode(false)
                         }
 
-                        Repeater {
-                            model: bridge.categories
-                            AppFilterChip {
-                                text: modelData.name
-                                dotColor: modelData.color_hex || Theme.fallbackCategoryColor
-                                count: modelData.resource_count
-                                isSelected: root.selectedCategoryId === modelData.id
-                                onClicked: {
-                                    if (root.selectedCategoryId === modelData.id) {
-                                        root.selectedCategoryId = 0
-                                    } else {
-                                        root.selectedCategoryId = modelData.id
-                                    }
-                                    root.updateFilters()
-                                }
-                            }
+                        AppIconButton {
+                            iconName: "fa5s.th-list"
+                            iconSize: 12
+                            implicitWidth: 30
+                            implicitHeight: 26
+                            tooltip: "Sade Görünüm"
+                            tooltipPosition: "bottom"
+                            isActive: bridge.isSimpleMode
+                            activeBgColor: Theme.accentSubtle
+                            iconColor: bridge.isSimpleMode ? Theme.accent : Theme.textSecondary
+                            onClicked: bridge.setSimpleMode(true)
                         }
                     }
                 }
-
-                Item { Layout.fillWidth: true }
 
                 // Yeni Kaynak Ekle Butonu
                 AppButton {
@@ -107,6 +110,52 @@ Item {
                     variant: "primary"
                     implicitHeight: 36
                     onClicked: root.newResourceRequested()
+                }
+            }
+
+            // Orta Alan: Yatay Kaydırılabilir Kategori Filtreleri
+            Flickable {
+                id: catFlickable
+                anchors.left: searchBar.right
+                anchors.leftMargin: 12
+                anchors.right: rightActionsRow.left
+                anchors.rightMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+                height: 32
+                contentWidth: catRow.implicitWidth
+                clip: true
+
+                Row {
+                    id: catRow
+                    spacing: 8
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    AppFilterChip {
+                        text: "Tüm Kategoriler"
+                        isSelected: root.selectedCategoryId === 0
+                        onClicked: {
+                            root.selectedCategoryId = 0
+                            root.updateFilters()
+                        }
+                    }
+
+                    Repeater {
+                        model: bridge.categories
+                        AppFilterChip {
+                            text: modelData.name
+                            dotColor: modelData.color_hex || Theme.fallbackCategoryColor
+                            count: modelData.resource_count
+                            isSelected: root.selectedCategoryId === modelData.id
+                            onClicked: {
+                                if (root.selectedCategoryId === modelData.id) {
+                                    root.selectedCategoryId = 0
+                                } else {
+                                    root.selectedCategoryId = modelData.id
+                                }
+                                root.updateFilters()
+                            }
+                        }
+                    }
                 }
             }
 
@@ -181,12 +230,13 @@ Item {
                 clip: true
 
                 cellWidth: 290
-                cellHeight: 305
+                cellHeight: bridge.isSimpleMode ? 148 : 305
                 model: bridge.resourcesModel
 
                 delegate: AppCard {
+                    isSimple: bridge.isSimpleMode
                     cardWidth: 274
-                    cardHeight: 290
+                    cardHeight: bridge.isSimpleMode ? 136 : 290
                     onClicked: {
                         bridge.selectResource(model.id)
                         root.cardSelected(model.id)

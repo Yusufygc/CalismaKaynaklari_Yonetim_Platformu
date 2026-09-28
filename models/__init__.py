@@ -3,6 +3,7 @@ from .category import Category
 from .tag import Tag
 from .resource import (
     Highlight,
+    PdfNote,
     Resource,
     ResourceStatus,
     Vocabulary,
@@ -17,6 +18,7 @@ __all__ = [
     "Resource",
     "ResourceStatus",
     "Highlight",
+    "PdfNote",
     "Vocabulary",
     "resource_tags_link",
     "status_label",

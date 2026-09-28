@@ -106,6 +106,26 @@ class AppStrings:
     READER_FONT_INCREASE_TOOLTIP = "Yazıyı büyüt"
     READER_DELETE_HIGHLIGHT_TOOLTIP = "Alıntıyı sil"
 
+    # Makale Market
+    ARTICLE_MARKET = "Makale Market"
+    MARKET_SEARCH_PLACEHOLDER = "Bir konu ara (örn. transformer neural network)..."
+    MARKET_SEARCH_BUTTON = "Ara"
+    MARKET_TAB_RECENT = "En Güncel"
+    MARKET_TAB_POPULAR = "En Popüler"
+    MARKET_TAB_CITED = "En Çok Atıf Alan"
+    MARKET_EMPTY_MSG = "Bir konu arayarak makale keşfetmeye başlayın."
+    MARKET_NO_RESULTS_MSG = "Sonuç bulunamadı."
+    MARKET_SEARCHING_MSG = "Aranıyor..."
+    MARKET_CITATION_FMT = "{count} atıf"
+    MARKET_SAVED_LABEL = "Kaydedildi"
+    NOTIFICATION_MARKET_SAVED_FMT = "'{title}' kaydedildi."
+
+    # Yerel PDF ice aktarma
+    DROP_PDF_HINT = "PDF'i buraya bırak"
+    NOTIFICATION_PDF_IMPORT_INVALID = "Sadece PDF dosyaları desteklenir."
+    NOTIFICATION_PDF_IMPORT_FAILED = "PDF kopyalanamadı."
+    NOTIFICATION_PDF_IMPORTED_FMT = "'{title}' içeri aktarıldı."
+
     # Bilgi Havuzu
     KNOWLEDGE_POOL = "Bilgi Havuzu"
     KNOWLEDGE_POOL_HIGHLIGHTS_TAB = "Alıntılar"

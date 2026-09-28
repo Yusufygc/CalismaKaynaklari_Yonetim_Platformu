@@ -11,13 +11,31 @@ class HighlightController:
     def __init__(self, session: Session) -> None:
         self._svc = HighlightService(session)
 
-    def create_highlight(self, resource_id: int, content: str, color: str | None = None) -> object:
+    def create_highlight(
+        self,
+        resource_id: int,
+        content: str,
+        color: str | None = None,
+        page: int | None = None,
+        start_index: int | None = None,
+        length: int | None = None,
+    ) -> object:
         try:
-            highlight = self._svc.create_highlight(resource_id, content, color)
+            highlight = self._svc.create_highlight(resource_id, content, color, page, start_index, length)
             event_bus.highlight_added.emit(highlight.id)
             return highlight
         except Exception as exc:
             log.error("Alinti eklenemedi: %s", exc)
+            event_bus.error_occurred.emit(str(exc))
+            return None
+
+    def update_highlight_color(self, highlight_id: int, color: str) -> object:
+        try:
+            highlight = self._svc.update_highlight_color(highlight_id, color)
+            event_bus.highlight_updated.emit(highlight_id)
+            return highlight
+        except Exception as exc:
+            log.error("Alinti rengi guncellenemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
             return None
 

@@ -4,6 +4,106 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-29] FEAT | Native PDF okuyucu: sayfa render + highlight (düzenlenebilir) + satır notu
+
+Şu ana kadar "PDF okuyucu" aslında `pypdf` ile metne çevrilmiş HTML gösteriyordu (çok sütunlu makalelerde metin sırası karışıyor, görsel/tablo kayboluyordu). Artık yerel (`file://`) PDF kaynaklar gerçek sayfa render'ıyla açılıyor, üstüne highlight (oluştur/renk değiştir/sil) ve nokta-bazlı margin notu eklendi. Üç fazda yapıldı, her fazdan sonra `pytest` + gerçek Qt engine ile canlı doğrulandı.
+
+**Faz 1 — Native render**: Yeni `qml/components/PdfPageArea.qml`, Qt'nin `QtQuick.Pdf` modülündeki `PdfMultiPageView.qml`'i temel alan kopyala-değiştir bileşeni (Qt dokümantasyonu bunu resmen öneriyor). Yeni `qml/views/PdfReaderView.qml` (üst bar: geri, sayfa göstergesi, zoom, "Tarayıcıda Aç"). `bridge.openReader()` `resource.url` `file://...pdf` ise `currentView`'i `"pdfReader"` yapıyor, web'den PDF'ler (arXiv gibi) hâlâ eski metin-okuyucuda kalıyor (`QPdfDocument.source` ağdan indirme yapmıyor). Gerçek PDF ile doğrulandı: 15 sayfa, 612×792pt — doğru.
+
+**Faz 2 — Highlight (oluştur + düzenle + sil)**: `highlights` tablosuna `start_index`/`length` kolonları eklendi (nullable, sadece PDF highlight'larında dolu; `page_number` da artık kullanılıyor). Kalıcılık **piksel değil karakter-index** bazlı — `QPdfDocument.getSelectionAtIndex(page, start_index, length)` ile zoom/scroll'dan bağımsız yeniden çiziliyor. `HighlightService.update_highlight_color` + `event_bus.highlight_updated` eklendi.
+
+**Kritik keşif (canlı testte)**: QML script'inden `QPdfDocument.getSelection()`/`getSelectionAtIndex()` çağrılamıyor — `Unknown method return type: QPdfSelection` hatası. Çözüm: bu işlem tamamen Python'a (`ui_qml/bridge.py::addPdfHighlight`, `_load_pdf_document`, `_highlight_geometry`) taşındı — QML sadece seçimin `from`/`to` noktalarını yolluyor, geometri (`boundsPolygons`/`boundingRect`) `_serialize_resource()`'ta önceden hesaplanıp düz sayı listesi olarak QML'e gidiyor. Ayrıca `Repeater { delegate: ShapePath {...} }` de hata verdi (`ShapePath` bir `Item` değil) — `Instantiator` kullanıldı. Bir de gerçek off-by-one hatası bulundu: `length = endIndex - startIndex` (dikkat, +1 DEĞİL) — Python'da `QPdfDocument` ile izole test edilip doğrulandı.
+
+**Faz 3 — Satır/Nokta Notu**: Yeni `models.PdfNote` (`page`, `x`, `y` — page-point uzayında, çözünürlükten bağımsız — `note_text`), `repositories/pdf_note_repo.py`/`services/pdf_note_service.py`/`controllers/pdf_note_controller.py` (Highlight üçlüsünün birebir kopyası). Üst barda "Not Ekle" toggle'ı; aktifken sayfaya tıklamak popover açıp `bridge.addPdfNote` çağırıyor. Notlar küçük bir ikonla (`fa5s.comment-alt`) o noktada kalıcı görünür, tıklayınca düzenle/sil popover'ı açılır. Bilgi Havuzu'na eklenmedi (sadece o kaynağın okuyucusunda yönetiliyor).
+
+Doğrulama: `pytest tests/` 170/170 yeşil (12 yeni test). Gerçek bir PDF ile gerçek Qt QML engine üzerinden (offscreen) highlight + not birlikte render edilip **0 QML uyarısı/hatası** doğrulandı.
+
+---
+
+## [2026-09-28] FIX | Tooltip konumlandırma, sınır taşmaları ve ikon çakışmaları tamamen giderildi
+
+Uygulama genelinde ve özellikle kenar çubuğu (Sidebar) ile vitrin üst çubuğundaki tooltip yerleşim ve çakışma sorunları çözüldü:
+
+1. **Kenar Çubuğu İkon ve Logo Çakışmaları:**
+   - **Kök Neden:** Daraltılmış menüdeki genişlet butonu (`>`) üst 100px alanında yer almasına rağmen tooltip'i yukarıya açarak doğrudan üstündeki yer imi (bookmark) logosunun üzerine biniyordu. Menüyü daralt butonunda (`<`) ise yatay hizalama ve pencere sınır hesaplamaları eksik olduğundan tooltip metni buton ikonunun üzerine çiziliyordu.
+   - **Çözüm:** `AppIconButton.qml` içerisindeki dikey konumlandırma mantığı üst 100px eşiğine göre ayarlandı (`pt.y < 100` durumunda daima aşağı açılır). Ayrıca `tooltipPosition` özelliği genişletilerek (`"auto"`, `"bottom"`, `"top"`, `"left"`, `"right"`), `AppSidebar.qml` (`<` ve `>`), `ShowcaseView.qml` (görünüm seçici kapsül), `ReaderView.qml` (yazı boyutu/tarayıcı butonları), `InspectorDrawer.qml` (sabitle, favori, kapat butonları) ve `AppSearchBar.qml` (temizle butonu) bileşenlerinde `tooltipPosition: "bottom"` doğrudan açıkça tanımlandı.
+
+2. **Yatay Pencere Sınırı Koruması (Boundary Clamping):**
+   - **Kök Neden:** Sol veya sağ ekran kenarlarına çok yakın butonlarda (örn. 64px daraltılmış sidebar veya ekranın en sağındaki çekmece butonları), ortalanan tooltip pencerelerinin sol ya da sağ kenarından ekran dışına taşma ve kesilme riski bulunuyordu.
+   - **Çözüm:** `AppIconButton.qml` içine `QtQuick.Window` desteğiyle reaktif yatay sınır koruma mantığı eklendi. Tooltip'in pencere içi koordinatı `[8px, Window.width - 8px]` aralığında dinamik olarak kilitlendi.
+
+3. **Vitrin Üst Bar Yerleşimi (Anchor Mimarisi):**
+   - Arama kutusu sola (`anchors.left`), sağ aksiyonlar (Görünüm seçici + Yeni Ekle) sağa (`anchors.right`) sabitlendi; kategori kaydırma alanı (`Flickable`) ise bu iki grubun arasına elastik olarak gerildi (`anchors.left: searchBar.right`, `anchors.right: rightActionsRow.left`).
+
+Doğrulama: PySide6 görsel testleri (`verify_collapsed_dark.png`, `verify_daralt_dark.png`, `verify_daralt_light.png`, `verify_sade_dark.png`) ve `pytest tests/` 153/153 sıfır hata/uyarı ile doğrulandı.
+
+---
+
+## [2026-09-28] FEAT | Vitrin Sade Görünüm Modu (Kompakt Kartlar) eklendi
+
+Kullanıcı tercihi doğrultusunda eski sistemdeki "Sade Mod" mekanizması modern QML mimarisine kazandırıldı:
+
+- **Vitrin Üst Çubuğu Seçici:** `qml/views/ShowcaseView.qml` üst barına (kategori filtreleri ile Yeni Ekle butonu arasına) şık iki durumlu görünüm seçici kapsülü yerleştirildi (`fa5s.th-large` Zengin Görünüm, `fa5s.th-list` Sade Görünüm).
+- **Format 1 (Kompakt Kartlar):**
+  - `qml/components/AppCard.qml` bileşenine `isSimple` desteği getirildi. Sade modda 120px'lik büyük görsel/banner gizlenir; kartın soluna kategorinin renginde 3px dikey şerit eklenir; üst alanda kompakt kategori rozeti, domain ve pin/favori aksiyonları yer alır.
+  - Kart yüksekliği 290px'den 136px'e, `GridView` hücre yüksekliği 305px'den 148px'e iner. Böylece ekrana tek bakışta iki kattan fazla kaynak sığar ve metin/not yoğunluğu artar.
+- **Yalnızca Görsel Yoğunluk:** Filtre kısıtlaması olmadan tüm kaynaklar korunarak yalnızca görsel sunum ve kart kompaktlığı dinamik olarak değiştirilir.
+- **Backend Durum Yönetimi:** `ui_qml/bridge.py` köprüsüne `isSimpleMode` özelliği, `isSimpleModeChanged` sinyali ve `toggleSimpleMode`/`setSimpleMode` slotları eklendi.
+
+Doğrulama: `pytest tests/` 153/153 yeşil. `test_qml_bridge_theme_and_view_toggle` testine `isSimpleMode` ilk durumu ve slot/sinyal değişimleri dahil edildi.
+
+---
+
+## [2026-09-28] FIX | Durum filtreleri (DURUMLAR/Favoriler) ve Tooltip taşması düzeltildi
+
+Kullanıcı arayüzünde tespit edilen iki kritik hata giderildi:
+
+1. **Durum ve Favori Filtrelerinin Çalışmaması Düzeltildi:**
+   - **Kök Neden:** `ui_qml/bridge.py::applyFilter` metodu filtre sözlüğünü `{"status": status, "is_favorite": favorite_only, "tag_id": tag_id}` anahtarlarıyla oluşturuyordu; fakat `services/resource_service.py::query_resources` metodu `filters.get("statuses")`, `filters.get("favorites_only")` ve `filters.get("tag_ids")` bekliyordu. Sonuç olarak SQL seviyesinde durum ve favori filtreleri tamamen yoksayılıyordu.
+   - **QML Sinyal Uyumsuzluğu:** `AppSidebar.qml` içinde "Bağlantı Vitrini"ne tıklandığında durum ve favori filtre sıfırlama sinyali gönderilmiyordu; durum filtrelerine tıklandığında favori durumu sıfırlanmıyor, favorilere tıklandığında ise durum filtresi sıfırlanmıyordu. Bu da filtrelerin çapraz çakışmasına ve çift sorgu atılmasına yol açıyordu.
+   - **Çözüm:**
+     - `services/resource_service.py::query_resources` içine esnek takma ad (alias) ve skaler normalizasyon eklendi (`status`/`statuses`, `tag_id`/`tag_ids`, `priority`/`priorities`, `is_favorite`/`favorites_only` desteklenir).
+     - `ui_qml/bridge.py::applyFilter` kanonik liste/anahtar formatına geçirildi (`statuses: [status] if status else None`, `favorites_only`, `tag_ids`).
+     - `AppSidebar.qml` bileşenine atomik `filterSelected(string statusName, bool isFav)` sinyali eklendi ve tüm navigasyon butonlarında durum ile favori durumları eşzamanlı sıfırlanarak tek seferde `main.qml` üzerinden `ShowcaseView`'a iletildi.
+
+2. **Tooltip Pencere Sınırı Taşması (Clipping) Düzeltildi:**
+   - **Kök Neden:** `qml/components/AppIconButton.qml` içinde tooltip konumu sabit olarak `anchors.bottom: parent.top` idi. `ReaderView` üst okuma çubuğu veya üst bar gibi pencere tepe noktasına yakın (y < 50px) butonlarda tooltip pencere dışına taşıyor ve ekran görüntüsündeki gibi metnin üst yarısı kesiliyordu.
+   - **Çözüm:** `AppIconButton.qml` içine akıllı konumlandırma (`tooltipPosition: "auto"`) eklendi. Butonun pencere içi konumu `mapToItem(null, 0, 0)` ile dinamik hesaplanarak:
+     - Üst kenara 50px'den yakınsa tooltip otomatik olarak butonun **altına** (`anchors.top: parent.bottom`) açılır.
+     - Sağ veya sol kenara taşma riski varsa `anchors.horizontalCenterOffset` ile pencere sınırları içinde kalacak şekilde otomatik kaydırılır.
+
+Doğrulama: `pytest tests/` 153/153 yeşil (sıfır hata/uyarı). Hem backend alias'ları hem de bridge filtre akışı için yeni birim testleri eklendi (`test_query_resources_supports_scalar_and_alias_filter_keys`, `test_qml_bridge_apply_filter_status_and_favorites`).
+
+---
+
+## [2026-09-28] FEAT | Yerel PDF sürükle-bırak içe aktarma
+
+Kullanıcı bilgisayarındaki bir PDF'i doğrudan pencereye sürükleyip bırakarak kaynak olarak ekleyebiliyor artık.
+
+**Tasarım kararı:** İçe aktarılan PDF `core/paths.py::pdf_storage_dir()` (`%APPDATA%/PKM/pdfs/`) altına benzersiz adla **kopyalanır** (orijinal dosyaya dokunulmaz), `resources.url`'e standart bir `file:///...` URI'si (`Path.as_uri()`) yazılır. Bu sayede mevcut PDF/okuyucu altyapısının tamamı (`ExtractWorker`, "Tarayıcıda Aç" butonu, `ReaderView.qml`'in HTML render'ı) **hiç değişmeden** yeniden kullanıldı — sadece iki küçük dal eklendi:
+- `ArticleExtractionService.extract_full_text()`: `url` şeması `file` ise ağ/SSRF mantığına hiç girmeden diskten okur (`_extract_local_pdf`, aynı `_extract_pdf_html` sayfa-numaralı HTML üreticisini kullanır).
+- `utils/url_utils.py::format_display_url()`: `file://` URI'lerinde hostname yerine dosya adını gösterir (kart/okuyucu meta satırları otomatik düzelir, ek QML değişikliği gerekmedi).
+
+**Yan bulgu — gerçek engel düzeltildi:** `services/resource_service.py::_validate_url`'in regex'i (`^https?://...`) `file://` URI'lerini reddediyordu (`InvalidURLError`) — canlı testte yakalandı. `file` şeması için host-format kontrolü atlanıp sadece boş-olmayan path yeterli sayılacak şekilde genişletildi; diğer geçersiz şemalar (örn. `ftp://`) hâlâ reddediliyor.
+
+Yeni: `ui_qml/bridge.py::importLocalPdf(fileUrl)` slotu (kopyalama + kaynak oluşturma + arka plan extraction tetikleme, `saveMarketResult` ile aynı desen), `core/paths.py::pdf_storage_dir()`, `qml/main.qml`'de tüm pencereyi kaplayan `DropArea` + sürükleme sırasında görünen overlay, `ReaderView.qml`'de yerel PDF için kozmetik ikon/etiket düzeltmesi.
+
+Doğrulama: `pytest tests/` 151/151 yeşil (6 yeni test). Gerçek bir arXiv PDF'i indirilip yerel dosya olarak sürükle-bırak akışından geçirildi — kopya doğru oluştu, orijinal dosya bozulmadı, arka plan extraction gerçek tam metni (15 sayfa, 40073 karakter) getirdi.
+
+---
+
+## [2026-09-28] FEAT | PDF tam metin desteği + Makale Market sayfası (QML)
+
+**PDF desteği:** `ArticleExtractionService.extract_full_text()` artık URL doğrudan bir PDF'e işaret ediyorsa (`%PDF-` dosya imzası veya `.pdf` uzantısı) `pypdf` ile sayfa-numaralı HTML üretiyor (`<h3>Sayfa N</h3><p>...</p>`). İndirme tek, birleşik bir `requests`-tabanlı adıma (`core/net_utils.py::safe_http_get`, `ScraperService` ile paylaşılan) taşındı — önceden ayrı bir bulgu olan "trafilatura.fetch_url redirect'te SSRF'yi tekrar kontrol etmiyor" riski bu birleşmeyle kapandı. Gerçek arXiv PDF'iyle canlı doğrulandı (15 sayfa, 40073 karakter — önceden sadece HTML özet sayfası çekiliyordu). QML tarafında hiçbir değişiklik gerekmedi: `ReaderView.qml`'deki `TextEdit { textFormat: RichText }` zaten `<h3>/<p>` render ediyor.
+
+**Makale Market sayfası (yeni):** Konu bazlı akademik makale keşfi. `services/paper_market_service.py::PaperMarketService` (OpenAlex Works API, ücretsiz) üç kategori döndürür: En Güncel / En Popüler / En Çok Atıf Alan. `workers/market_search_worker.py::MarketSearchWorker` arka planda çalıştırır, `ui_qml/bridge.py`'ye `searchArticles`/`saveMarketResult`/`marketResults`/`marketSearchLoading` eklendi. Yeni `qml/views/ArticleMarketView.qml` — arama sadece Enter/"Ara" ile tetiklenir (`AppSearchBar` bilinçli kullanılmadı, o her tuş vuruşunda sinyal fırlatıyor ve API rate-limitli — canlı testte 429 gözlendi). Sidebar'a yeni nav girişi (`qml/components/AppSidebar.qml`), `qml/main.qml`'e 5. sayfa eklendi.
+
+**Yan bulgu — gerçek bug düzeltildi:** Canlı uçtan-uca testte `ui_qml/bridge.py::_on_resource_changed_event` çöktüğü görüldü — `event_bus.resource_added`/`resource_updated` `Signal(int)` (kaynak id'si) fırlatıyor ama handler bunu `Resource` nesnesi sanıp `.id`'ye erişiyordu (`AttributeError`). Qt bu istisnayı yutup logluyordu, state bozulmuyordu ama her kaynak ekleme/güncellemede sessizce `_update_selected_if_matches` çalışmıyor ve konsola hata basılıyordu. Parametre `resource_id: int` olacak şekilde düzeltildi (`_on_resource_deleted_event` ile tutarlı hale getirildi).
+
+Doğrulama: `pytest tests/` 146/146 yeşil (5 yeni test: `MarketSearchWorker` başarı/hata, `searchArticles`/`saveMarketResult` bridge testleri). Gerçek OpenAlex + gerçek arXiv PDF ile uçtan uca canlı doğrulandı.
+
+---
+
 ## [2026-09-28] REFACTOR | Mimari İhlaller, Tersine Bağımlılıklar ve Ölü Kodlar Temizlendi
 
 Kapsamlı mimari denetim sonucunda tespit edilen katman ihlalleri, tersine bağımlılıklar, DRY ihlalleri ve ölü kodlar temizlendi:

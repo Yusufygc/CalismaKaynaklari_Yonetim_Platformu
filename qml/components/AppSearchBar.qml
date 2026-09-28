@@ -75,6 +75,7 @@ Rectangle {
             implicitWidth: 22
             implicitHeight: 22
             tooltip: "Temizle"
+            tooltipPosition: "bottom"
             onClicked: {
                 textInput.text = ""
                 root.searchCleared()

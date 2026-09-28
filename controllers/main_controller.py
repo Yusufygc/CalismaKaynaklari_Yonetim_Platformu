@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from models import Resource
 from controllers.category_controller import CategoryController
 from controllers.highlight_controller import HighlightController
+from controllers.pdf_note_controller import PdfNoteController
 from controllers.resource_controller import ResourceController
 from controllers.tag_controller import TagController
 from controllers.vocabulary_controller import VocabularyController
@@ -24,6 +25,7 @@ class MainController:
         self._tag = TagController(session)
         self._highlight = HighlightController(session)
         self._vocabulary = VocabularyController(session)
+        self._pdf_note = PdfNoteController(session)
 
     # ------------------------------------------------------------------ #
     # Kaynak islemleri
@@ -83,8 +85,19 @@ class MainController:
     # Alinti (Highlight) / Kelime (Vocabulary)
     # ------------------------------------------------------------------ #
 
-    def create_highlight(self, resource_id: int, content: str, color: str | None = None) -> object:
-        return self._highlight.create_highlight(resource_id, content, color)
+    def create_highlight(
+        self,
+        resource_id: int,
+        content: str,
+        color: str | None = None,
+        page: int | None = None,
+        start_index: int | None = None,
+        length: int | None = None,
+    ) -> object:
+        return self._highlight.create_highlight(resource_id, content, color, page, start_index, length)
+
+    def update_highlight_color(self, highlight_id: int, color: str) -> object:
+        return self._highlight.update_highlight_color(highlight_id, color)
 
     def delete_highlight(self, highlight_id: int) -> bool:
         return self._highlight.delete_highlight(highlight_id)
@@ -108,3 +121,19 @@ class MainController:
 
     def load_all_vocabulary(self) -> list:
         return self._vocabulary.load_all_vocabulary()
+
+    # ------------------------------------------------------------------ #
+    # PDF Notu
+    # ------------------------------------------------------------------ #
+
+    def create_pdf_note(self, resource_id: int, page: int, x: float, y: float, note_text: str) -> object:
+        return self._pdf_note.create_note(resource_id, page, x, y, note_text)
+
+    def update_pdf_note(self, note_id: int, note_text: str) -> object:
+        return self._pdf_note.update_note(note_id, note_text)
+
+    def delete_pdf_note(self, note_id: int) -> bool:
+        return self._pdf_note.delete_note(note_id)
+
+    def load_resource_pdf_notes(self, resource_id: int) -> list:
+        return self._pdf_note.load_resource_notes(resource_id)

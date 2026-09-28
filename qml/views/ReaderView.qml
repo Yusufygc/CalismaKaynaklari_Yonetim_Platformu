@@ -78,6 +78,7 @@ Item {
                     iconName: "fa5s.minus"
                     iconSize: 11
                     tooltip: "Yazı Boyutunu Küçült"
+                    tooltipPosition: "bottom"
                     onClicked: {
                         if (root.zoomLevel > -3) root.zoomLevel--
                     }
@@ -95,6 +96,7 @@ Item {
                     iconName: "fa5s.plus"
                     iconSize: 11
                     tooltip: "Yazı Boyutunu Büyüt"
+                    tooltipPosition: "bottom"
                     onClicked: {
                         if (root.zoomLevel < 5) root.zoomLevel++
                     }
@@ -111,6 +113,7 @@ Item {
                     iconName: "fa5s.external-link-alt"
                     iconSize: 12
                     tooltip: "Orijinal Sayfayı Tarayıcıda Aç"
+                    tooltipPosition: "bottom"
                     onClicked: {
                         if (root.resource && root.resource.url) {
                             Qt.openUrlExternally(root.resource.url)
@@ -180,14 +183,18 @@ Item {
 
                         AppIcon {
                             anchors.verticalCenter: parent.verticalCenter
-                            name: "fa5s.globe"
+                            name: (root.resource && root.resource.url && root.resource.url.startsWith("file://")) ? "fa5s.file-pdf" : "fa5s.globe"
                             size: 13
                             color: Theme.accent
                         }
 
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: root.resource && root.resource.url ? root.resource.url : ""
+                            text: {
+                                if (!root.resource || !root.resource.url) return ""
+                                if (root.resource.url.startsWith("file://")) return "Yerel PDF dosyası"
+                                return root.resource.url
+                            }
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSm
                             color: Theme.accentText
@@ -274,7 +281,7 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     if (root.resource) {
-                                        bridge.addHighlight(root.resource.id, textContent.selectedText, modelData)
+                                        bridge.addHighlight(root.resource.id, textContent.selectedText, modelData, -1, -1, -1)
                                         textContent.deselect()
                                     }
                                 }

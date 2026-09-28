@@ -1,13 +1,27 @@
-from PySide6.QtCore import Property, QObject, QThreadPool, Signal, Slot
+import re
+import shutil
+import uuid
+from pathlib import Path
+
+from PySide6.QtCore import Property, QObject, QPointF, QThreadPool, QUrl, Signal, Slot
+from PySide6.QtPdf import QPdfDocument
 
 from core.constants.strings import AppStrings
 from core.events import event_bus
 from core.logger import log
+from core.paths import pdf_storage_dir
 from models import Resource, ResourceStatus
 from controllers.main_controller import MainController
-from workers import ExtractWorker as _ExtractWorker, ScrapeWorker as _ScrapeWorker
+from services.paper_market_service import PaperMarketService, PaperResult
+from workers import (
+    ExtractWorker as _ExtractWorker,
+    MarketSearchWorker as _MarketSearchWorker,
+    ScrapeWorker as _ScrapeWorker,
+)
 from ui_qml.models.resource_list_model import ResourceListModel
 from utils.url_utils import format_display_url
+
+_UNSAFE_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*]')
 
 
 class QmlBridge(QObject):
@@ -27,6 +41,9 @@ class QmlBridge(QObject):
     urlScraped = Signal(dict)
     readerArticleUpdated = Signal(int, str)
     notificationEmitted = Signal(str, str)  # type (info/error), message
+    marketResultsChanged = Signal()
+    marketSearchLoadingChanged = Signal(bool)
+    isSimpleModeChanged = Signal(bool)
 
     def __init__(
         self,
@@ -43,6 +60,7 @@ class QmlBridge(QObject):
             raise ValueError("QmlBridge requires either a controller or a session.")
 
         self._is_dark_theme: bool = True
+        self._is_simple_mode: bool = False
         self._current_view: str = "showcase"
         self._is_drawer_open: bool = False
         self._selected_resource: dict = {}
@@ -52,6 +70,13 @@ class QmlBridge(QObject):
         self._highlights_cache: list[dict] = []
         self._vocabulary_cache: list[dict] = []
         self._stats_cache: dict = {}
+        self._market_results_cache: dict = {"recent": [], "popular": [], "cited": []}
+        self._market_search_loading: bool = False
+        # Yerel PDF geometrisi (_highlight_geometry) icin QPdfDocument onbellegi --
+        # her highlight/not islemi sonrasi _serialize_resource() cagrildiginda
+        # ayni dosyayi tekrar tekrar diskten yuklemeyi (native nesne
+        # olusturup yok etmeyi) onler.
+        self._pdf_document_cache: dict[str, QPdfDocument] = {}
 
         self._model = ResourceListModel(self)
         self._thread_pool = QThreadPool.globalInstance()
@@ -59,9 +84,9 @@ class QmlBridge(QObject):
         self._current_filters = {
             "keyword": "",
             "category_id": None,
-            "tag_id": None,
-            "status": None,
-            "is_favorite": False,
+            "tag_ids": None,
+            "statuses": None,
+            "favorites_only": False,
         }
 
         # Event Bus bağlantıları
@@ -124,6 +149,18 @@ class QmlBridge(QObject):
     def stats(self) -> dict:
         return self._stats_cache
 
+    @Property(dict, notify=marketResultsChanged)
+    def marketResults(self) -> dict:
+        return self._market_results_cache
+
+    @Property(bool, notify=marketSearchLoadingChanged)
+    def marketSearchLoading(self) -> bool:
+        return self._market_search_loading
+
+    @Property(bool, notify=isSimpleModeChanged)
+    def isSimpleMode(self) -> bool:
+        return self._is_simple_mode
+
     # ------------------------------------------------------------------ #
     # Slots - Temel Navigasyon & Tema
     # ------------------------------------------------------------------ #
@@ -132,6 +169,17 @@ class QmlBridge(QObject):
     def toggleTheme(self) -> None:
         self._is_dark_theme = not self._is_dark_theme
         self.isDarkThemeChanged.emit(self._is_dark_theme)
+
+    @Slot()
+    def toggleSimpleMode(self) -> None:
+        self._is_simple_mode = not self._is_simple_mode
+        self.isSimpleModeChanged.emit(self._is_simple_mode)
+
+    @Slot(bool)
+    def setSimpleMode(self, enabled: bool) -> None:
+        if self._is_simple_mode != enabled:
+            self._is_simple_mode = enabled
+            self.isSimpleModeChanged.emit(self._is_simple_mode)
 
     @Slot(str)
     def setCurrentView(self, view_name: str) -> None:
@@ -266,7 +314,8 @@ class QmlBridge(QObject):
 
         self._current_reader_resource = self._serialize_resource(resource)
         self.currentReaderResourceChanged.emit()
-        self.setCurrentView("reader")
+        is_local_pdf = bool(resource.url) and resource.url.startswith("file://") and resource.url.lower().endswith(".pdf")
+        self.setCurrentView("pdfReader" if is_local_pdf else "reader")
         self.closeDrawer()
 
         # Eğer tam metin boşsa ve url varsa arka planda çıkar
@@ -279,11 +328,26 @@ class QmlBridge(QObject):
         self.currentReaderResourceChanged.emit()
         self.setCurrentView("showcase")
 
-    @Slot(int, str, str)
-    def addHighlight(self, resource_id: int, content: str, color: str = "#B45309") -> None:
+    @Slot(int, str, str, int, int, int)
+    def addHighlight(
+        self,
+        resource_id: int,
+        content: str,
+        color: str = "#B45309",
+        page: int = -1,
+        startIndex: int = -1,
+        length: int = -1,
+    ) -> None:
         if not content.strip():
             return
-        self._controller.create_highlight(resource_id, content.strip(), color)
+        self._controller.create_highlight(
+            resource_id,
+            content.strip(),
+            color,
+            page if page >= 0 else None,
+            startIndex if startIndex >= 0 else None,
+            length if length >= 0 else None,
+        )
         self.reload_highlights()
         # Okuyucu içindeki kaynağı tazele
         res = self._controller.get_resource(resource_id)
@@ -291,6 +355,49 @@ class QmlBridge(QObject):
             self._current_reader_resource = self._serialize_resource(res)
             self.currentReaderResourceChanged.emit()
         self.notificationEmitted.emit("info", AppStrings.NOTIFICATION_HIGHLIGHT_SAVED)
+
+    @Slot(int, str, int, float, float, float, float, str)
+    def addPdfHighlight(
+        self,
+        resource_id: int,
+        file_url: str,
+        page: int,
+        from_x: float,
+        from_y: float,
+        to_x: float,
+        to_y: float,
+        color: str,
+    ) -> None:
+        """QML'den `QPdfSelection` donen metotlar (getSelection/getSelectionAtIndex)
+        cagrilamiyor -- "Unknown method return type: QPdfSelection" (calisma
+        zamaninda dogrulandi). Bu yuzden secim noktalarini (page-point uzayinda)
+        Python'a tasiyip QPdfDocument islemlerini burada yapiyoruz.
+        """
+        doc = self._load_pdf_document(file_url)
+        if doc is None:
+            return
+        selection = doc.getSelection(page, QPointF(from_x, from_y), QPointF(to_x, to_y))
+        if not selection.isValid() or not selection.text().strip():
+            return
+        start_index = selection.startIndex()
+        length = selection.endIndex() - selection.startIndex()
+        self._controller.create_highlight(resource_id, selection.text(), color, page, start_index, length)
+        self.reload_highlights()
+        res = self._controller.get_resource(resource_id)
+        if res:
+            self._current_reader_resource = self._serialize_resource(res)
+            self.currentReaderResourceChanged.emit()
+        self.notificationEmitted.emit("info", AppStrings.NOTIFICATION_HIGHLIGHT_SAVED)
+
+    @Slot(int, str)
+    def updateHighlightColor(self, highlight_id: int, color: str) -> None:
+        self._controller.update_highlight_color(highlight_id, color)
+        self.reload_highlights()
+        if self._current_reader_resource:
+            res = self._controller.get_resource(self._current_reader_resource["id"])
+            if res:
+                self._current_reader_resource = self._serialize_resource(res)
+                self.currentReaderResourceChanged.emit()
 
     @Slot(int)
     def deleteHighlight(self, highlight_id: int) -> None:
@@ -323,6 +430,129 @@ class QmlBridge(QObject):
         self.notificationEmitted.emit("info", AppStrings.NOTIFICATION_VOCAB_DELETED)
 
     # ------------------------------------------------------------------ #
+    # Slots - PDF Notu
+    # ------------------------------------------------------------------ #
+
+    def _refresh_reader_resource(self, resource_id: int) -> None:
+        res = self._controller.get_resource(resource_id)
+        if res:
+            self._current_reader_resource = self._serialize_resource(res)
+            self.currentReaderResourceChanged.emit()
+
+    @Slot(int, int, float, float, str)
+    def addPdfNote(self, resource_id: int, page: int, x: float, y: float, text: str) -> None:
+        if not text.strip():
+            return
+        self._controller.create_pdf_note(resource_id, page, x, y, text.strip())
+        self._refresh_reader_resource(resource_id)
+
+    @Slot(int, str)
+    def updatePdfNote(self, note_id: int, text: str) -> None:
+        if not text.strip():
+            return
+        self._controller.update_pdf_note(note_id, text.strip())
+        if self._current_reader_resource:
+            self._refresh_reader_resource(self._current_reader_resource["id"])
+
+    @Slot(int)
+    def deletePdfNote(self, note_id: int) -> None:
+        self._controller.delete_pdf_note(note_id)
+        if self._current_reader_resource:
+            self._refresh_reader_resource(self._current_reader_resource["id"])
+
+    # ------------------------------------------------------------------ #
+    # Slots - Makale Market
+    # ------------------------------------------------------------------ #
+
+    @Slot(str)
+    def searchArticles(self, topic: str) -> None:
+        topic = topic.strip()
+        if not topic:
+            return
+        self._market_search_loading = True
+        self.marketSearchLoadingChanged.emit(True)
+        worker = _MarketSearchWorker(topic)
+        worker.signals.finished.connect(self._on_market_search_finished)
+        self._thread_pool.start(worker)
+
+    @Slot(dict)
+    def saveMarketResult(self, paper: dict) -> None:
+        """Makale Market sonucunu kaynak olarak kaydeder.
+
+        `saveResource`'un daralti bir kopyasi: market sonucunda kategori/etiket
+        gibi kullanici secimleri yok, bunun yerine yazar/yil/atif sayisi
+        `extra_metadata`'ya yaziliyor (formda hic olmayan bir alan).
+        """
+        payload = {
+            "title": (paper.get("title") or "").strip() or "(Baslik yok)",
+            "url": paper.get("url") or None,
+            "category_id": None,
+            "status": ResourceStatus.INBOX,
+            "priority": 2,
+            "content": None,
+            "tag_names": [],
+            "extra_metadata": {
+                "authors": paper.get("authors", []),
+                "year": paper.get("year"),
+                "citation_count": paper.get("citationCount", 0),
+                "source": "openalex",
+            },
+        }
+        res = self._controller.add_resource(payload)
+        if res:
+            self._reload_resources()
+            if res.url:
+                self._schedule_full_text_extract(res.id, res.url)
+            self.notificationEmitted.emit(
+                "info", AppStrings.NOTIFICATION_MARKET_SAVED_FMT.format(title=res.title)
+            )
+
+    # ------------------------------------------------------------------ #
+    # Slots - Yerel PDF İçe Aktarma
+    # ------------------------------------------------------------------ #
+
+    @Slot(str)
+    def importLocalPdf(self, file_url: str) -> None:
+        """Surukle-birak ile gelen yerel bir PDF'i kopyalayip kaynak olarak ekler.
+
+        Orijinal dosyaya dokunulmaz (kopyalanir, tasinmaz/silinmez).
+        `resources.url` standart bir `file:///...` URI'si olarak yazilir --
+        boylece mevcut okuyucu/extraction altyapisi (ExtractWorker,
+        "Tarayicida Ac" butonu) hic degismeden calisir.
+        """
+        local_path = Path(QUrl(file_url).toLocalFile() or file_url)
+        if local_path.suffix.lower() != ".pdf" or not local_path.is_file():
+            self.notificationEmitted.emit("error", AppStrings.NOTIFICATION_PDF_IMPORT_INVALID)
+            return
+
+        try:
+            safe_stem = _UNSAFE_FILENAME_CHARS.sub("_", local_path.stem)[:60]
+            dest_path = (pdf_storage_dir() / f"{uuid.uuid4().hex[:8]}_{safe_stem}.pdf").resolve()
+            shutil.copyfile(local_path, dest_path)
+        except OSError as exc:
+            log.warning("PDF kopyalanamadi: %s - %s", local_path, exc)
+            self.notificationEmitted.emit("error", AppStrings.NOTIFICATION_PDF_IMPORT_FAILED)
+            return
+
+        payload = {
+            "title": local_path.stem,
+            "url": dest_path.as_uri(),
+            "category_id": None,
+            "status": ResourceStatus.INBOX,
+            "priority": 2,
+            "content": None,
+            "tag_names": [],
+            "extra_metadata": {"source": "local_pdf", "original_filename": local_path.name},
+        }
+        res = self._controller.add_resource(payload)
+        if res:
+            self._reload_resources()
+            self._schedule_full_text_extract(res.id, res.url)
+            self.notificationEmitted.emit(
+                "info", AppStrings.NOTIFICATION_PDF_IMPORTED_FMT.format(title=res.title)
+            )
+
+    # ------------------------------------------------------------------ #
     # Slots - Filtreleme & Arama
     # ------------------------------------------------------------------ #
 
@@ -345,12 +575,15 @@ class QmlBridge(QObject):
             except Exception:
                 status = None
 
+        statuses = [status] if status else None
+        tag_ids = [tag_id] if tag_id else None
+
         self._current_filters = {
             "keyword": keyword.strip() if keyword else "",
             "category_id": cat_id,
-            "tag_id": tag_id,
-            "status": status,
-            "is_favorite": favorite_only,
+            "tag_ids": tag_ids,
+            "statuses": statuses,
+            "favorites_only": favorite_only,
         }
         self._reload_resources()
 
@@ -500,22 +733,69 @@ class QmlBridge(QObject):
         }
         self.statsChanged.emit()
 
+    def _load_pdf_document(self, file_url: str) -> QPdfDocument | None:
+        cached = self._pdf_document_cache.get(file_url)
+        if cached is not None:
+            return cached
+        local_path = QUrl(file_url).toLocalFile() or file_url
+        doc = QPdfDocument()
+        doc.load(local_path)
+        if doc.status() != QPdfDocument.Status.Ready:
+            return None
+        self._pdf_document_cache[file_url] = doc
+        return doc
+
+    def _highlight_geometry(
+        self, doc: QPdfDocument, page: int, start_index: int, length: int
+    ) -> tuple[list, list] | None:
+        selection = doc.getSelectionAtIndex(page, start_index, length)
+        if not selection.isValid():
+            return None
+        polygons = [
+            [[point.x(), point.y()] for point in polygon]
+            for polygon in selection.bounds()
+        ]
+        rect = selection.boundingRectangle()
+        bounding_rect = [rect.x(), rect.y(), rect.width(), rect.height()]
+        return polygons, bounding_rect
+
     def _serialize_resource(self, r: Resource) -> dict:
         meta = r.extra_metadata or {}
         # Tahmini okuma süresi
         word_count = len((r.full_text or r.content or "").split())
         reading_time = max(1, round(word_count / 200)) if word_count > 0 else 1
 
-        # Alıntılar listesi
-        hl_list = [
-            {"id": h.id, "content": h.content, "color": h.color or "#B45309"}
-            for h in (r.highlights or [])
-        ]
+        # Alıntılar listesi -- yerel PDF ise, kalici highlight'lari yeniden
+        # cizebilmesi icin geometri (poligon + bounding rect) onceden hesaplanir
+        # (QML'den QPdfSelection donen metotlar cagrilamiyor, bkz. addPdfHighlight).
+        is_local_pdf = bool(r.url) and r.url.startswith("file://") and r.url.lower().endswith(".pdf")
+        pdf_doc = self._load_pdf_document(r.url) if is_local_pdf else None
+        hl_list = []
+        for h in (r.highlights or []):
+            item = {
+                "id": h.id,
+                "content": h.content,
+                "color": h.color or "#B45309",
+                "page": h.page_number if h.page_number is not None else -1,
+                "startIndex": h.start_index if h.start_index is not None else -1,
+                "length": h.length if h.length is not None else -1,
+            }
+            if pdf_doc is not None and h.page_number is not None and h.start_index is not None and h.length:
+                geometry = self._highlight_geometry(pdf_doc, h.page_number, h.start_index, h.length)
+                if geometry is not None:
+                    item["boundsPolygons"], item["boundingRect"] = geometry
+            hl_list.append(item)
 
         # Kelimeler listesi
         vocab_list = [
             {"id": v.id, "word": v.word, "translation": v.translation, "context": v.context_sentence or ""}
             for v in (r.vocabulary or [])
+        ]
+
+        # PDF notlari (sadece yerel PDF kaynaklarinda anlamli)
+        note_list = [
+            {"id": n.id, "page": n.page, "x": n.x, "y": n.y, "text": n.note_text}
+            for n in (r.pdf_notes or [])
         ]
 
         return {
@@ -538,8 +818,27 @@ class QmlBridge(QObject):
             "tags": [{"id": t.id, "name": t.name} for t in r.tags],
             "highlights": hl_list,
             "vocabulary": vocab_list,
+            "pdfNotes": note_list,
             "createdAt": r.created_at.strftime("%d.%m.%Y %H:%M") if r.created_at else "",
         }
+
+    def _serialize_paper(self, paper: PaperResult) -> dict:
+        return {
+            "title": paper.title,
+            "authors": paper.authors,
+            "year": paper.year,
+            "citationCount": paper.citation_count,
+            "url": paper.url or "",
+            "abstract": paper.abstract or "",
+        }
+
+    def _on_market_search_finished(self, results: dict) -> None:
+        self._market_results_cache = {
+            key: [self._serialize_paper(p) for p in papers] for key, papers in results.items()
+        }
+        self._market_search_loading = False
+        self.marketSearchLoadingChanged.emit(False)
+        self.marketResultsChanged.emit()
 
     def _update_selected_if_matches(self, resource_id: int) -> None:
         if self._selected_resource.get("id") == resource_id:
@@ -574,9 +873,9 @@ class QmlBridge(QObject):
                     self.currentReaderResourceChanged.emit()
                     self.readerArticleUpdated.emit(resource_id, full_text)
 
-    def _on_resource_changed_event(self, resource: Resource) -> None:
+    def _on_resource_changed_event(self, resource_id: int) -> None:
         self._reload_resources()
-        self._update_selected_if_matches(resource.id)
+        self._update_selected_if_matches(resource_id)
 
     def _on_resource_deleted_event(self, resource_id: int) -> None:
         self._reload_resources()

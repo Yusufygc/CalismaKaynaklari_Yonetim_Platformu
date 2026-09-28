@@ -25,11 +25,17 @@ class _EventBus(QObject):
 
     # --- Alinti (Highlight) sinyalleri ---
     highlight_added = Signal(int)
+    highlight_updated = Signal(int)
     highlight_deleted = Signal(int)
 
     # --- Kelime (Vocabulary) sinyalleri ---
     vocabulary_added = Signal(int)
     vocabulary_deleted = Signal(int)
+
+    # --- PDF Notu sinyalleri ---
+    pdf_note_added = Signal(int)
+    pdf_note_updated = Signal(int)
+    pdf_note_deleted = Signal(int)
 
     # --- UI etkilesim sinyalleri ---
     resource_selected = Signal(int)       # karta tiklandı → sag panel ac

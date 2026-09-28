@@ -49,3 +49,10 @@ def user_data_dir() -> Path:
     target = root / _APP_DIR_NAME
     target.mkdir(parents=True, exist_ok=True)
     return target
+
+
+def pdf_storage_dir() -> Path:
+    """Yerel PDF ice aktarimlarinin kopyalandigi yazilabilir dizin (%APPDATA%/PKM/pdfs)."""
+    target = user_data_dir() / "pdfs"
+    target.mkdir(parents=True, exist_ok=True)
+    return target

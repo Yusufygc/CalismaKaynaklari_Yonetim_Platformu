@@ -29,7 +29,8 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │
 ├── workers/                    # Arka plan QRunnable iş parçacıkları (SRP izole)
 │   ├── scrape_worker.py        # URL OpenGraph metadata taraması
-│   └── extract_worker.py       # Makale tam metin çıkarma
+│   ├── extract_worker.py       # Makale tam metin çıkarma
+│   └── market_search_worker.py # Makale Market (OpenAlex) araması
 │
 ├── models/                     # SQLAlchemy declarative modelleri
 │   ├── base.py
@@ -43,7 +44,8 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   ├── category_repo.py
 │   ├── tag_repo.py
 │   ├── highlight_repo.py
-│   └── vocabulary_repo.py
+│   ├── vocabulary_repo.py
+│   └── pdf_note_repo.py        # Native PDF satır/nokta notu
 │
 ├── services/                   # İş mantığı ve doğrulama katmanı
 │   ├── resource_service.py
@@ -51,8 +53,10 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   ├── tag_service.py
 │   ├── highlight_service.py
 │   ├── vocabulary_service.py
+│   ├── pdf_note_service.py     # Native PDF satır/nokta notu
 │   ├── scraper_service.py      # URL OpenGraph ve meta veri çekici
-│   ├── article_extraction_service.py # Trafilatura ile zengin tam metin çıkarıcı
+│   ├── article_extraction_service.py # Zengin HTML / PDF tam metin çıkarıcı
+│   ├── paper_market_service.py # OpenAlex API ile akademik makale arama
 │   └── schemas.py              # Pydantic modelleri
 │
 ├── controllers/                # UI-agnostik denetleyiciler (Hata yakalama, sinyal fırlatma)
@@ -61,7 +65,8 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   ├── category_controller.py
 │   ├── tag_controller.py
 │   ├── highlight_controller.py
-│   └── vocabulary_controller.py
+│   ├── vocabulary_controller.py
+│   └── pdf_note_controller.py
 │
 ├── ui_qml/                     # Python ↔ QML köprü katmanı
 │   ├── bridge.py               # QmlBridge (State, filtreler, Q_PROPERTY/Slot'lar)
@@ -83,12 +88,15 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   │   ├── AppIconButton.qml
 │   │   ├── AppBadge.qml
 │   │   ├── AppSearchBar.qml
-│   │   └── AppFilterChip.qml
+│   │   ├── AppFilterChip.qml
+│   │   └── PdfPageArea.qml     # Native PDF render + highlight/not overlay (Qt PdfMultiPageView temelli)
 │   └── views/                  # Sayfa görünümleri
 │       ├── ShowcaseView.qml    # Bağlantı vitrini
-│       ├── ReaderView.qml      # Dikkat dağıtmayan okuyucu
+│       ├── ReaderView.qml      # Dikkat dağıtmayan okuyucu (HTML makaleler)
+│       ├── PdfReaderView.qml   # Native PDF okuyucu (yerel PDF kaynaklar)
 │       ├── KnowledgePoolView.qml # Bilgi havuzu (alıntılar/kelimeler)
-│       └── SettingsView.qml    # Kategori ve etiket yönetimi
+│       ├── SettingsView.qml    # Kategori ve etiket yönetimi
+│       └── ArticleMarketView.qml # Makale Market (OpenAlex konu araması)
 │
 ├── migrations/                 # Alembic veritabanı migrasyonları
 └── tests/                      # Pytest test paketi

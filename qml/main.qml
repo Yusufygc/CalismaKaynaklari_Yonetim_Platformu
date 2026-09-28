@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Window
 import "theme"
 import "components"
 import "views"
@@ -25,6 +26,12 @@ ApplicationWindow {
 
     Component.onCompleted: {
         Theme.isDark = bridge.isDarkTheme
+
+        // Pencere konumu hic kaydedilmiyor (QSettings yok) -- her acilis sifirdan.
+        // Qt/Windows'un varsayilan yerlestirmesi coklu-ekran/DPI degisikliginde
+        // ekran disina dusebiliyor; acilista birincil ekrana gore elle ortala.
+        x = Screen.width / 2 - width / 2
+        y = Screen.height / 2 - height / 2
     }
 
     // Klavye Kısayolları
@@ -54,11 +61,8 @@ ApplicationWindow {
                 onNavSelected: function(viewName) {
                     bridge.setCurrentView(viewName)
                 }
-                onStatusFilterSelected: function(statusKey) {
+                onFilterSelected: function(statusKey, isFav) {
                     showcaseView.selectedStatus = statusKey
-                    showcaseView.updateFilters()
-                }
-                onFavoriteFilterSelected: function(isFav) {
                     showcaseView.favoriteOnly = isFav
                     showcaseView.updateFilters()
                 }
@@ -98,6 +102,20 @@ ApplicationWindow {
                     id: settingsView
                     anchors.fill: parent
                     visible: bridge.currentView === "settings"
+                }
+
+                // Sayfa 5: Makale Market
+                ArticleMarketView {
+                    id: articleMarketView
+                    anchors.fill: parent
+                    visible: bridge.currentView === "articleMarket"
+                }
+
+                // Sayfa 6: Native PDF Okuyucu
+                PdfReaderView {
+                    id: pdfReaderView
+                    anchors.fill: parent
+                    visible: bridge.currentView === "pdfReader"
                 }
             }
         }
@@ -177,6 +195,52 @@ ApplicationWindow {
             target: bridge
             function onNotificationEmitted(type, msg) {
                 toast.show(type, msg)
+            }
+        }
+
+        // 6. Yerel PDF Sürükle-Bırak
+        DropArea {
+            id: pdfDropArea
+            anchors.fill: parent
+            onDropped: function(drop) {
+                if (!drop.hasUrls) return
+                for (var i = 0; i < drop.urls.length; i++) {
+                    var u = drop.urls[i].toString()
+                    if (u.toLowerCase().endsWith(".pdf")) {
+                        bridge.importLocalPdf(u)
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            visible: pdfDropArea.containsDrag
+            z: 1000
+            color: Theme.accentSubtle
+            opacity: 0.94
+            border.width: 2
+            border.color: Theme.accent
+
+            Column {
+                anchors.centerIn: parent
+                spacing: 12
+
+                AppIcon {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    name: "fa5s.file-pdf"
+                    size: 40
+                    color: Theme.accent
+                }
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "PDF'i buraya bırak"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontLg
+                    font.weight: Font.DemiBold
+                    color: Theme.accentText
+                }
             }
         }
     }

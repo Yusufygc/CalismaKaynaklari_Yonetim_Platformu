@@ -8,6 +8,7 @@ Item {
 
     property int cardWidth: 280
     property int cardHeight: 290
+    property bool isSimple: false
 
     // Modelden gelen property'ler
     property int resourceId: model ? model.id : 0
@@ -49,14 +50,120 @@ Item {
         Behavior on color { ColorAnimation { duration: Theme.animFast } }
         Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
+        // Sade modda sol kenar kategori şeridi
+        Rectangle {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: 3
+            color: root.categoryColor
+            visible: root.isSimple
+        }
+
         Column {
             anchors.fill: parent
             spacing: 0
 
-            // 1. Üst Görsel / Banner Alanı
+            // 1a. Sade Mod Üst Çubuğu (Kategori + Domain + Pin/Favori)
+            Item {
+                width: parent.width
+                height: 34
+                visible: root.isSimple
+
+                Row {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 6
+
+                    AppBadge {
+                        visible: root.categoryName !== ""
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.categoryName
+                        dotColor: root.categoryColor
+                        badgeColor: Theme.badgeOverlay
+                        borderColor: Qt.alpha(root.categoryColor, 0.4)
+                        textColor: Theme.textPrimary
+                    }
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.domain ? root.domain : "Yerel Not"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontXs
+                        color: Theme.accentText
+                        elide: Text.ElideRight
+                        width: Math.min(implicitWidth, 120)
+                    }
+                }
+
+                Row {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 4
+
+                    // Pin Butonu
+                    Rectangle {
+                        width: 24
+                        height: 24
+                        radius: Theme.radiusPill
+                        color: root.isPinned ? Qt.alpha(Theme.pin, 0.25) : Theme.backdropSubtle
+                        border.width: 1
+                        border.color: root.isPinned ? Theme.pin : "transparent"
+
+                        AppIcon {
+                            anchors.centerIn: parent
+                            name: "fa5s.thumbtack"
+                            size: 10
+                            color: root.isPinned ? Theme.pin : Theme.textSecondary
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                mouse.accepted = true
+                                root.pinToggled()
+                            }
+                        }
+                    }
+
+                    // Favori Butonu
+                    Rectangle {
+                        width: 24
+                        height: 24
+                        radius: Theme.radiusPill
+                        color: root.isFavorite ? Qt.alpha(Theme.favorite, 0.25) : Theme.backdropSubtle
+                        border.width: 1
+                        border.color: root.isFavorite ? Theme.favorite : "transparent"
+
+                        AppIcon {
+                            anchors.centerIn: parent
+                            name: "fa5s.heart"
+                            size: 11
+                            color: root.isFavorite ? Theme.favorite : Theme.textSecondary
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                mouse.accepted = true
+                                root.favoriteToggled()
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 1b. Üst Görsel / Banner Alanı (Zengin Görünüm)
             Item {
                 width: parent.width
                 height: 120
+                visible: !root.isSimple
                 clip: true
 
                 // Küçük Resim Varsa
@@ -178,11 +285,14 @@ Item {
                 width: parent.width
                 anchors.leftMargin: 12
                 anchors.rightMargin: 12
-                padding: 12
-                spacing: 6
+                padding: root.isSimple ? 10 : 12
+                topPadding: root.isSimple ? 2 : 12
+                bottomPadding: root.isSimple ? 2 : 12
+                spacing: root.isSimple ? 3 : 6
 
-                // Alan Adı ve Okuma Süresi
+                // Alan Adı ve Okuma Süresi (Sadece Zengin Görünümde)
                 Row {
+                    visible: !root.isSimple
                     spacing: 6
                     width: parent.width
 
@@ -220,10 +330,10 @@ Item {
                     width: parent.width
                     text: root.title
                     font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontBase + 1
+                    font.pixelSize: root.isSimple ? Theme.fontBase : (Theme.fontBase + 1)
                     font.weight: Font.DemiBold
                     color: Theme.textPrimary
-                    lineHeight: 1.25
+                    lineHeight: root.isSimple ? 1.15 : 1.25
                     maximumLineCount: 2
                     wrapMode: Text.Wrap
                     elide: Text.ElideRight
@@ -238,7 +348,7 @@ Item {
                     font.pixelSize: Theme.fontXs
                     color: Theme.textSecondary
                     lineHeight: 1.2
-                    maximumLineCount: 2
+                    maximumLineCount: root.isSimple ? 1 : 2
                     wrapMode: Text.Wrap
                     elide: Text.ElideRight
                 }
@@ -249,7 +359,7 @@ Item {
             // 3. Kart Alt Barı (Durum ve Etiketler)
             Item {
                 width: parent.width
-                height: 38
+                height: root.isSimple ? 32 : 38
 
                 Rectangle {
                     anchors.top: parent.top
@@ -302,6 +412,16 @@ Item {
                         badgeColor: Theme.bgHover
                         borderColor: Theme.borderSubtle
                         textColor: Theme.textMuted
+                    }
+
+                    // Okuma süresi (Sade modda alt barda)
+                    Text {
+                        visible: root.isSimple && root.readingMinutes > 0
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "• " + root.readingMinutes + " dk"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontXs
+                        color: Theme.textMuted
                     }
                 }
             }

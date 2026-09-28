@@ -12,6 +12,7 @@ Rectangle {
     signal navSelected(string viewName)
     signal statusFilterSelected(string statusName)
     signal favoriteFilterSelected(bool isFav)
+    signal filterSelected(string statusName, bool isFav)
 
     width: isCollapsed ? 64 : 230
     color: Theme.bgSidebar
@@ -84,6 +85,7 @@ Rectangle {
                 iconName: "fa5s.chevron-left"
                 iconSize: 11
                 tooltip: "Menüyü Daralt"
+                tooltipPosition: "bottom"
                 onClicked: root.isCollapsed = true
             }
 
@@ -106,6 +108,7 @@ Rectangle {
                 iconName: "fa5s.chevron-right"
                 iconSize: 11
                 tooltip: "Menüyü Genişlet"
+                tooltipPosition: "bottom"
                 onClicked: root.isCollapsed = false
             }
         }
@@ -147,6 +150,9 @@ Rectangle {
                     onClicked: {
                         root.activeStatusFilter = "ALL"
                         root.isFavoriteFilter = false
+                        root.filterSelected("ALL", false)
+                        root.statusFilterSelected("ALL")
+                        root.favoriteFilterSelected(false)
                         root.navSelected("showcase")
                     }
                 }
@@ -159,6 +165,15 @@ Rectangle {
                     badgeText: (bridge.highlights.length + bridge.vocabulary.length).toString()
                     isActive: root.activeNav === "knowledge"
                     onClicked: root.navSelected("knowledge")
+                }
+
+                // Nav: Makale Market
+                SidebarItem {
+                    isCollapsed: root.isCollapsed
+                    iconName: "fa5s.search"
+                    title: "Makale Market"
+                    isActive: root.activeNav === "articleMarket"
+                    onClicked: root.navSelected("articleMarket")
                 }
 
                 // Nav: Ayarlar
@@ -206,8 +221,10 @@ Rectangle {
                     onClicked: {
                         root.activeStatusFilter = "INBOX"
                         root.isFavoriteFilter = false
-                        root.navSelected("showcase")
+                        root.filterSelected("INBOX", false)
                         root.statusFilterSelected("INBOX")
+                        root.favoriteFilterSelected(false)
+                        root.navSelected("showcase")
                     }
                 }
 
@@ -221,8 +238,10 @@ Rectangle {
                     onClicked: {
                         root.activeStatusFilter = "PLANNED"
                         root.isFavoriteFilter = false
-                        root.navSelected("showcase")
+                        root.filterSelected("PLANNED", false)
                         root.statusFilterSelected("PLANNED")
+                        root.favoriteFilterSelected(false)
+                        root.navSelected("showcase")
                     }
                 }
 
@@ -236,8 +255,10 @@ Rectangle {
                     onClicked: {
                         root.activeStatusFilter = "IN_PROGRESS"
                         root.isFavoriteFilter = false
-                        root.navSelected("showcase")
+                        root.filterSelected("IN_PROGRESS", false)
                         root.statusFilterSelected("IN_PROGRESS")
+                        root.favoriteFilterSelected(false)
+                        root.navSelected("showcase")
                     }
                 }
 
@@ -251,8 +272,10 @@ Rectangle {
                     onClicked: {
                         root.activeStatusFilter = "COMPLETED"
                         root.isFavoriteFilter = false
-                        root.navSelected("showcase")
+                        root.filterSelected("COMPLETED", false)
                         root.statusFilterSelected("COMPLETED")
+                        root.favoriteFilterSelected(false)
+                        root.navSelected("showcase")
                     }
                 }
 
@@ -279,8 +302,10 @@ Rectangle {
                     onClicked: {
                         root.isFavoriteFilter = true
                         root.activeStatusFilter = "ALL"
-                        root.navSelected("showcase")
+                        root.filterSelected("ALL", true)
+                        root.statusFilterSelected("ALL")
                         root.favoriteFilterSelected(true)
+                        root.navSelected("showcase")
                     }
                 }
             }

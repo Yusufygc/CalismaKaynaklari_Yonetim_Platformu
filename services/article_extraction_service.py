@@ -1,5 +1,8 @@
 import html
 from io import BytesIO
+from pathlib import Path
+from urllib.parse import unquote, urlparse
+from urllib.request import url2pathname
 
 import requests
 import trafilatura
@@ -56,7 +59,13 @@ class ArticleExtractionService:
         `output_format="html"`). URL dogrudan bir PDF'e isaret ediyorsa
         (dosya imzasi veya `.pdf` uzantisi) pypdf ile sayfa-numarali HTML
         uretilir (bkz. `_extract_pdf_html`).
+
+        `file://` URI'leri (yerel PDF ice aktarimlari) icin ag/SSRF mantigina
+        hic girilmez -- diskten dogrudan okunur (bkz. `_extract_local_pdf`).
         """
+        if urlparse(url).scheme == "file":
+            return self._extract_local_pdf(url)
+
         if is_blocked_host(url):
             log.warning("URL ic ag/loopback adresine cozumlendigi icin reddedildi: %s", url)
             return None
@@ -78,6 +87,16 @@ class ArticleExtractionService:
         except Exception as exc:
             log.warning("Tam metin cikarilamadi: %s - %s", url, exc)
             return None
+
+    def _extract_local_pdf(self, file_url: str) -> str | None:
+        """Yerel diskteki bir PDF'i okur (ag istegi yok, SSRF kontrolu gerekmez)."""
+        try:
+            local_path = Path(url2pathname(unquote(urlparse(file_url).path)))
+            content = local_path.read_bytes()
+        except OSError as exc:
+            log.warning("Yerel PDF okunamadi: %s - %s", file_url, exc)
+            return None
+        return _extract_pdf_html(content)
 
     def _safe_get(self, url: str) -> requests.Response | None:
         """Her yonlendirme adiminda hedefi is_blocked_host ile tekrar dogrular (SSRF)."""

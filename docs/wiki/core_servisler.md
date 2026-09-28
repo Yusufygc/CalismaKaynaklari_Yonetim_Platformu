@@ -62,7 +62,7 @@ Aynı şekil: `get_by_resource(resource_id)`, `get_all_with_resource()`.
 | `update_resource(id, data: dict)` | Sadece dict'te bulunan anahtarları günceller. URL validasyonu. `tag_names` varsa etiket ilişkilerini tam senkronize eder; boş liste tüm etiketleri kaldırır. `status` artık tamamen manuel (2026-07-06'da `progress` alanı ve ona bağlı otomatik status türetme kaldırıldı). `commit()`. |
 | `delete_resource(id)` | Bulunamazsa `ResourceNotFoundError`. Cascade ile etiket linkleri de silinir. |
 
-**URL Validasyonu (`_validate_url`):** `^https?://` zorunlu — scheme'siz URL'ler reddedilir. Ayrı `_URL_RE` regex ile host+path doğrulanır.
+**URL Validasyonu (`_validate_url`):** `^https?://` zorunlu — scheme'siz URL'ler reddedilir. Ayrı `_URL_RE` regex ile host+path doğrulanır. **İstisna (2026-09-28):** `file://` şemalı URI'ler (yerel PDF içe aktarımı, bkz. aşağıda) `_URL_RE`'den muaf — sadece boş olmayan bir path yeterli, host/domain formatı aranmaz (dosya yolları regex ile host gibi doğrulanamaz).
 
 ### ScraperService — `services/scraper_service.py`
 
@@ -104,16 +104,28 @@ Aynı şekil: `get_by_resource(resource_id)`, `get_all_with_resource()`.
 ### VocabularyService — `services/vocabulary_service.py` (2026-07-06)
 Aynı desen: `create_vocabulary(resource_id, word, translation, context_sentence=None)` (`word`/`translation` boşsa `ValidationError`), `get_by_resource`/`get_all`, `delete_vocabulary`. `mastery_level` bu turda UI'da yok, model default 0'da kalır.
 
-### ArticleExtractionService — `services/article_extraction_service.py` (2026-07-06)
-`ScraperService`'ten bilerek ayrı: `ScraperService` hafif og:meta scraping yapar, bu servis `trafilatura` ile tüm sayfayı indirip boilerplate-temizleme sezgiseli çalıştırır — farklı sorumluluk/hata modu (`None` döner, dict fallback değil). `extract_full_text(url) -> str | None` — SSRF koruması için `core/net_utils.py::is_blocked_host()` paylaşılır (bkz. aşağıda).
+### ArticleExtractionService — `services/article_extraction_service.py` (2026-07-06, PDF desteği + birleşik indirme 2026-09-28)
+`ScraperService`'ten bilerek ayrı: `ScraperService` hafif og:meta scraping yapar, bu servis makalenin gövde metnini HTML olarak çıkarır — farklı sorumluluk/hata modu (`None` döner, dict fallback değil). `extract_full_text(url) -> str | None`.
 
-**İndirme timeout'u (2026-09-28):** `trafilatura.fetch_url(url)` öntanımlı olarak kendi `settings.cfg`'sindeki `DOWNLOAD_TIMEOUT=30` değerini kullanıyordu (proje genelinde belgesizdi). Modül seviyesinde `_build_config()` ile `DOWNLOAD_TIMEOUT=10`'a çekilen bir `ConfigParser` her çağrıya `config=` olarak geçiliyor — `ScraperService._TIMEOUT_SECONDS=5` ile aynı disiplin, tam sayfa indirmesi için biraz daha toleranslı.
+**PDF desteği (2026-09-28):** URL doğrudan bir PDF'e işaret ediyorsa (`%PDF-` dosya imzası veya `.pdf` uzantısı) `pypdf` ile sayfa-numaralı HTML üretilir (`<h3>Sayfa N</h3><p>...</p>`) — arXiv gibi kaynaklarda artık sadece HTML özet sayfası değil, gerçek tam metin okunabiliyor. Gerçek arXiv PDF'iyle canlı doğrulandı (15 sayfa, 40073 karakter).
 
-**Bilinen/kapsam dışı risk:** `trafilatura.fetch_url` kendi içinde `urllib3 Retry(redirect=...)` ile redirect takip ediyor; `ScraperService._safe_get`'teki gibi her hop'ta `is_blocked_host` tekrar çağrılmıyor — aynı TOCTOU/SSRF riski burada da var, henüz düzeltilmedi (ayrı bulgu olarak backlog'da).
+**Birleşik indirme + SSRF-redirect düzeltmesi (2026-09-28):** Önceden `trafilatura.fetch_url()` kendi içinde `urllib3 Retry(redirect=...)` ile redirect takip ediyordu ve her hop'ta `is_blocked_host` tekrar çağrılmıyordu (TOCTOU/SSRF riski, backlog'daydı). Artık tek bir `requests`-tabanlı indirme adımı (`core/net_utils.py::safe_http_get` — `ScraperService`'teki `_safe_get` ile aynı, paylaşılan yardımcıya çıkarıldı) her yönlendirme adımında `is_blocked_host`'u tekrar çalıştırıyor; PDF binary içerik de HTML da aynı bu tek adımdan geçiyor, sonra içerik türüne göre `pypdf` veya `trafilatura.extract(output_format="html")`'e dallanıyor.
 
-**Paylaşılan SSRF koruması — `core/net_utils.py::is_blocked_host(url)` (2026-07-06):** Önceden `ScraperService._is_blocked_host` olarak tek yerde yaşıyordu; `ArticleExtractionService` de aynı korumaya ihtiyaç duyunca `core/net_utils.py`'a çıkarıldı — iki serviste ayrı ayrı tutulup zamanla birbirinden sapması (güvenlik-kritik bir kontrolde) riskini önler. `ScraperService` ve `ThumbnailWorker`'ın (`ui/components/url_rich_card.py`) `_safe_get` metodları da bunu redirect hop başına kullanır.
+**Paylaşılan SSRF koruması — `core/net_utils.py::is_blocked_host(url)` + `safe_http_get(...)` (2026-07-06, 2026-09-28 genişletildi):** `ScraperService` ve `ArticleExtractionService`'in kopyalanmış redirect-güvenli indirme döngüleri DRY gereği `core/net_utils.py::safe_http_get`'te birleştirildi.
 
-**Test kapsamı (2026-09-28):** Bu dosya güvenlik-kritik olmasına rağmen sadece scraper/extraction testleri üzerinden dolaylı test ediliyordu (denetimde bulundu) — `tests/test_core/test_net_utils.py` eklendi (13 test): public IPv4/IPv6 izin, loopback/private (RFC1918)/link-local/reserved/multicast/IPv6-loopback blok, DNS rebinding senaryosu (dönen adreslerden biri bile iç ağsa blok), DNS çözümleme hatası, hostname'siz URL.
+**Yerel PDF desteği (2026-09-28):** `extract_full_text(url)` çağrılan `url` bir `file://` URI'siyse (`urlparse(url).scheme == "file"`) ağ/SSRF mantığına hiç girilmez — `is_blocked_host` zaten hostname'siz bir `file://` URI'yi otomatik bloklu sayar, bu yüzden dallanma fonksiyonun en başında. `_extract_local_pdf()` diskten doğrudan okuyup aynı `_extract_pdf_html()` yardımcısını kullanır (sıfır yeni PDF-parse kodu). Bu, sürükle-bırak ile içe aktarılan yerel PDF'lerin (bkz. `ui_qml/bridge.py::importLocalPdf`, [[qml_arayuz]]) tam metnini çıkarmak için kullanılıyor.
+
+**Test kapsamı:** `tests/test_core/test_net_utils.py` (SSRF koruması, 13 test), `tests/test_services/test_article_extraction_service.py` (HTML/PDF çıkarım, redirect takibi, SSRF blok, 9+ test).
+
+### PaperMarketService — `services/paper_market_service.py` (2026-09-28)
+Konu bazlı akademik makale araması. [OpenAlex Works API](https://api.openalex.org) — ücretsiz, API key yok. Sabit/güvenilir bir host'a sorgu atıldığı için `is_blocked_host` SSRF kontrolüne gerek yok (kullanıcı girdisi arama metni, URL değil). `search(topic) -> {"recent": [...], "popular": [...], "cited": [...]}` — üç ayrı sıralama (`publication_date:desc` / relevance / `cited_by_count:desc`), her biri kendi try/except'inde (biri başarısız olursa diğerleri etkilenmez). `abstract_inverted_index` (OpenAlex'in kelime→pozisyon ters-indeks formatı) düz metne çevrilir. URL seçimi: `pdf_url` → `landing_page_url` → `doi` → hiçbiri yoksa sonuç elenir (kaydedilemeyecek bir sonucu göstermenin anlamı yok). Anonim havuzda 429 (rate limit) canlı testte gözlendi — bir kez kısa bekleyip yeniden dener.
+
+`workers/market_search_worker.py::MarketSearchWorker` ile arka planda (`QThreadPool`) çalıştırılır, `ui_qml/bridge.py::searchArticles`/`saveMarketResult`/`marketResults` üzerinden QML'e bağlanır — bkz. [[qml_arayuz]].
+
+### PdfNoteService — `services/pdf_note_service.py` (2026-09-29)
+Native PDF okuyucudaki nokta-bazlı margin notları (`create_note`, `update_note`, `get_by_resource`, `delete_note`) — `HighlightService`'in üçlü katman deseninin (repo/service/controller) birebir kopyası, yeni `models.PdfNote` için. `Highlight`'tan farkı: metin aralığı değil `(page, x, y)` tek nokta + serbest metin tutar. `ui_qml/bridge.py::addPdfNote`/`updatePdfNote`/`deletePdfNote` üzerinden QML'e bağlanır — bkz. [[qml_arayuz]].
+
+**PDF highlight geometrisi — QML kısıtı (2026-09-29, canlı testte keşfedildi):** `QPdfDocument.getSelection()`/`getSelectionAtIndex()` (döndürdüğü `QPdfSelection` degeri) QML script'inden çağrılamıyor (`Unknown method return type: QPdfSelection`). Çözüm: `ui_qml/bridge.py::_load_pdf_document()` + `_highlight_geometry()` bu işlemi Python'da yapıp düz sayı listesi (`boundsPolygons`, `boundingRect`) olarak `_serialize_resource()` üzerinden QML'e gönderiyor. Ayrıca QML'de `Repeater { delegate: ShapePath {...} }` de hata veriyordu (`ShapePath` bir `Item` değil) — `Instantiator` kullanıldı. Bu iki bulgu ileride PDF-render tarafında yeni bir şey eklenirken tekrar karşılaşılabilir, not düşüldü.
 
 ---
 

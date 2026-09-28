@@ -39,6 +39,13 @@ _PLATFORM_TAGS = {
 
 
 def _validate_url(url: str) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme == "file":
+        # Yerel PDF ice aktarimi: host/domain formati gecersiz, sadece bos
+        # olmayan bir dosya yolu yeterli.
+        if not parsed.path:
+            raise InvalidURLError(f"Gecersiz URL formati: {url!r}")
+        return
     if not _URL_RE.match(url):
         raise InvalidURLError(f"Gecersiz URL formati: {url!r}")
 
@@ -115,12 +122,32 @@ class ResourceService:
         return self._resource_repo.get_favorites()
 
     def query_resources(self, filters: dict) -> list[Resource]:
+        statuses = filters.get("statuses")
+        if statuses is None and "status" in filters:
+            st = filters.get("status")
+            if st is not None:
+                statuses = [st] if not isinstance(st, (list, set, tuple)) else list(st)
+
+        tag_ids = filters.get("tag_ids")
+        if tag_ids is None and "tag_id" in filters:
+            tid = filters.get("tag_id")
+            if tid is not None:
+                tag_ids = [tid] if not isinstance(tid, (list, set, tuple)) else list(tid)
+
+        priorities = filters.get("priorities")
+        if priorities is None and "priority" in filters:
+            pr = filters.get("priority")
+            if pr is not None:
+                priorities = [pr] if not isinstance(pr, (list, set, tuple)) else list(pr)
+
+        favorites_only = bool(filters.get("favorites_only", filters.get("is_favorite", False)))
+
         return self._resource_repo.query_filtered(
-            statuses=filters.get("statuses"),
+            statuses=statuses,
             category_id=filters.get("category_id"),
-            tag_ids=filters.get("tag_ids"),
-            priorities=filters.get("priorities"),
-            favorites_only=bool(filters.get("favorites_only", False)),
+            tag_ids=tag_ids,
+            priorities=priorities,
+            favorites_only=favorites_only,
             urls_only=bool(filters.get("urls_only", False)),
             keyword=filters.get("keyword"),
         )

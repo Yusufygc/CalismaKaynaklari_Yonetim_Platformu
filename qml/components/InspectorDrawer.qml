@@ -110,6 +110,7 @@ Rectangle {
                     isActive: Boolean(root.resource && root.resource.isPinned)
                     iconColor: (root.resource && root.resource.isPinned) ? Theme.pin : Theme.textSecondary
                     tooltip: "Sabitle"
+                    tooltipPosition: "bottom"
                     onClicked: {
                         if (root.resource) bridge.togglePin(root.resource.id)
                     }
@@ -121,6 +122,7 @@ Rectangle {
                     isActive: Boolean(root.resource && root.resource.isFavorite)
                     iconColor: (root.resource && root.resource.isFavorite) ? Theme.favorite : Theme.textSecondary
                     tooltip: (root.resource && root.resource.isFavorite) ? "Favorilerden Çıkar" : "Favorilere Ekle"
+                    tooltipPosition: "bottom"
                     onClicked: {
                         if (root.resource) bridge.toggleFavorite(root.resource.id)
                     }
@@ -130,6 +132,7 @@ Rectangle {
                     iconName: "fa5s.times"
                     iconSize: 14
                     tooltip: "Kapat (Esc)"
+                    tooltipPosition: "bottom"
                     onClicked: {
                         root.confirmDelete = false
                         bridge.closeDrawer()

@@ -24,6 +24,33 @@ def test_create_highlight_persists_fields(session):
     assert highlight.color == "#FDE68A"
 
 
+def test_create_highlight_persists_pdf_position(session):
+    resource = _make_resource(session)
+
+    highlight = HighlightService(session).create_highlight(
+        resource.id, "pdf alintisi", color="#EAB308", page=3, start_index=120, length=45
+    )
+
+    assert highlight.page_number == 3
+    assert highlight.start_index == 120
+    assert highlight.length == 45
+
+
+def test_update_highlight_color_changes_color(session):
+    resource = _make_resource(session)
+    highlight = HighlightService(session).create_highlight(resource.id, "renk degisecek", color="#EAB308")
+
+    updated = HighlightService(session).update_highlight_color(highlight.id, "#22C55E")
+
+    assert updated.color == "#22C55E"
+    assert session.get(Highlight, highlight.id).color == "#22C55E"
+
+
+def test_update_highlight_color_not_found(session):
+    with pytest.raises(ResourceNotFoundError):
+        HighlightService(session).update_highlight_color(999, "#22C55E")
+
+
 def test_create_highlight_rejects_empty_content(session):
     resource = _make_resource(session)
 

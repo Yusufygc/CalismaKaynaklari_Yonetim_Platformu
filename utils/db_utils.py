@@ -15,7 +15,11 @@ from core.paths import resource_path
 engine = create_engine(
     settings.DATABASE_URL,
     connect_args={"check_same_thread": False},  # SQLite icin gerekli
-    echo=(settings.APP_ENV == "development"),
+    # echo=True kullanilmiyor -- SQLAlchemy bu modda kendi stdout handler'ini
+    # kurup konsolu SQL sorgu spam'iyle dolduruyordu. SQL loglama
+    # core/logger.py::_configure_sqlalchemy_logging() uzerinden, sadece
+    # dosyaya (konsola degil) yazacak sekilde ayri yonetiliyor.
+    echo=False,
 )
 
 

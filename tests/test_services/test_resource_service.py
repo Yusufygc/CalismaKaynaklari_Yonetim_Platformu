@@ -60,6 +60,17 @@ def test_update_resource_with_empty_tag_list_clears_tags(session):
     assert updated.tags == []
 
 
+def test_add_resource_accepts_local_file_url(session, tmp_path):
+    pdf_path = tmp_path / "yerel.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4")
+
+    resource = ResourceService(session).add_new_resource(
+        ResourceCreateSchema(title="Yerel PDF", url=pdf_path.as_uri())
+    )
+
+    assert resource.url == pdf_path.as_uri()
+
+
 def test_add_resource_merges_url_tag_with_manual_tags(session):
     resource = ResourceService(session).add_new_resource(
         ResourceCreateSchema(
@@ -195,3 +206,27 @@ def test_query_resources_orders_pinned_first(session):
     results = service.query_resources({})
     assert results[0].id == old.id  # pinned > created_at
     assert results[1].id == new.id
+
+
+def test_query_resources_supports_scalar_and_alias_filter_keys(session):
+    service = ResourceService(session)
+    r1 = service.add_new_resource(
+        ResourceCreateSchema(title="Inbox Resource", status=ResourceStatus.INBOX, priority=1)
+    )
+    r2 = service.add_new_resource(
+        ResourceCreateSchema(title="Done Resource", status=ResourceStatus.COMPLETED, priority=2)
+    )
+    service.toggle_favorite(r1.id)
+
+    # Test single status alias
+    res_status = service.query_resources({"status": ResourceStatus.INBOX})
+    assert [r.id for r in res_status] == [r1.id]
+
+    # Test is_favorite alias
+    res_fav = service.query_resources({"is_favorite": True})
+    assert [r.id for r in res_fav] == [r1.id]
+
+    # Test single priority alias
+    res_pri = service.query_resources({"priority": 2})
+    assert [r.id for r in res_pri] == [r2.id]
+
