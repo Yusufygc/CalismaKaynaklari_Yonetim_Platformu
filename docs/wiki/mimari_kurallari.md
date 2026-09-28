@@ -31,6 +31,7 @@
 - **Window (compose):** `MainWindow` yalnızca alt parçaları üretir ve `QSplitter` ile yerleştirir. İş mantığı yok.
 - **Workspace (page dispatcher):** `ContentWorkspace` çoklu sayfa + filter dispatcher (sözlük tabanlı, `if/elif` zinciri yok). `apply_filter`/`refresh` public API.
 - **Flow (coordinator):** `ResourceFlow` UI bileşenleri ile `MainController` arasındaki yaşam döngüsü sinyallerini bağlar — widget değil, koordinatör.
+- **Controller (facade + delegasyon, 2026-09-28):** `MainController` artik is mantigi tasimiyor — 25 metodluk god-object'ti (SRP ihlali), alan bazli 5 alt-controller'a bolundu: `ResourceController`, `CategoryController`, `TagController`, `HighlightController`, `VocabularyController` (hepsi `ui/controllers/`). Her biri kendi Service'ini enjekte eder + UI sinirindaki `try/except → log + event_bus.error_occurred.emit` desenini tasir. `MainController` sadece bunlari `__init__`'te kurup ayni public metod imzalariyla delege eden ince bir facade — `main.py`, `ResourceFlow`, `ContentWorkspace`, `SettingsView`, `KnowledgePoolView` gibi tuketiciler tek bir `controller` nesnesi enjekte etmeye devam eder, hicbiri degismedi (public API birebir korundu, testler degismeden gecti).
 - **Component sayfaları:** `DetailView` gibi stack koordinatörlerinde her sayfa bağımsız `QWidget` bileşeni olmalıdır (`EmptyDetail`, `ResourceDetailPanel`, `ResourceForm`). View koordinatörü alt sinyalleri dışarıya **aynı isimle relay** eder; dış API kırılmaz.
 
 ## Konfigürasyon, Hata, Log

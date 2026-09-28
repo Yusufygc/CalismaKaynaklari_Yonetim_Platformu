@@ -4,6 +4,16 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-28] REVIEW | MainController god-object bolundu (5 alt-controller)
+
+Bulgu #5: `MainController` 25 metod tasiyordu (Kaynak+Kategori+Etiket+Alinti+Kelime, 5 farkli alan tek sinifta) — SRP ihlali. Yeni dosyalar: `ui/controllers/resource_controller.py::ResourceController`, `category_controller.py::CategoryController`, `tag_controller.py::TagController`, `highlight_controller.py::HighlightController`, `vocabulary_controller.py::VocabularyController` — her biri kendi Service'ini kurar, ayni "try/except Exception: log.error + event_bus.error_occurred.emit" UI-siniri desenini (bkz. onceki REVIEW girdisi, bu desen kasitli/dogru bulunmustu) tasir.
+
+`MainController` artik sadece `__init__`'te 5 alt-controller'i kurup, ayni 25 public metod imzasiyla delege eden bir facade. **Bilinclii tasarim karari:** her view/flow'a ayri ayri 5 controller enjekte etmek yerine (buyuk blast radius: `main.py`, `ResourceFlow`, `ContentWorkspace`, `SettingsView`, `KnowledgePoolView` — 5+ dosya degisirdi) mevcut tek-`controller`-nesnesi DI deseni korundu, facade sadece delege eder, business logic tasimaz. Sonuc: **hicbir baska dosya degismedi**, `test_main_controller.py`/`test_resource_flow.py` degismeden 118 test yesil kaldi, uygulama offscreen modda calistirilip sema migration + kategori/etiket yuklemesi dogrulandi (crash yok).
+
+Detay: [[mimari_kurallari]].
+
+---
+
 ## [2026-09-28] REVIEW | ThumbnailWorker: SSRF korumasi yok + TLS dogrulamasi kapaliydi (kritik)
 
 `except Exception` denetimi sirasinda tesadufen bulunan, plandaki listeye dahil olmayan bulgu: `ui/components/url_rich_card.py::ThumbnailWorker` (og:image thumbnail indirme) `ScraperService`'ten tamamen bagimsiz, ayri bir HTTP istemcisi (`urllib.request`) kullaniyordu ve:

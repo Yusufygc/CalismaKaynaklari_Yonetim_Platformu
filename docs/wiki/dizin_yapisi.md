@@ -43,7 +43,13 @@ pkm_app/
 │
 ├── ui/
 │   ├── controllers/
-│   │   └── main_controller.py
+│   │   ├── main_controller.py       (facade, delege eder)
+│   │   ├── resource_controller.py
+│   │   ├── category_controller.py
+│   │   ├── tag_controller.py
+│   │   ├── highlight_controller.py
+│   │   ├── vocabulary_controller.py
+│   │   └── resource_flow.py
 │   ├── views/
 │   │   ├── main_window.py
 │   │   ├── grid_view.py
