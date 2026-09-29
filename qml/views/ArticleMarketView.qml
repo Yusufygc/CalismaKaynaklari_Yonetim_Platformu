@@ -318,6 +318,7 @@ Item {
 
                         TextInput {
                             id: topicInput
+                        objectName: "topicInput"
                             anchors.verticalCenter: parent.verticalCenter
                             width: parent.width - 24
                             clip: true

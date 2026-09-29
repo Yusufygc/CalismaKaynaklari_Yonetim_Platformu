@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] FEAT | QML test güvenlik ağı (yükleme, bridge sözleşmesi, gerçek fare akışları)
+
+Denetim bulgusu 8: 7.900 satırlık QML'in otomatik testi yoktu; son oturumdaki hataların (görünmeyen ikon, tıklanmayan "Tekrar dene", çift `anchors.topMargin`) hiçbiri `pytest`'e takılmadı. Yeni `tests/test_qml/test_qml_load.py`: her QML dosyası derlenir, `main.qml` gerçek bridge ile uyarısız açılır, QML'in kullandığı tüm `bridge.<üye>` / `Connections onXyz` adları `QmlBridge` meta-nesnesinde doğrulanır (bölme adımında kırılan çağrıları yakalayacak). Yeni `test_qml_flows.py` + `qml_harness.py`: QTest gerçek fare/klavye ile Market "Tekrar dene" (z-order regresyonu; `z: 1` kaldırılınca düştüğü doğrulandı), toplu seçim/kaydet, kayıtlı arama akışı, Bilgi Havuzu toplu silme + onay, Türkçe arama. `conftest.py`: `QT_QUICK_CONTROLS_STYLE=Basic`. `ArticleMarketView.qml`: `topicInput` objectName. 3 ardışık tam çalıştırma kararlı (394 test).
+
+---
+
 ## [2026-09-30] FIX | UI thread'inde bloklayan IO arka plana alındı
 
 `pdfOutline` (pypdf ile tüm PDF'i UI thread'inde parse ediyordu) → `PdfOutlineWorker` + `bridge.loadPdfOutline` / `pdfOutlines` property'si; `PdfSidePanel.qml` yüklenirken "Anahat yükleniyor...". `importLocalPdf` (büyük PDF'i UI thread'inde kopyalıyordu) → `PdfImportWorker`; artık `void` ve sonuç `pdfImportFinished(bool)` sinyaliyle gelir (`ResourceFormModal` sayaçla kapanır). `LibraryIndex` bridge'de önbelleklendi (`_reload_resources` geçersiz kılar; önceden her arama/kayıt/yenilemede tüm kaynaklar DB'den çekiliyordu); toplu Market kaydında kaynak olayları askıya alınıp tek yenileme yapılıyor (önceden kayıt başına tam yenileme). Gerçek thread havuzu ve gerçek QML ile doğrulandı (modal kapanıyor, anahat yükleniyor). Kapsam dışı: `QPdfDocument.load`. Denetim bulgusu 7. 360 test geçti.

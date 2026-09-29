@@ -9,6 +9,8 @@ from models import Base
 from utils.db_utils import register_sqlite_functions
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# main.py de Basic stilini kullanir; ozellestirilebilir stil olmadan QML uyari basar.
+os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
 
 @pytest.fixture(scope="session")

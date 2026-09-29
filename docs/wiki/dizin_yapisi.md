@@ -114,7 +114,7 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 ├── migrations/                 # Alembic veritabanı migrasyonları
 └── tests/                      # Pytest test paketi
     ├── test_controllers/
-    ├── test_qml/
+    ├── test_qml/               # bridge testleri + QML yükleme/sözleşme (test_qml_load) + gerçek fare akışları (test_qml_flows, qml_harness)
     ├── test_repositories/
     ├── test_services/
     └── test_core/
