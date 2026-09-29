@@ -4,6 +4,94 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] FEAT | Bilgi Havuzu: alıntıları toplu seçip silme
+
+Alıntı kartlarına seçim kutusu, listenin üstüne toplu seçim çubuğu (Tümünü seç / Seçimi temizle / Seçilenleri Sil (N)) ve onay penceresi eklendi. Backend: `HighlightService.delete_highlights` (tek commit, hata olursa geri alınır, olmayan/yinelenen kimlikler atlanır), `HighlightController.delete_highlights`, `MainController` facade, `QmlBridge.deleteHighlights` (tek yenileme, tek toast, açık okuyucu tazelenir). Etiket filtresi/arama/sekme değişince seçim bırakılır (görünmeyen alıntı yanlışlıkla silinmesin). Geçici DB ile QTest gerçek fare akışı doğrulandı (seç, tümünü seç, temizle, vazgeç, onayla). 308 test geçti.
+
+---
+
+## [2026-09-30] FIX | Makale Market: "Tekrar dene" butonu tıklanmıyordu
+
+Boş/hata durumu `Column`ı, sonradan tanımlanan ve tüm alanı kaplayan `ResultsList` `ListView`ının altında kalıyor, tıklamalar ListView tarafından yutuluyordu ("Ara" butonu üst çubukta olduğu için çalışıyordu). `ArticleMarketView.qml`: `Column { z: 1 }`. QTest ile doğrulandı: `z` yokken tıklama 0 arama, `z: 1` ile yeniden arama çalışıp sonuç getiriyor. Aynı desen (kaplayan liste + üstte buton) diğer ekranlarda yok: ShowcaseView boş durumunda GridView görünmez, PdfReaderView hata `Column`ı sayfa alanından sonra tanımlı.
+
+---
+
+## [2026-09-30] FEAT | Makale Market: kayıtlı aramalar ve yeni yayın takibi (saved_searches tablosu)
+
+Yeni `models/saved_search.py::SavedSearch` + Alembic `c4d9a6b1e2f3` (model↔migration farkı yok, downgrade/upgrade doğrulandı), `SavedSearchRepository`, `SavedSearchService`, `SavedSearchController` (+ `MainController` facade, `event_bus.saved_search_changed`), `workers/saved_search_worker.py`. `QmlBridge`: `saveSearch(topic, filters, tag)`, `runSavedSearch(id)` (form alanlarını `savedSearchApplied` ile doldurur, sonuçları "görüldü" işaretler, aramanın koleksiyon etiketini kaydedilen makalelere ekler), `deleteSavedSearch`, `checkSavedSearches()` (Market açılınca; son kontrolü 1 saatten eski aramalar; ağ hatasında sonraki açılışta yeniden denenir), `savedSearches`/`activeSavedSearchId`. `searchArticles` elle aramada kayıtlı arama bağlamını bırakır. QML: "Aramayı kaydet" popup, "Kayıtlı aramalar" çip çubuğu ("N yeni" rozeti, ✕ sil), koleksiyon etiketi ipucu. Geçici DB ile QTest gerçek fare akışı doğrulandı (yaz → Enter → kaydet → rozet → çalıştır → sil). 301 test geçti.
+
+---
+
+## [2026-09-30] FEAT | Makale Market: toplu seçim/kaydet, Sonra oku, BibTeX/CSV dışa aktarım
+
+`PaperCard`: onay kutusu (kütüphanede olanda yok) ve "Sonra oku" butonu. `ArticleMarketView`: sonuç araç çubuğu — Tümünü seç / Seçimi temizle / seçili sayısı / BibTeX / CSV / "Seçilenleri Kaydet (N)"; seçim yeni aramada temizlenir, "daha fazla yükle"de korunur. `QmlBridge`: `saveMarketResults(list)` (tek yenileme, tek bildirim; kütüphanede olanlar ve aynı toplu işlemdeki tekrarlar atlanır — `LibraryIndex.add`), `saveMarketResultForLater` (`okuma-listesi` etiketi), `exportMarketResults(kind, fileUrl, papers)`; `saveMarketResult` ortak `_save_market_papers` üzerinden çalışır. Yeni `services/paper_export_service.py::PaperExportService`: BibTeX (`CitationService` yeniden kullanılır, çakışan anahtarlara a/b eki) ve CSV (Excel için `utf-8-sig`). `_write_export` uzantı/kodlama parametreli hale getirildi. Seçim yoksa dışa aktarım görünen tüm listeyi kapsar. Gerçek fare tıklamasıyla (QTest) onay kutusu/Tümünü seç/toplu kaydet doğrulandı. 283 test geçti.
+
+---
+
+## [2026-09-30] FEAT | Makale Market: keşif (referans/atıf/benzer/yazar) ve kütüphaneden okuma önerileri
+
+`PaperMarketService.related_papers` artık `similar` (`related_to:`) ve `author` (`author.id:`) türlerini de destekler; `PaperResult.author_ids` (yazar adlarıyla aynı sırada), `referenced_work_ids`/`works_by_ids` toplu sorgular, `MarketFilters.author_id` (yalnızca yazar filtresiyle konu boş aranabilir). Yeni `services/reading_suggestion_service.py::ReadingSuggestionService` + `workers/reading_suggestion_worker.py`: kütüphane makalelerinin referanslarını sayıp kütüphanede olmayan ortak referansları (küçük kütüphanede eşik 1, ≥3 makalede 2) atıf sayısıyla sıralar; iki OpenAlex isteği yeter. Mevcut `RelatedPapersWorker` genelleştirildi (yeni worker yazılmadı). `QmlBridge`: `loadDiscovery(kind, openalexId)` + `marketDiscovery`, `searchByAuthor`, `loadLibrarySuggestions` + `marketSuggestions`, `resetMarketResults`; kütüphane rozeti bunlara da uygulanır. QML: yeni `PaperListItem.qml` (Kaynakça sekmesiyle ortak, DRY), `PaperCard` kartında Referanslar/Atıf yapanlar/Benzer açılır listesi ve tıklanabilir yazar adları, filtre çubuğunda yazar çipi ve "Kütüphaneden Öneriler" görünümü. Canlı OpenAlex ile doğrulandı (related_to, author.id, openalex OR filtresi, öneri). 272 test geçti.
+
+---
+
+## [2026-09-30] FEAT | Makale Market: zengin kart (PaperCard), kütüphanede tespiti, yinelenen kayıt engeli
+
+`PaperResult.is_open_access/has_pdf` (OpenAlex `open_access.is_oa`, `primary_location.pdf_url`). Yeni `qml/components/PaperCard.qml`: dergi/DOI satırı, açık erişim + PDF rozetleri, açılır özet ("Devamını oku"), kütüphanede olan makalede "Kütüphanede" (pasif) butonu. Yeni `services/library_index.py::LibraryIndex` (DOI/OpenAlex kimliğiyle kütüphane eşleşmesi; `utils/doi_utils.py` normalize_doi/doi_from_url — bridge içindeki regex buraya taşındı). `QmlBridge`: sonuçlara `libraryResourceId` (0 = yok) yazılır (`_annotate_library`), `_reload_resources` sonunda `_refresh_library_flags` ile kayıt/silme sonrası Market ve Kaynakça sonuçları tazelenir; `saveMarketResult` aynı DOI/OpenAlex kaydı varsa eklemez ("zaten kütüphanende"). "Daha fazla yükle" listeyi yeniden atarken kaydırma konumu korunur. Okuyucu Kaynakça sekmesi de "Kütüphanede" gösterir. 252 test geçti.
+
+---
+
+## [2026-09-30] FEAT | Makale Market: filtre, sayfalama, hata/boş ayrımı, arama geçmişi
+
+`PaperMarketService`: `MarketFilters` (yıl aralığı, açık erişim, tür, dil → OpenAlex `filter=`; `from_dict` QML değerlerini doğrular), `MarketPage(items, total, error)`, `search_page(topic, kind, filters, page)`. Ağ hatası artık boş liste olarak yutulmuyor, `MarketPage.error` ile taşınıyor. `MarketSearchWorker` filtre/sayfa/`request_id` alır (eski aramanın gecikmiş yanıtı atılır). `QmlBridge`: `searchArticles(topic, filters)`, `loadMoreArticles(kind)`, `marketMeta` (total/page/hasMore/error/loadingMore), `marketSearchHistory` (oturum boyunca, 10 kayıt, tekrarsız) + `clearMarketHistory`. `ArticleMarketView.qml`: filtre çubuğu, "Daha fazla yükle (n / toplam)", hata durumu + "Tekrar dene", son aramalar açılır listesi. Canlı OpenAlex doğrulandı (filtre + sayfa 2 + `language:tr`). Testler: yeni `test_paper_market_service.py`, worker/bridge testleri güncellendi (239 geçti).
+
+---
+
+## [2026-09-29] FIX | PDF okuyucu: sayfa sayacı kaydırmayı takip etmiyordu, başlık sağ butonlarla çakışıyordu
+
+`PdfPageArea.qml`: geçerli sayfa yalnızca ScrollBar basılınca/pasifleşince güncelleniyordu (fare tekerleği/dokunmatik kaydırmada "1 / 15" sabit kalıyordu). Ortak `syncCurrentPage()` eklendi; `contentY` değişince 120 ms'lik `Timer` ile çağrılır (ScrollBar yolu da aynı fonksiyonu kullanır). `PdfReaderView.qml`: başlık genişliği sağ buton grubuna göre daralır (dar pencerede sayaçla üst üste biniyordu). Offscreen: contentY 1500/4200/9000 → sayfa 3/6/12, 0 → 1.
+
+---
+
+## [2026-09-29] FIX | Kaydırılan PDF sayfaları üst çubuğun üstüne taşıyordu
+
+`PdfPageArea.qml` (`TableView`) ve `PdfReaderView.qml` gövde `Item`'ı `clip` etmiyordu; yukarı kaydırılan sayfalar üst çubuğu (geri/başlık/zoom butonları) kapatıyordu. İkisine `clip: true` eklendi; kaydırılmış halde offscreen render ile doğrulandı.
+
+---
+
+## [2026-09-29] FIX | 2./3. highlight'ta uygulama çökmesi (Instantiator + Shape.data.push)
+
+**Kök neden:** `PdfPageArea.qml` kalıcı highlight'ları `Instantiator { delegate: ShapePath }` ile üretip `onObjectAdded: Shape.data.push(object)` ile Shape'e devrediyordu. Highlight eklenince `currentReaderResourceChanged` (model dizisi yenilenir) Instantiator'ın eski `ShapePath`'lerini yıkıyor, Shape ise sarkan işaretçi tutuyordu → `emit()` sırasında native segfault (kullanıcı 2./3. highlight'ta yaşadı; `python -X faulthandler` yığını `_refresh_reader_resource` gösterdi). **Yeniden üretim:** `QTest.mousePress/mouseMove/mouseRelease` ile gerçek sürükle-seç + swatch tıklama simülasyonu (offscreen) — düzeltmeden önce 2. highlight'ta segfault, sonra 30+ art arda highlight çökmesiz. **Düzeltme:** her highlight için ayrı `Shape` delegeli `Repeater` (manuel `data.push` yok). Kural: QML'de `Shape.data`'ya elle nesne ekleme; Repeater/Item delegate kullan. Önceki (asıl değil) şüpheliler — Qt bookmark modeli, `sendPostedEvents` — ayrıca giderilmişti.
+
+---
+
+## [2026-09-29] FIX | Boş DB ile açılıp sonradan eklenen kaynak kartlarının görünmemesi
+
+`ShowcaseView.qml` boş-durum ve grid görünürlüğünü `bridge.resourcesModel.rowCount()`'a bağlıyordu; QML bu çağrıdan değişim bildirimi almadığı için binding bir kez (0 kayıtla) hesaplanıp donuyordu — temiz veritabanıyla başlayıp PDF yükleyince sayaçlar 1 gösterirken "kaynak yok" ekranı kalıyordu. `ResourceListModel`'e bildirimli `count` property'si (`countChanged`) eklendi, QML ona bağlandı (regresyon testi + boş başlayıp PDF ekleme senaryosu offscreen render ile doğrulandı). Ayrıca kartta yerel PDF adının depolama uuid öneki (`28a6fc4b_`) gizlendi (`format_display_url`). Genel kural: QML'de model boyutu için `rowCount()` değil bildirimli property kullan.
+
+---
+
+## [2026-09-29] FEAT | Kaynak ekle penceresine "Bilgisayardan PDF Yükle"
+
+`ResourceFormModal.qml` (yeni kaynak modunda) URL alanının altına buton + çoklu seçimli `FileDialog` eklendi; seçilen her PDF mevcut `bridge.importLocalPdf` ile (sürükle-bırak ile aynı akış: depoya kopyala, `file://` kaynak, otomatik "Makale" kategorisi, tam metin çıkarımı) içe aktarılır. `importLocalPdf` artık başarıyı `bool` döndürür; en az bir dosya aktarıldıysa pencere kapanır. Yeni PDF mekanizması yok, sadece ikinci bir giriş noktası.
+
+---
+
+## [2026-09-29] FEAT | Akademik çalışma aracı: web-PDF native, arama/anahat/notlarım paneli, atıf, referans grafiği, dışa aktarım
+
+Makale/PDF okuma mekanizması tez ve literatür taraması için genişletildi (ayrıntı: [[core_servisler]], [[qml_arayuz]], [[veritabani_semasi]]).
+
+- **Web PDF native (D12):** `file://` dışındaki PDF URL'leri (`.pdf`, `arxiv.org/pdf/…`) artık `services/pdf_download_service.py` + `workers/pdf_download_worker.py` ile `pdf_storage_dir()`'a indirilip (SSRF korumalı `safe_http_get`, `%PDF-` imza doğrulaması, 100 MB sınırı) native okuyucuda açılıyor; yol `extra_metadata["local_pdf"]`'da. İndirme başarısızsa metin okuyucuya düşer. Bridge tek yerden karar verir: `_pdf_file_url(resource)`, `serialize` çıktısı `pdfFileUrl`/`pdfState`.
+- **A (okuma verimliliği):** `PdfReaderView` — Ctrl+F metin arama (`PdfSearchModel`), yan panel `PdfSidePanel.qml` (Sayfalar küçük resimleri, Anahat/`PdfBookmarkModel`, Notlarım, Kaynakça). Highlight renkleri akademik anlama bağlandı (`core/constants/highlight_labels.py`: Önemli, Bulgu/Sonuç, Yöntem, Tanım/Kavram, Eleştiri/Soru — etiket renkten türetilir, DB kolonu yok). Highlight'a yorum: `highlights.comment` (migration `8b3f1c2d9a47`).
+- **B (bilgi çıkarımı):** `services/citation_service.py` (APA/IEEE/BibTeX, `PaperInfoPopup.qml`'den kopyala), OpenAlex genişletmesi (`find_paper_strict`, `related_papers` → referanslar / atıf yapanlar; `PaperResult` artık doi/openalex_id/venue taşır ve `extra_metadata`'ya yazılır), `services/export_service.py` (kaynak/kütüphane Markdown: APA atıf + etikete göre gruplu alıntılar + yorum + sayfa notları + kelimeler), PDF'te seçilen kelime için cümle bağlamı (`utils/text_utils.py::extract_sentence`, `bridge.addPdfVocabulary`).
+- **Altyapı düzeltmeleri:** Windows'ta QML `PdfDocument` dosyayı süreç bitene kadar kilitliyor (canlı doğrulandı) → silinemeyen PDF'ler için açılışta `services/pdf_storage_service.py::sweep_orphans`; silmede yeniden deneme. `QPdfDocument` cache'i kapatılırken gerçekten yok edilir. `_on_scrape_finished` artık `extra_metadata`'yı ezmez, birleştirir. Konsol: traceback yalnızca dosyaya (tek satır mesaj), `pypdf`/`trafilatura` gürültüsü dosyaya alındı, `fonttools` bağımlılığı eklendi.
+- **Düzeltme (aynı gün, gerçek kullanım bulgusu):** Highlight/kelime seçiminde `PdfSelection.from/to` *ekran pikseli*, `QPdfDocument.getSelection()` ise *PDF noktası (pt)* bekler; zoom %100 değilken piksel gönderildiği için rastgele yer işaretleniyordu → QML'de `paper.pageScale`'e bölünüp gönderiliyor. Anahat: `PdfBookmarkModel`'in QML'e doğrudan bağlanması bozuk yer imli PDF'lerde (`qt.pdf.bookmarks: bookmark with invalid location and/or zoom …`, başlatılmamış bellek) çökme riski taşıdığı için `utils/pdf_outline.py::read_outline` (sayfa aralığı + sonlu koordinat doğrulaması) ile Python'da okunup düz liste olarak veriliyor. OpenAlex 502/503/504 geçici hatalarında bir kez yeniden deneme.
+- **Çökme kök nedenleri (canlı segfault ile yeniden üretildi, `python -X faulthandler`):** (1) `_cleanup_local_pdf`'te `QCoreApplication.sendPostedEvents(None, DeferredDelete)` tüm Qt nesnelerinin ertelenmiş silmesini zorla çalıştırıp QML nesnelerini güvenli olmayan anda yok ediyordu → kaldırıldı, `deleteLater()` olay döngüsüne bırakıldı. (2) Anahat artık Qt `QPdfBookmarkModel` ile değil `pypdf` ile okunuyor ve dosya başına önbelleklenir (`ui_qml/bridge.py::pdfOutline`). (3) Okuyucu kapanınca `PdfDocument.source=""` "Cannot open" uyarısı basıyordu → son geçerli URL tutulur. Stres testi: art arda 20 highlight + sekme döngüsü + 12x aç/kapat + silme, çökme/uyarı yok.
+- **Hata/log sistemi:** `event_bus.error_occurred` artık bridge'de toast'a bağlı (önceden hiçbir yer dinlemiyordu); controller'lar `log.exception`; bridge slot'ları dönüş değerini kontrol ediyor; `main.py` global `sys.excepthook` + kapanışta `waitForDone`.
+
+Doğrulama: `pytest tests/` 220/220 yeşil. Gerçek PDF + gerçek OpenAlex/arXiv ile canlı e2e ve offscreen `grabWindow()` ile piksel doğrulaması yapıldı.
+
+---
+
 ## [2026-09-29] FEAT | Native PDF okuyucu: sayfa render + highlight (düzenlenebilir) + satır notu
 
 Şu ana kadar "PDF okuyucu" aslında `pypdf` ile metne çevrilmiş HTML gösteriyordu (çok sütunlu makalelerde metin sırası karışıyor, görsel/tablo kayboluyordu). Artık yerel (`file://`) PDF kaynaklar gerçek sayfa render'ıyla açılıyor, üstüne highlight (oluştur/renk değiştir/sil) ve nokta-bazlı margin notu eklendi. Üç fazda yapıldı, her fazdan sonra `pytest` + gerçek Qt engine ile canlı doğrulandı.

@@ -30,7 +30,9 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 ├── workers/                    # Arka plan QRunnable iş parçacıkları (SRP izole)
 │   ├── scrape_worker.py        # URL OpenGraph metadata taraması
 │   ├── extract_worker.py       # Makale tam metin çıkarma
-│   └── market_search_worker.py # Makale Market (OpenAlex) araması
+│   ├── market_search_worker.py # Makale Market (OpenAlex) araması
+│   ├── reading_suggestion_worker.py # Kütüphaneden okuma önerileri
+│   └── saved_search_worker.py  # Kayıtlı aramalarda yeni yayın kontrolü
 │
 ├── models/                     # SQLAlchemy declarative modelleri
 │   ├── base.py
@@ -56,7 +58,15 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   ├── pdf_note_service.py     # Native PDF satır/nokta notu
 │   ├── scraper_service.py      # URL OpenGraph ve meta veri çekici
 │   ├── article_extraction_service.py # Zengin HTML / PDF tam metin çıkarıcı
-│   ├── paper_market_service.py # OpenAlex API ile akademik makale arama
+│   ├── paper_market_service.py # OpenAlex API ile akademik makale arama (+ referans/atıf, DOI arama)
+│   ├── pdf_download_service.py # Web PDF'ini yerel depoya indirir (native okuyucu için)
+│   ├── pdf_storage_service.py  # Yetim PDF dosyası süpürücü
+│   ├── citation_service.py     # APA / IEEE / BibTeX atıf üretimi
+│   ├── export_service.py       # Alıntı/not/kelime → Markdown dışa aktarım
+│   ├── saved_search_service.py # Makale Market kayıtlı aramalar / yeni yayın takibi durumu
+│   ├── paper_export_service.py # Market sonuçları → BibTeX / CSV
+│   ├── reading_suggestion_service.py # Kütüphanenin ortak referanslarından okuma önerisi
+│   ├── library_index.py        # DOI/OpenAlex kimliğiyle kütüphane eşleşmesi (Makale Market rozeti, yinelenen kayıt engeli)
 │   └── schemas.py              # Pydantic modelleri
 │
 ├── controllers/                # UI-agnostik denetleyiciler (Hata yakalama, sinyal fırlatma)
@@ -66,7 +76,8 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   ├── tag_controller.py
 │   ├── highlight_controller.py
 │   ├── vocabulary_controller.py
-│   └── pdf_note_controller.py
+│   ├── pdf_note_controller.py
+│   └── saved_search_controller.py
 │
 ├── ui_qml/                     # Python ↔ QML köprü katmanı
 │   ├── bridge.py               # QmlBridge (State, filtreler, Q_PROPERTY/Slot'lar)
@@ -89,6 +100,8 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   │   ├── AppBadge.qml
 │   │   ├── AppSearchBar.qml
 │   │   ├── AppFilterChip.qml
+│   │   ├── PaperListItem.qml   # Kompakt makale satırı (Kaynakça sekmesi, keşif listeleri)
+│   │   ├── PaperCard.qml       # Makale Market sonuç kartı (rozetler, açılır özet, Kaydet/Kütüphanede)
 │   │   └── PdfPageArea.qml     # Native PDF render + highlight/not overlay (Qt PdfMultiPageView temelli)
 │   └── views/                  # Sayfa görünümleri
 │       ├── ShowcaseView.qml    # Bağlantı vitrini

@@ -62,6 +62,7 @@
 | color | String | Nullable — kullanıcı seçim toolbar'ında `Theme.highlightPalette`/`Colors.HIGHLIGHT_PALETTE`'ten renk seçer; boşsa (legacy kayıt) tema varsayılanı kullanılır. PDF'te reader-içi renk degistirme de var (`updateHighlightColor`) |
 | start_index | Integer | Nullable (2026-09-29) — sadece PDF highlight'larında dolu. `QPdfDocument.getSelectionAtIndex(page, start_index, length)` ile piksel/zoom'dan bağımsız yeniden çizilir |
 | length | Integer | Nullable (2026-09-29) — `endIndex - startIndex` (dikkat: +1 DEĞİL, canlı testte doğrulandı) |
+| comment | Text | Nullable (2026-09-29) — kullanıcının alıntıya eklediği serbest yorum (Alembic `8b3f1c2d9a47`). Anlam etiketi (Önemli/Bulgu/Yöntem/…) DB'de tutulmaz, `color`'dan türetilir (`core/constants/highlight_labels.py`) |
 | created_at | DateTime | |
 
 Repo/servis: `repositories/highlight_repo.py::HighlightRepository`, `services/highlight_service.py::HighlightService`. HTML okuyucusunda metin seçilip renk paletinden birine tıklanarak oluşturulur, silinebilir. Native PDF okuyucusunda (`PdfReaderView`, bkz. [[qml_arayuz]]) aynı highlight tablosu kullanılır ama oluşturma `bridge.addPdfHighlight` (page-point koordinatlarından `start_index`/`length` hesaplar) üzerinden, düzenleme (`updateHighlightColor`) + silme reader içinden yapılabilir — manuel ekleme formu hiçbir zaman olmadı.
@@ -90,6 +91,20 @@ Repo/servis: `repositories/vocabulary_repo.py::VocabularyRepository`, `services/
 | created_at | DateTime | |
 
 Repo/servis/controller: `repositories/pdf_note_repo.py::PdfNoteRepository`, `services/pdf_note_service.py::PdfNoteService`, `controllers/pdf_note_controller.py::PdfNoteController` — `Highlight` üçlüsünün (repo/service/controller) birebir aynı iskeleti, yeni model için kopyalandı. `Highlight`'tan kavramsal farkı: bir metin aralığı değil **tek bir nokta** referans alır (native PDF okuyucudaki "Not Ekle" modunda sayfaya tıklanan yer). Sadece o kaynağın PDF okuyucusunda görünür/yönetilir — Bilgi Havuzu'na eklenmedi (cross-resource bir not listesi istenmedi).
+
+### `saved_searches` (Makale Market Kayıtlı Arama — 2026-09-30'da eklendi, migration `c4d9a6b1e2f3`)
+| Alan | Tip | Not |
+|------|-----|-----|
+| id | Integer PK | |
+| topic | Text | Required (yazar aramasında boş olabilir) |
+| filters | JSON | `yearFrom/yearTo/openAccess/workType/language/authorId/authorName` (yalnızca dolu olanlar) |
+| tag_name | String(100) | Opsiyonel koleksiyon etiketi: bu aramadan kaydedilen makalelere eklenir |
+| seen_ids | JSON | Kullanıcının gördüğü OpenAlex kimlikleri (en fazla 200, yenisi başta) |
+| new_count | Integer | Son kontrolde `seen_ids` dışında kalan yeni yayın sayısı |
+| last_checked_at | DateTime | Nullable — kontrol edilmemişse ya da ağ hatasıyla kontrol başarısızsa bir sonraki açılışta yeniden denenir |
+| created_at | DateTime | |
+
+Repo/servis/controller: `repositories/saved_search_repo.py`, `services/saved_search_service.py` (aynı konu+filtre tekrar kaydedilemez → `DuplicateRecordError`), `controllers/saved_search_controller.py` (+ `MainController` facade). Kaynaklarla ilişkisi yoktur (bağımsız tablo).
 
 ## Hafif Migration
 `utils/db_utils.py:_apply_lightweight_migrations()` mevcut SQLite dosyalarına eksik kolonları ekler (idempotent). `init_db()` her başlangıçta önce bunu çağırır, sonra `Base.metadata.create_all` ile yeni tabloları oluşturur. Şu an listedeki tek migration: `resources.is_favorite` kolonu (2026-05-17).

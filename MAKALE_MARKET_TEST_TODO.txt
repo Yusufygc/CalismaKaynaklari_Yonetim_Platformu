@@ -1,0 +1,80 @@
+MAKALE MARKET - ELLE TEST LISTESI
+=================================
+Calistir: python main.py  ->  sol menuden "Makale Market"
+Bir sey bozuk cikarsa: ekran goruntusu + "python -X faulthandler main.py" ciktisini gonder.
+
+
+1. ARAMA VE FILTRE
+------------------
+[ ] "transformer" yaz, Enter. 3 sekmede (En Guncel / En Populer / En Cok Atif) sonuc geliyor mu?
+[ ] Yil 2022-2024 gir, alandan cik. Liste kendiliginden yenileniyor mu, yillar aralikta mi?
+[ ] "Sadece acik erisim" ac. Yalnizca "Acik erisim" rozetli kartlar kaliyor mu?
+[ ] Tur = Derleme, dil = Turkce dene. Sonuclar degisiyor mu?
+[ ] "Daha fazla yukle" tikla. Liste uzuyor mu, kaydirma basa donmuyor mu?
+[ ] Wi-Fi'yi kapatip ara. "Sonuclar alinamadi" + "Tekrar dene" cikiyor mu?
+[ ] Wi-Fi'yi acip "Tekrar dene" tikla. Arama yeniden calisip sonuc getiriyor mu?   (DUZELTILDI, yeniden dene)
+[ ] Arama kutusunu bos haldeyken tikla. "Son aramalar" aciliyor mu?
+[ ] Son aramalardan birine tikla. Arama yapiyor mu?
+[ ] "Temizle" gecmisi siliyor mu?
+
+
+2. KART
+-------
+[ ] Dergi, DOI, acik erisim ve PDF rozetleri gorunuyor mu?
+[ ] "Devamini oku" ozeti acip kapatiyor mu?
+[ ] Bir makaleyi "Kaydet". Toast cikiyor, kart "Kutuphanede" oluyor mu?
+[ ] Ayni makaleyi baska sekmede ya da yeniden aratip bul. Yine "Kutuphanede" mi? Kaydetme engelleniyor mu?
+[ ] Vitrinden o kaynagi sil, Market'e don. Kart tekrar "Kaydet" oluyor mu?
+
+
+3. KESIF
+--------
+[ ] Kartin "Referanslar", "Atif yapanlar", "Benzer makaleler" baglantilari aciliyor mu? Tekrar tiklayinca kapaniyor mu?
+[ ] Bu listelerden birini "Kaydet". Calisiyor mu?
+[ ] Yazar adina tikla. O yazarin calismalari geliyor mu?
+[ ] Filtre cubugunda "Yazar: ..." cipi var mi? X ile kalkiyor mu?
+[ ] 3-4 makale kaydet (OpenAlex'ten gelenler). "Kutuphaneden Oneriler" tikla.
+    Oneri geliyor mu, "Kutuphanendeki N makale bu esere atif yapiyor" yaziyor mu?
+[ ] OpenAlex kaydi olmayan bir kutuphanede ayni butonu dene. Aciklayici mesaj cikiyor mu?
+
+
+4. TOPLU ISLEM
+--------------
+[ ] Kutucuklarla 3 kart sec. Sayac "3 secili" oluyor mu?
+[ ] "Tumunu sec" ve "Secimi temizle" calisiyor mu?
+[ ] "Secilenleri Kaydet (N)": tek toast cikiyor mu ("N kaydedildi, M zaten vardi")?
+[ ] Kartta yer isareti butonu ("Sonra oku"): kaynak "okuma-listesi" etiketiyle geliyor mu?
+[ ] "BibTeX" kaydet, .bib dosyasini ac. Kayitlar dogru mu? Ayni yazar/yil icin anahtarlara a/b eki geliyor mu?
+[ ] "CSV" kaydet, Excel'de ac. Turkce karakterler bozulmuyor mu?
+[ ] Secim yokken disa aktar. Gorunen tum liste mi yaziliyor?
+
+
+5. KAYITLI ARAMALAR
+-------------------
+[ ] Arama yap, "Aramayi kaydet" tikla, etiket olarak "tez" yaz, Kaydet. Toast ve cip cikiyor mu?
+[ ] Ayni aramayi tekrar kaydet. "Bu arama zaten kayitli" hatasi cikiyor mu?
+[ ] Cipe tikla. Konu ve filtre alanlari dolup arama calisiyor mu?
+[ ] "Kaydedilenler #tez etiketiyle eklenir" ipucu cikiyor mu?
+[ ] O aramadan bir makale kaydet. Kaynagin "tez" etiketi var mi?
+[ ] Elle yeni arama yap. Ipucu kayboluyor, sonraki kayitlar etiketsiz mi?
+[ ] X ile kayitli aramayi sil.
+[ ] Uygulamayi kapatip ac, Market'e gir. Kayitli arama duruyor mu?
+[ ] Yeni yayin olduysa "N yeni" rozeti cikiyor mu? (Kontrol en fazla saatte bir yapilir.)
+
+
+6. GENEL
+--------
+[ ] Koyu ve acik temada gorunum bozuk mu?
+[ ] Pencereyi kucult. Filtre ve arac cubugu birbirine biniyor mu?
+[ ] Okuyucudaki (PDF yan panel) Kaynakca sekmesinde "Kutuphanede" durumu dogru mu?
+
+
+7. BILGI HAVUZU - TOPLU ALINTI SILME
+------------------------------------
+[ ] Bilgi Havuzu > Alintilar: her kartta secim kutusu var mi?
+[ ] Iki kart sec. "2 secili" yaziyor, "Seçilenleri Sil (2)" aktif mi? Secim yokken pasif mi?
+[ ] "Tumunu sec" sadece GORUNEN (etiket/arama filtreli) alintilari seciyor mu?
+[ ] Etiket filtresini ya da aramayi degistir. Secim temizleniyor mu?
+[ ] "Seçilenleri Sil" tikla. Onay penceresi cikiyor mu? "Vazgec" hicbir sey silmiyor mu?
+[ ] Onayla. Alintilar gidiyor, tek toast ("N alinti silindi.") cikiyor mu?
+[ ] Silinen alintilar ilgili PDF/makale okuyucusunda da kayboluyor mu?
