@@ -63,6 +63,10 @@ QtObject {
     readonly property color badgeOverlay: isDark ? "#141724DD" : "#FFFFFFEE"
     readonly property color gradientHeaderStart: isDark ? "#1A2238" : "#EEF2FF"
     readonly property color fallbackCategoryColor: "#64748B"
+    readonly property color popoverBg: isDark ? "#1A1E2F" : "#FFFFFF"
+    readonly property color swatchBorderLight: "#FFFFFF44"
+    readonly property color markerBorderLight: "#FFFFFF66"
+    readonly property color thumbnailOverlay: "#00000045"
 
     // Renk Paletleri
     readonly property var categoryPalette: [

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import "../theme"
 
 Rectangle {
@@ -382,11 +383,12 @@ Rectangle {
         color: {
             if (isActive) return Theme.accentSubtle
             if (itemMouse.containsMouse) return Theme.bgHover
+            if (isCollapsed) return Theme.bgElevated
             return "transparent"
         }
 
-        border.width: isActive ? 1 : 0
-        border.color: Theme.accent
+        border.width: (isActive || isCollapsed) ? 1 : 0
+        border.color: isActive ? Theme.accent : Theme.borderSubtle
 
         Behavior on color { ColorAnimation { duration: Theme.animFast } }
 
@@ -400,7 +402,7 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 name: iconName
                 size: 14
-                color: isActive ? Theme.accentText : (dotColor !== "transparent" ? dotColor : Theme.textSecondary)
+                color: isActive ? Theme.accentText : (dotColor.a > 0 ? dotColor : Theme.textPrimary)
             }
 
             Text {
@@ -442,6 +444,28 @@ Rectangle {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: parent.clicked()
+        }
+
+        ToolTip {
+            visible: isCollapsed && title !== "" && itemMouse.containsMouse
+            text: title
+            delay: 300
+            x: parent.width + 6
+            y: (parent.height - height) / 2
+
+            contentItem: Text {
+                text: title
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontXs
+                color: Theme.textOnAccent
+            }
+
+            background: Rectangle {
+                color: Theme.tooltipBg
+                border.color: Theme.borderStrong
+                border.width: 1
+                radius: Theme.radiusXs
+            }
         }
     }
 }

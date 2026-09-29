@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../components"
 import "../theme"
@@ -9,6 +10,98 @@ Item {
 
     property int activeTab: 0 // 0: Alıntılar, 1: Kelimeler
     property string searchQuery: ""
+    property string labelFilter: "" // Alıntılar: akademik anlam etiketi ("" = tümü)
+
+    // Alıntılar: toplu silme için seçim (id -> true; değişince yeniden atanır ki bağlamalar tazelensin)
+    property var selectedIds: ({})
+    readonly property int selectedCount: Object.keys(selectedIds).length
+
+    function toggleSelected(id) {
+        const next = Object.assign({}, root.selectedIds)
+        if (next[id]) delete next[id]
+        else next[id] = true
+        root.selectedIds = next
+    }
+
+    function selectAllVisible() {
+        const next = {}
+        const list = highlightsList.model
+        for (let i = 0; i < list.length; i++) next[list[i].id] = true
+        root.selectedIds = next
+    }
+
+    function clearSelection() {
+        root.selectedIds = ({})
+    }
+
+    function deleteSelected() {
+        bridge.deleteHighlights(Object.keys(root.selectedIds).map(Number))
+        root.clearSelection()
+    }
+
+    // Görünmeyen (filtre/arama/sekme dışı) alıntı yanlışlıkla silinmesin: görünüm değişince seçimi bırak.
+    onLabelFilterChanged: clearSelection()
+    onSearchQueryChanged: clearSelection()
+    onActiveTabChanged: clearSelection()
+
+    Popup {
+        id: confirmDeletePopup
+        anchors.centerIn: Overlay.overlay
+        width: 360
+        padding: 20
+        modal: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        background: Rectangle {
+            color: Theme.popoverBg
+            radius: Theme.radiusMd
+            border.width: 1
+            border.color: Theme.borderStrong
+        }
+
+        contentItem: Column {
+            spacing: 14
+
+            Text {
+                text: "Alıntıları Sil"
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontMd
+                font.weight: Font.Bold
+                color: Theme.textPrimary
+            }
+
+            Text {
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: root.selectedCount + " alıntı kalıcı olarak silinecek. Bu işlem geri alınamaz."
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSm
+                color: Theme.textSecondary
+            }
+
+            Row {
+                anchors.right: parent.right
+                spacing: 8
+
+                AppButton {
+                    text: "Vazgeç"
+                    variant: "ghost"
+                    onClicked: confirmDeletePopup.close()
+                }
+
+                AppButton {
+                    text: "Sil (" + root.selectedCount + ")"
+                    iconName: "fa5s.trash"
+                    variant: "danger"
+                    onClicked: {
+                        confirmDeletePopup.close()
+                        root.deleteSelected()
+                    }
+                }
+            }
+        }
+    }
 
     Column {
         anchors.fill: parent
@@ -122,6 +215,26 @@ Item {
                 }
             }
 
+            // Tüm kütüphanenin alıntı/not/kelimelerini tek Markdown'a aktar (literatür taraması)
+            AppButton {
+                anchors.right: parent.right
+                anchors.rightMargin: 24
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Tümünü Dışa Aktar (.md)"
+                iconName: "fa5s.file-export"
+                variant: "subtle"
+                onClicked: libraryExportDialog.open()
+            }
+
+            FileDialog {
+                id: libraryExportDialog
+                title: "Literatür Notlarını Dışa Aktar"
+                fileMode: FileDialog.SaveFile
+                nameFilters: ["Markdown (*.md)"]
+                defaultSuffix: "md"
+                onAccepted: bridge.exportLibraryMarkdown(selectedFile)
+            }
+
             Rectangle {
                 anchors.bottom: parent.bottom
                 width: parent.width
@@ -136,21 +249,111 @@ Item {
             height: parent.height - 64
 
             // --- SEKME 0: ALINTILAR ---
+            // Toplu seçim çubuğu
+            Item {
+                id: selectionBar
+                visible: root.activeTab === 0 && bridge.highlights.length > 0
+                width: parent.width
+                height: visible ? 44 : 0
+
+                Row {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 24
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 12
+
+                    AppButton {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Tümünü seç"
+                        variant: "ghost"
+                        implicitHeight: 28
+                        onClicked: root.selectAllVisible()
+                    }
+
+                    AppButton {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: root.selectedCount > 0
+                        text: "Seçimi temizle"
+                        variant: "ghost"
+                        implicitHeight: 28
+                        onClicked: root.clearSelection()
+                    }
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: root.selectedCount > 0
+                        text: root.selectedCount + " seçili"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontXs
+                        color: Theme.textMuted
+                    }
+                }
+
+                AppButton {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 24
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Seçilenleri Sil (" + root.selectedCount + ")"
+                    iconName: "fa5s.trash"
+                    variant: "danger"
+                    implicitHeight: 28
+                    enabledState: root.selectedCount > 0
+                    onClicked: confirmDeletePopup.open()
+                }
+
+                Rectangle {
+                    anchors.bottom: parent.bottom
+                    width: parent.width
+                    height: 1
+                    color: Theme.borderSubtle
+                }
+            }
+
             ListView {
                 id: highlightsList
                 visible: root.activeTab === 0
-                anchors.fill: parent
+                anchors.top: selectionBar.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
                 anchors.margins: 24
+                anchors.topMargin: 12
                 spacing: 12
                 clip: true
 
                 model: {
                     var all = bridge.highlights
-                    if (!root.searchQuery) return all
                     return all.filter(function(h) {
+                        if (root.labelFilter !== "" && h.label !== root.labelFilter) return false
+                        if (!root.searchQuery) return true
                         return h.content.toLowerCase().indexOf(root.searchQuery) !== -1 ||
-                               h.resource_title.toLowerCase().indexOf(root.searchQuery) !== -1
+                               h.resource_title.toLowerCase().indexOf(root.searchQuery) !== -1 ||
+                               (h.comment || "").toLowerCase().indexOf(root.searchQuery) !== -1
                     })
+                }
+
+                // Akademik anlam etiketine göre filtre (Yöntem, Bulgu / Sonuç, ...)
+                header: Flow {
+                    width: highlightsList.width - 24
+                    spacing: 8
+                    bottomPadding: 12
+
+                    AppFilterChip {
+                        text: "Tümü"
+                        isSelected: root.labelFilter === ""
+                        onClicked: root.labelFilter = ""
+                    }
+
+                    Repeater {
+                        model: bridge.highlightLabels
+                        delegate: AppFilterChip {
+                            required property var modelData
+                            text: modelData.label
+                            dotColor: modelData.color
+                            isSelected: root.labelFilter === modelData.label
+                            onClicked: root.labelFilter = (root.labelFilter === modelData.label ? "" : modelData.label)
+                        }
+                    }
                 }
 
                 delegate: Rectangle {
@@ -171,10 +374,39 @@ Item {
                         color: modelData.color || Theme.accent
                     }
 
+                    // Toplu silme seçim kutusu
+                    Rectangle {
+                        id: hlCheckBox
+                        readonly property bool checked: root.selectedIds[modelData.id] === true
+                        x: 16
+                        y: 14
+                        width: 18
+                        height: 18
+                        radius: 4
+                        color: checked ? Theme.accent : "transparent"
+                        border.width: 1
+                        border.color: checked ? Theme.accent : Theme.borderStrong
+
+                        AppIcon {
+                            anchors.centerIn: parent
+                            visible: hlCheckBox.checked
+                            name: "fa5s.check"
+                            size: 10
+                            color: Theme.textOnAccent
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            anchors.margins: -4
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.toggleSelected(modelData.id)
+                        }
+                    }
+
                     Column {
                         id: hlCardCol
                         anchors.fill: parent
-                        anchors.leftMargin: 16
+                        anchors.leftMargin: 44
                         anchors.rightMargin: 16
                         anchors.topMargin: 12
                         anchors.bottomMargin: 12
@@ -192,45 +424,76 @@ Item {
                             wrapMode: Text.Wrap
                         }
 
+                        // Anlam etiketi + sayfa
+                        Text {
+                            text: modelData.label + (modelData.page >= 0 ? " · Sayfa " + (modelData.page + 1) : "")
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                            font.weight: Font.Bold
+                            color: Theme.textMuted
+                        }
+
+                        // Kullanıcının yorumu
+                        Text {
+                            width: parent.width - 50
+                            visible: modelData.comment !== ""
+                            text: "Yorum: " + modelData.comment
+                            wrapMode: Text.Wrap
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontXs
+                            font.italic: true
+                            color: Theme.accentText
+                        }
+
                         // Alt Bilgi: Kaynak Başlığı & Sil
-                        Row {
+                        Item {
                             width: parent.width
-                            spacing: 8
+                            height: Math.max(hlFooterRow.implicitHeight, hlDeleteButton.height)
 
-                            AppIcon {
+                            Row {
+                                id: hlFooterRow
+                                anchors.left: parent.left
+                                anchors.right: hlDeleteButton.left
+                                anchors.rightMargin: 8
                                 anchors.verticalCenter: parent.verticalCenter
-                                name: "fa5s.book-open"
-                                size: 11
-                                color: Theme.accent
-                            }
+                                spacing: 8
 
-                            // Kaynak Bağlantısı (Tıklandığında okuyucuyu açar)
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: modelData.resource_title
-                                font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontXs
-                                font.weight: Font.Medium
-                                color: Theme.accentText
+                                AppIcon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    name: "fa5s.book-open"
+                                    size: 11
+                                    color: Theme.accent
+                                }
 
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: bridge.openReader(modelData.resource_id)
+                                // Kaynak Bağlantısı (Tıklandığında okuyucuyu açar)
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: modelData.resource_title
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontXs
+                                    font.weight: Font.Medium
+                                    color: Theme.accentText
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: bridge.openReader(modelData.resource_id)
+                                    }
+                                }
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "• " + modelData.created_at
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontXs
+                                    color: Theme.textMuted
                                 }
                             }
 
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: "• " + modelData.created_at
-                                font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontXs
-                                color: Theme.textMuted
-                            }
-
-                            Item { Layout.fillWidth: true }
-
                             AppIconButton {
+                                id: hlDeleteButton
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
                                 iconName: "fa5s.trash"
                                 iconSize: 11
                                 tooltip: "Alıntıyı Sil"
@@ -271,11 +534,11 @@ Item {
 
                     Row {
                         id: vocabCol
-                        anchors.fill: parent
+                        anchors.left: parent.left
+                        anchors.right: vocabDeleteButton.left
+                        anchors.verticalCenter: parent.verticalCenter
                         anchors.leftMargin: 16
                         anchors.rightMargin: 16
-                        anchors.topMargin: 10
-                        anchors.bottomMargin: 10
                         spacing: 16
 
                         // Kelime
@@ -320,15 +583,17 @@ Item {
                             wrapMode: Text.Wrap
                         }
 
-                        Item { Layout.fillWidth: true }
+                    }
 
-                        AppIconButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            iconName: "fa5s.trash"
-                            iconSize: 11
-                            tooltip: "Kelimeyi Sil"
-                            onClicked: bridge.deleteVocabulary(modelData.id)
-                        }
+                    AppIconButton {
+                        id: vocabDeleteButton
+                        anchors.right: parent.right
+                        anchors.rightMargin: 16
+                        anchors.verticalCenter: parent.verticalCenter
+                        iconName: "fa5s.trash"
+                        iconSize: 11
+                        tooltip: "Kelimeyi Sil"
+                        onClicked: bridge.deleteVocabulary(modelData.id)
                     }
                 }
 

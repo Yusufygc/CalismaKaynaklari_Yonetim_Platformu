@@ -13,6 +13,8 @@ import "../theme"
 
 Item {
     id: root
+    // Sayfalar kaydirilirken alanin disina (ust cubuga) tasmasin.
+    clip: true
 
     required property PdfDocument document
     required property var resource
@@ -35,6 +37,16 @@ Item {
         return boundsPolygons.map(function(poly) {
             return poly.map(function(pt) { return Qt.point(pt[0], pt[1]) })
         })
+    }
+
+    // Highlight renginin akademik anlami (bridge.highlightLabels: renk -> etiket).
+    function labelForColor(color) {
+        const wanted = String(color).toUpperCase()
+        for (const entry of bridge.highlightLabels) {
+            if (String(entry.color).toUpperCase() === wanted)
+                return entry.label
+        }
+        return "Genel"
     }
 
     // Bu sayfaya ait PDF notlari.
@@ -81,6 +93,26 @@ Item {
     function zoomIn() { root.renderScale = Math.min(tableView.maxScale, root.renderScale * 1.2) }
     function zoomOut() { root.renderScale = Math.max(tableView.minScale, root.renderScale / 1.2) }
 
+    // Gorunumun ortasindaki sayfayi navigator'a bildirir (sayfa sayaci icin). Fare tekerlegi /
+    // dokunmatik kaydirmada ScrollBar aktiflesmeyebildigi icin contentY degisiminden de cagrilir.
+    function syncCurrentPage() {
+        const cell = tableView.cellAtPos(root.width / 2, root.height / 2)
+        if (cell.y < 0)
+            return
+        const currentItem = tableView.itemAtCell(cell)
+        const currentLocation = currentItem
+                              ? Qt.point((tableView.contentX - currentItem.x + tableView.jumpLocationMargin.x) / root.renderScale,
+                                         (tableView.contentY - currentItem.y + tableView.jumpLocationMargin.y) / root.renderScale)
+                              : Qt.point(0, 0)
+        pageNavigator.update(cell.y, currentLocation, root.renderScale)
+    }
+
+    Timer {
+        id: pageSyncTimer
+        interval: 120
+        onTriggered: root.syncCurrentPage()
+    }
+
     function scaleToWidth(width, height) {
         root.renderScale = width / (tableView.rot90 ? tableView.firstPagePointSize.height : tableView.firstPagePointSize.width)
     }
@@ -111,6 +143,7 @@ Item {
         property real rotationNorm: Math.round((360 + (root.pageRotation % 360)) % 360)
         property bool rot90: rotationNorm == 90 || rotationNorm == 270
         onRot90Changed: forceLayout()
+        onContentYChanged: if (!pageNavigator.jumping) pageSyncTimer.restart()
         onHeightChanged: forceLayout()
         onWidthChanged: forceLayout()
         property size firstPagePointSize: root.document?.status === PdfDocument.Ready ? root.document.pagePointSize(0) : Qt.size(1, 1)
@@ -121,6 +154,21 @@ Item {
         property int pendingRow: -1
         property point pendingLocation
         property real pendingZoom: -1
+
+        // Ctrl+tekerlek: yakinlastir/uzaklastir. Ctrl basili degilken bu
+        // handler hicbir sey yapmaz, olay normal sekilde TableView'in
+        // kendi kaydirmasina gecer.
+        WheelHandler {
+            target: null
+            acceptedModifiers: Qt.ControlModifier
+            onWheel: (event) => {
+                if (event.angleDelta.y > 0)
+                    root.zoomIn()
+                else if (event.angleDelta.y < 0)
+                    root.zoomOut()
+            }
+        }
+
         onRowsChanged: {
             if (rows > 0 && tableView.pendingRow >= 0) {
                 root.goToLocation(tableView.pendingRow, tableView.pendingLocation, tableView.pendingZoom)
@@ -144,7 +192,10 @@ Item {
                 anchors.centerIn: pinch.active ? undefined : parent
                 property size pagePointSize: root.document.pagePointSize(pageHolder.index)
                 property real pageScale: image.paintedWidth / pagePointSize.width
-                color: Theme.bgSurface
+                // PDF sayfasi fiziksel olarak her zaman beyaz kagit -- uygulama
+                // koyu temasindan bagimsiz olmali (Theme.bgSurface koyu temada
+                // sayfanin etrafinda/altinda koyu sizinti yapiyordu).
+                color: "white"
 
                 PdfPageImage {
                     id: image
@@ -167,6 +218,32 @@ Item {
                     }
                 }
 
+                // Kalici highlight'lar: her biri kendi Shape'i. Onceden Instantiator + Shape.data.push(object)
+                // kullaniliyordu; nesneler Shape'e devredildikten sonra Instantiator tarafindan yikilinca
+                // sarkan isaretci kaliyor, currentReaderResourceChanged sirasinda native cokme (segfault)
+                // olusuyordu (fare simulasyonuyla yeniden uretildi).
+                Repeater {
+                    model: root.pageHighlights(pageHolder.index)
+                    delegate: Shape {
+                        id: highlightShape
+                        required property var modelData
+                        readonly property color baseColor: modelData.color
+                        anchors.fill: parent
+                        visible: image.status === Image.Ready
+
+                        ShapePath {
+                            strokeWidth: -1
+                            // Fosforlu kalem efekti icin yari saydam -- opak renk altindaki metni kapatiyordu.
+                            fillColor: Qt.rgba(highlightShape.baseColor.r, highlightShape.baseColor.g,
+                                               highlightShape.baseColor.b, 0.35)
+                            scale: Qt.size(paper.pageScale, paper.pageScale)
+                            PathMultiline {
+                                paths: root.polygonsFromPoints(highlightShape.modelData.boundsPolygons)
+                            }
+                        }
+                    }
+                }
+
                 Shape {
                     id: persistedHighlightsShape
                     anchors.fill: parent
@@ -186,23 +263,6 @@ Item {
                     Connections {
                         target: searchModel
                         function onCurrentPageBoundingPolygonsChanged() { searchHighlights.update() }
-                    }
-                    Instantiator {
-                        model: root.pageHighlights(pageHolder.index)
-                        delegate: ShapePath {
-                            id: highlightShapePath
-                            required property var modelData
-                            property color baseColor: modelData.color
-                            strokeWidth: -1
-                            // Fosforlu kalem efekti icin yari saydam -- opak renk
-                            // altindaki metni tamamen kapatiyordu (kullanicidan gelen bulgu).
-                            fillColor: Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.35)
-                            scale: Qt.size(paper.pageScale, paper.pageScale)
-                            PathMultiline {
-                                paths: root.polygonsFromPoints(highlightShapePath.modelData.boundsPolygons)
-                            }
-                        }
-                        onObjectAdded: (index, object) => persistedHighlightsShape.data.push(object)
                     }
                     ShapePath {
                         strokeWidth: -1
@@ -280,7 +340,12 @@ Item {
                     id: mouseClickHandler
                     acceptedDevices: PointerDevice.Mouse | PointerDevice.Stylus
                     onTapped: {
-                        if (!root.noteMode) return
+                        if (!root.noteMode) {
+                            if (selection.hold && selection.text.trim().length > 0) {
+                                selection.clear()
+                            }
+                            return
+                        }
                         const pos = mouseClickHandler.point.position
                         newNotePopover.pendingPage = pageHolder.index
                         newNotePopover.pendingX = pos.x / paper.pageScale
@@ -336,19 +401,53 @@ Item {
                 }
 
                 // Yeni secim -> renkli highlight kaydetme (Kindle tarzi yuzen toolbar)
+                // Secimin hemen ustunde/altinda konumlanir (sayfa altina sabit degil),
+                // sayfa sinirlari disina tasmayacak sekilde kenarlara yaslanir.
                 Rectangle {
                     id: newHighlightToolbar
+                    objectName: "newHighlightToolbar"
                     visible: selection.hold && selection.text.trim().length > 0
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 16
                     z: 20
                     implicitWidth: newHighlightRow.implicitWidth + 16
                     implicitHeight: 36
                     radius: Theme.radiusPill
-                    color: Theme.isDark ? "#1A1E2F" : "#FFFFFF"
+                    color: Theme.popoverBg
                     border.width: 1
                     border.color: Theme.borderStrong
+
+                    // Secim, araç çubuğundaki bir düğmeye tıklanırken (fare imleci
+                    // metnin üzerinden geçerken) DragHandler'ın kendisini bozup
+                    // selection.from/to'yu sıfırlamasına karşı: toolbar görünür
+                    // olduğu anda değerler burada dondurulur, düğmeler canlı
+                    // selection.* yerine bu sabit kopyaları kullanır (bkz.
+                    // "highlight çalışmıyor" hatası).
+                    property point capturedFrom: Qt.point(0, 0)
+                    property point capturedTo: Qt.point(0, 0)
+                    property string capturedText: ""
+                    onVisibleChanged: {
+                        if (visible) {
+                            capturedFrom = selection.from
+                            capturedTo = selection.to
+                            capturedText = selection.text
+                        }
+                    }
+
+                    // QPdfDocument.getSelection() PDF *nokta* (pt) uzayinda calisir; PdfSelection.from/to ise
+                    // ekrandaki piksel. Zoom %100 degilken piksel gonderilirse rastgele yer secilirdi.
+                    readonly property real safeScale: paper.pageScale > 0 ? paper.pageScale : 1
+                    readonly property point pointFrom: Qt.point(capturedFrom.x / safeScale, capturedFrom.y / safeScale)
+                    readonly property point pointTo: Qt.point(capturedTo.x / safeScale, capturedTo.y / safeScale)
+
+                    property real selectionCenterX: (capturedFrom.x + capturedTo.x) / 2
+                    property real selectionTopY: Math.min(capturedFrom.y, capturedTo.y)
+                    property real selectionBottomY: Math.max(capturedFrom.y, capturedTo.y)
+                    property bool fitsAbove: selectionTopY - height - 10 >= 0
+
+                    x: Math.max(0, Math.min(selectionCenterX - width / 2, parent.width - width))
+                    y: {
+                        if (fitsAbove) return selectionTopY - height - 10
+                        return Math.min(selectionBottomY + 10, parent.height - height)
+                    }
 
                     Row {
                         id: newHighlightRow
@@ -364,22 +463,146 @@ Item {
                                 radius: 11
                                 color: modelData
                                 border.width: 1
-                                border.color: "#FFFFFF44"
+                                border.color: Theme.swatchBorderLight
 
                                 MouseArea {
                                     anchors.fill: parent
+                                    hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
+                                    ToolTip.visible: containsMouse
+                                    ToolTip.text: root.labelForColor(parent.modelData)
                                     onClicked: {
-                                        if (selection.text.trim().length > 0 && root.resource) {
+                                        if (newHighlightToolbar.capturedText.trim().length > 0 && root.resource) {
                                             bridge.addPdfHighlight(
-                                                root.resource.id, root.resource.url, pageHolder.index,
-                                                selection.from.x, selection.from.y,
-                                                selection.to.x, selection.to.y,
+                                                root.resource.id, root.resource.pdfFileUrl, pageHolder.index,
+                                                newHighlightToolbar.pointFrom.x, newHighlightToolbar.pointFrom.y,
+                                                newHighlightToolbar.pointTo.x, newHighlightToolbar.pointTo.y,
                                                 parent.modelData
                                             )
                                         }
                                         selection.clear()
                                     }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            width: 1
+                            height: 18
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: Theme.borderSubtle
+                        }
+
+                        AppIconButton {
+                            anchors.verticalCenter: parent.verticalCenter
+                            iconName: "fa5s.language"
+                            iconSize: 13
+                            tooltip: "Kelime Havuzuna Ekle"
+                            onClicked: {
+                                newVocabPopover.word = newHighlightToolbar.capturedText.trim()
+                                newVocabPopover.translationText = ""
+                                newVocabPopover.visible = true
+                            }
+                        }
+                    }
+                }
+
+                // Secili kelimeyi/ifadeyi Bilgi Havuzu'na (kelime listesi) ekleme
+                // popover'i -- HTML okuyucudaki "Kelime Havuzuna Ekle" ozelligiyle
+                // ayni: bridge.addVocabulary(resourceId, word, translation).
+                Rectangle {
+                    id: newVocabPopover
+                    property string word: ""
+                    property string translationText: ""
+                    visible: false
+                    z: 21
+                    x: Math.max(0, Math.min(newHighlightToolbar.x, paper.width - width))
+                    y: Math.max(0, Math.min(newHighlightToolbar.y + newHighlightToolbar.height + 8, paper.height - height))
+                    width: 260
+                    implicitHeight: vocabCol.implicitHeight + 20
+                    radius: Theme.radiusMd
+                    color: Theme.popoverBg
+                    border.width: 1
+                    border.color: Theme.borderStrong
+
+                    Column {
+                        id: vocabCol
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 8
+
+                        Text {
+                            width: parent.width
+                            text: "Kelime: " + newVocabPopover.word
+                            elide: Text.ElideRight
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSm
+                            font.weight: Font.Bold
+                            color: Theme.textPrimary
+                        }
+
+                        Rectangle {
+                            width: parent.width
+                            height: 32
+                            radius: Theme.radiusSm
+                            color: Theme.bgSurface
+                            border.width: 1
+                            border.color: Theme.borderSubtle
+
+                            TextInput {
+                                id: vocabTranslationInput
+                                anchors.fill: parent
+                                anchors.margins: 8
+                                verticalAlignment: TextInput.AlignVCenter
+                                color: Theme.textPrimary
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSm
+                                text: newVocabPopover.translationText
+                                onTextChanged: newVocabPopover.translationText = text
+
+                                Text {
+                                    anchors.fill: parent
+                                    verticalAlignment: Text.AlignVCenter
+                                    text: "Türkçe anlamını girin..."
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSm
+                                    color: Theme.textMuted
+                                    visible: !vocabTranslationInput.text
+                                }
+                            }
+                        }
+
+                        Row {
+                            anchors.right: parent.right
+                            spacing: 8
+
+                            AppButton {
+                                text: "Vazgeç"
+                                variant: "ghost"
+                                implicitHeight: 28
+                                onClicked: {
+                                    newVocabPopover.visible = false
+                                    selection.clear()
+                                }
+                            }
+
+                            AppButton {
+                                text: "Kaydet"
+                                variant: "primary"
+                                implicitHeight: 28
+                                enabledState: vocabTranslationInput.text.trim().length > 0
+                                onClicked: {
+                                    if (root.resource) {
+                                        // Secim noktalariyla gonderilir: gectigi cumle baglam olarak da kaydedilir.
+                                        bridge.addPdfVocabulary(
+                                            root.resource.id, root.resource.pdfFileUrl, pageHolder.index,
+                                            newHighlightToolbar.pointFrom.x, newHighlightToolbar.pointFrom.y,
+                                            newHighlightToolbar.pointTo.x, newHighlightToolbar.pointTo.y,
+                                            vocabTranslationInput.text.trim()
+                                        )
+                                    }
+                                    newVocabPopover.visible = false
+                                    selection.clear()
                                 }
                             }
                         }
@@ -405,12 +628,33 @@ Item {
                         HoverHandler {
                             cursorShape: Qt.PointingHandCursor
                         }
+
+                        // Yorumu olan alintilarin kose isareti
+                        Rectangle {
+                            visible: highlightHitArea.modelData.comment !== ""
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.topMargin: -6
+                            width: 14
+                            height: 14
+                            radius: 7
+                            color: Theme.accent
+                            AppIcon {
+                                anchors.centerIn: parent
+                                name: "fa5s.comment-dots"
+                                size: 8
+                                color: Theme.textOnAccent
+                            }
+                        }
+
                         TapHandler {
                             acceptedDevices: PointerDevice.Mouse | PointerDevice.Stylus | PointerDevice.TouchScreen
                             onTapped: {
                                 editHighlightPopover.highlightId = highlightHitArea.modelData.id
+                                editHighlightPopover.label = highlightHitArea.modelData.label
+                                editCommentInput.text = highlightHitArea.modelData.comment
                                 editHighlightPopover.x = Math.max(0, Math.min(
-                                    highlightHitArea.x, paper.width - editHighlightPopover.implicitWidth))
+                                    highlightHitArea.x, paper.width - editHighlightPopover.width))
                                 editHighlightPopover.y = Math.max(0, Math.min(
                                     highlightHitArea.y + highlightHitArea.height + 4,
                                     paper.height - editHighlightPopover.implicitHeight))
@@ -420,69 +664,125 @@ Item {
                     }
                 }
 
-                // Var olan highlight duzenleme popover'i (renk degistir / sil)
+                // Var olan highlight duzenleme popover'i (renk/anlam, yorum, sil)
                 Rectangle {
                     id: editHighlightPopover
                     property int highlightId: -1
+                    property string label: ""
                     visible: false
                     z: 30
-                    implicitWidth: editHighlightRow.implicitWidth + 16
-                    implicitHeight: 36
-                    radius: Theme.radiusPill
-                    color: Theme.isDark ? "#1A1E2F" : "#FFFFFF"
+                    width: 264
+                    implicitHeight: editHighlightCol.implicitHeight + 20
+                    height: implicitHeight
+                    radius: Theme.radiusMd
+                    color: Theme.popoverBg
                     border.width: 1
                     border.color: Theme.borderStrong
 
-                    Row {
-                        id: editHighlightRow
-                        anchors.centerIn: parent
+                    Column {
+                        id: editHighlightCol
+                        anchors.fill: parent
+                        anchors.margins: 10
                         spacing: 8
 
-                        Repeater {
-                            model: Theme.highlightPalette
-                            delegate: Rectangle {
-                                required property string modelData
-                                width: 22
-                                height: 22
-                                radius: 11
-                                color: modelData
-                                border.width: 1
-                                border.color: "#FFFFFF44"
+                        Row {
+                            id: editHighlightRow
+                            spacing: 8
 
+                            Repeater {
+                                model: Theme.highlightPalette
+                                delegate: Rectangle {
+                                    required property string modelData
+                                    width: 22
+                                    height: 22
+                                    radius: 11
+                                    color: modelData
+                                    border.width: 1
+                                    border.color: Theme.swatchBorderLight
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        ToolTip.visible: containsMouse
+                                        ToolTip.text: root.labelForColor(parent.modelData)
+                                        onClicked: {
+                                            bridge.updateHighlightColor(editHighlightPopover.highlightId, parent.modelData)
+                                            editHighlightPopover.visible = false
+                                        }
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                width: 26
+                                height: 26
+                                radius: 13
+                                color: Theme.dangerSubtle
+                                AppIcon {
+                                    anchors.centerIn: parent
+                                    name: "fa5s.trash"
+                                    size: 11
+                                    color: Theme.dangerText
+                                }
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        bridge.updateHighlightColor(editHighlightPopover.highlightId, parent.modelData)
+                                        bridge.deleteHighlight(editHighlightPopover.highlightId)
                                         editHighlightPopover.visible = false
                                     }
                                 }
                             }
                         }
 
-                        Rectangle {
-                            width: 1
-                            height: 18
-                            color: Theme.borderSubtle
-                            anchors.verticalCenter: parent.verticalCenter
+                        Text {
+                            text: editHighlightPopover.label
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontXs
+                            font.weight: Font.DemiBold
+                            color: Theme.textSecondary
                         }
 
                         Rectangle {
-                            width: 26
-                            height: 26
-                            radius: 13
-                            color: Theme.dangerSubtle
-                            AppIcon {
-                                anchors.centerIn: parent
-                                name: "fa5s.trash"
-                                size: 11
-                                color: Theme.dangerText
-                            }
-                            MouseArea {
+                            width: parent.width
+                            height: 54
+                            radius: Theme.radiusXs
+                            color: Theme.bgSurface
+                            border.width: 1
+                            border.color: editCommentInput.activeFocus ? Theme.borderFocus : Theme.borderSubtle
+
+                            TextInput {
+                                id: editCommentInput
                                 anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
+                                anchors.margins: 6
+                                wrapMode: TextInput.Wrap
+                                color: Theme.textPrimary
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSm
+
+                                Text {
+                                    anchors.fill: parent
+                                    text: "Yorum ekle..."
+                                    font: editCommentInput.font
+                                    color: Theme.textMuted
+                                    visible: !editCommentInput.text && !editCommentInput.activeFocus
+                                }
+                            }
+                        }
+
+                        Item {
+                            width: parent.width
+                            height: saveCommentButton.height
+
+                            AppButton {
+                                id: saveCommentButton
+                                anchors.right: parent.right
+                                text: "Yorumu Kaydet"
+                                variant: "primary"
+                                implicitHeight: 28
                                 onClicked: {
-                                    bridge.deleteHighlight(editHighlightPopover.highlightId)
+                                    bridge.updateHighlightComment(editHighlightPopover.highlightId, editCommentInput.text)
                                     editHighlightPopover.visible = false
                                 }
                             }
@@ -502,7 +802,7 @@ Item {
                         radius: 10
                         color: Theme.accent
                         border.width: 1
-                        border.color: "#FFFFFF66"
+                        border.color: Theme.markerBorderLight
                         z: 15
 
                         AppIcon {
@@ -540,7 +840,7 @@ Item {
                     width: 220
                     height: 96
                     radius: Theme.radiusSm
-                    color: Theme.isDark ? "#1A1E2F" : "#FFFFFF"
+                    color: Theme.popoverBg
                     border.width: 1
                     border.color: Theme.borderStrong
 
@@ -603,7 +903,7 @@ Item {
                     width: 220
                     height: 96
                     radius: Theme.radiusSm
-                    color: Theme.isDark ? "#1A1E2F" : "#FFFFFF"
+                    color: Theme.popoverBg
                     border.width: 1
                     border.color: Theme.borderStrong
 
@@ -675,8 +975,9 @@ Item {
                     onTapped: {
                         editHighlightPopover.visible = false
                         editNotePopover.visible = false
+                        newVocabPopover.visible = false
                     }
-                    enabled: editHighlightPopover.visible || editNotePopover.visible
+                    enabled: editHighlightPopover.visible || editNotePopover.visible || newVocabPopover.visible
                 }
             }
         }
@@ -691,15 +992,7 @@ Item {
                                       : Qt.point(0, 0)
                 pageNavigator.jump(cell.y, currentLocation, root.renderScale)
             }
-            onActiveChanged: if (!active) {
-                const cell = tableView.cellAtPos(root.width / 2, root.height / 2)
-                const currentItem = tableView.itemAtCell(cell)
-                const currentLocation = currentItem
-                                      ? Qt.point((tableView.contentX - currentItem.x + tableView.jumpLocationMargin.x) / root.renderScale,
-                                                 (tableView.contentY - currentItem.y + tableView.jumpLocationMargin.y) / root.renderScale)
-                                      : Qt.point(0, 0)
-                pageNavigator.update(cell.y, currentLocation, root.renderScale)
-            }
+            onActiveChanged: if (!active) root.syncCurrentPage()
         }
         ScrollBar.horizontal: ScrollBar { }
     }

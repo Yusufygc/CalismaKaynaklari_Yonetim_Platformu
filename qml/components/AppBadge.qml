@@ -6,7 +6,7 @@ Rectangle {
 
     property string text: ""
     property color dotColor: "transparent"
-    property bool showDot: dotColor !== "transparent"
+    property bool showDot: dotColor.a > 0
     property color badgeColor: Theme.bgSurface
     property color textColor: Theme.textSecondary
     property color borderColor: Theme.borderSubtle

@@ -286,6 +286,7 @@ Rectangle {
 
                 // Ana Aksiyonlar (Oku, Düzenle, Sil)
                 Row {
+                    id: drawerActionsRow
                     width: parent.width - 40
                     spacing: 8
 
@@ -293,13 +294,16 @@ Rectangle {
                         text: "Okuyucuda Aç"
                         iconName: "fa5s.book-open"
                         variant: "primary"
-                        Layout.fillWidth: true
+                        // Row, RowLayout degil -- Layout.fillWidth no-op'tu, bu
+                        // yuzden kalan genislik elle hesaplaniyor.
+                        width: drawerActionsRow.width - editButton.width - deleteButton.width - drawerActionsRow.spacing * 2
                         onClicked: {
                             if (root.resource) bridge.openReader(root.resource.id)
                         }
                     }
 
                     AppButton {
+                        id: editButton
                         text: "Düzenle"
                         iconName: "fa5s.edit"
                         variant: "secondary"
@@ -309,6 +313,7 @@ Rectangle {
                     }
 
                     AppButton {
+                        id: deleteButton
                         text: root.confirmDelete ? "Emin misin?" : "Sil"
                         iconName: "fa5s.trash"
                         variant: root.confirmDelete ? "danger" : "secondary"
@@ -335,20 +340,25 @@ Rectangle {
                     width: parent.width - 40
                     spacing: 8
 
-                    Row {
+                    Item {
                         width: parent.width
+                        height: Math.max(notesHeaderLabel.implicitHeight, saveNotesButton.height)
+
                         Text {
+                            id: notesHeaderLabel
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
                             text: "KİŞİSEL NOTLAR"
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
                             font.weight: Font.Bold
                             color: Theme.textMuted
-                            anchors.verticalCenter: parent.verticalCenter
                         }
 
-                        Item { Layout.fillWidth: true }
-
                         AppButton {
+                            id: saveNotesButton
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
                             text: "Notu Kaydet"
                             iconName: "fa5s.check"
                             variant: "subtle"

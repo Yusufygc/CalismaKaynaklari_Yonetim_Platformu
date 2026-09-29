@@ -1,10 +1,12 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../theme"
 
 Item {
     id: root
+    objectName: "resourceFormModal"
 
     property bool isOpen: false
     property int resourceId: 0
@@ -61,6 +63,22 @@ Item {
         isOpen = true
     }
 
+    FileDialog {
+        id: pdfFileDialog
+        title: "PDF Dosyası Seç"
+        fileMode: FileDialog.OpenFiles
+        nameFilters: ["PDF dosyaları (*.pdf)"]
+        onAccepted: {
+            let imported = 0
+            for (const file of selectedFiles) {
+                if (bridge.importLocalPdf(file))
+                    imported++
+            }
+            if (imported > 0)
+                root.closeModal()
+        }
+    }
+
     // Karartma Perdesi
     Rectangle {
         anchors.fill: parent
@@ -89,20 +107,25 @@ Item {
             spacing: 16
 
             // Başlık & Kapat
-            Row {
+            Item {
                 width: parent.width - 48
+                height: Math.max(titleText.implicitHeight, closeButton.height)
+
                 Text {
+                    id: titleText
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
                     text: root.resourceId > 0 ? "Kaynağı Düzenle" : "Yeni Kaynak Ekle"
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontLg
                     font.weight: Font.Bold
                     color: Theme.textPrimary
-                    anchors.verticalCenter: parent.verticalCenter
                 }
 
-                Item { Layout.fillWidth: true }
-
                 AppIconButton {
+                    id: closeButton
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
                     iconName: "fa5s.times"
                     iconSize: 13
                     onClicked: root.closeModal()
@@ -175,6 +198,17 @@ Item {
                         }
                     }
                 }
+
+                // Yeni kaynakta: bilgisayardan bir veya birden fazla PDF seç (kopyalanıp
+                // uygulama depolamasına alınır, native okuyucuda açılır).
+                AppButton {
+                    visible: root.resourceId === 0
+                    text: "Bilgisayardan PDF Yükle"
+                    iconName: "fa5s.file-pdf"
+                    variant: "subtle"
+                    implicitHeight: 32
+                    onClicked: pdfFileDialog.open()
+                }
             }
 
             // 2. Başlık
@@ -240,10 +274,9 @@ Item {
                         color: Theme.textMuted
                     }
 
-                    ComboBox {
+                    AppComboBox {
                         id: categoryCombo
                         width: parent.width
-                        implicitHeight: 36
                         model: {
                             var list = ["Kategorisiz"]
                             for (var i = 0; i < bridge.categories.length; i++) {
@@ -267,10 +300,9 @@ Item {
                         color: Theme.textMuted
                     }
 
-                    ComboBox {
+                    AppComboBox {
                         id: statusCombo
                         width: parent.width
-                        implicitHeight: 36
                         model: ["Gelen Kutusu", "Planlandı", "Devam Eden", "Tamamlandı"]
                     }
                 }
@@ -288,34 +320,37 @@ Item {
                         color: Theme.textMuted
                     }
 
-                    ComboBox {
+                    AppComboBox {
                         id: priorityCombo
                         width: parent.width
-                        implicitHeight: 36
                         model: ["1 - Düşük", "2 - Normal", "3 - Yüksek", "4 - Acil"]
                     }
                 }
             }
 
-            // 4. Butonlar (Vazgeç & Kaydet)
-            Row {
+            // 4. Butonlar (Vazgeç & Kaydet) - ortalanmış
+            Item {
                 width: parent.width - 48
-                spacing: 10
+                height: actionButtonsRow.implicitHeight
 
-                Item { Layout.fillWidth: true }
+                Row {
+                    id: actionButtonsRow
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 10
 
-                AppButton {
-                    text: "Vazgeç"
-                    variant: "ghost"
-                    onClicked: root.closeModal()
-                }
+                    AppButton {
+                        text: "Vazgeç"
+                        variant: "danger"
+                        onClicked: root.closeModal()
+                    }
 
-                AppButton {
-                    text: root.resourceId > 0 ? "Güncellemeleri Kaydet" : "Kaydet ve Ekle"
-                    iconName: "fa5s.check"
-                    variant: "primary"
-                    enabledState: titleInput.text.trim().length > 0
-                    onClicked: root.submitForm()
+                    AppButton {
+                        text: root.resourceId > 0 ? "Güncellemeleri Kaydet" : "Kaydet ve Ekle"
+                        iconName: "fa5s.check"
+                        variant: "primary"
+                        enabledState: titleInput.text.trim().length > 0
+                        onClicked: root.submitForm()
+                    }
                 }
             }
         }

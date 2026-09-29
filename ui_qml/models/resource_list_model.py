@@ -1,5 +1,5 @@
 from datetime import datetime
-from PySide6.QtCore import QAbstractListModel, QByteArray, QModelIndex, Qt
+from PySide6.QtCore import Property, QAbstractListModel, QByteArray, QModelIndex, Qt, Signal
 
 from models import Resource, ResourceStatus, status_label
 from utils.url_utils import format_display_url
@@ -27,10 +27,19 @@ class ResourceListModel(QAbstractListModel):
     ReadingMinutesRole = Qt.ItemDataRole.UserRole + 17
     TagsRole = Qt.ItemDataRole.UserRole + 18
     CreatedAtRole = Qt.ItemDataRole.UserRole + 19
+    DurationLabelRole = Qt.ItemDataRole.UserRole + 20
+
+    # QML `rowCount()` cagrisi degisimi bildirmez (binding bir kez hesaplanip donar);
+    # bildirimli `count` property'si QML'in bos-durum/grid gorunurlugunu gunceller.
+    countChanged = Signal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._resources: list[Resource] = []
+
+    @Property(int, notify=countChanged)
+    def count(self) -> int:
+        return len(self._resources)
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         return len(self._resources)
@@ -56,6 +65,7 @@ class ResourceListModel(QAbstractListModel):
             self.ReadingMinutesRole: b"readingMinutes",
             self.TagsRole: b"tags",
             self.CreatedAtRole: b"createdAt",
+            self.DurationLabelRole: b"durationLabel",
         }
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
@@ -112,6 +122,19 @@ class ResourceListModel(QAbstractListModel):
             if resource.created_at:
                 return resource.created_at.strftime("%d.%m.%Y")
             return ""
+        elif role == self.DurationLabelRole:
+            duration = meta.get("duration_seconds")
+            if not duration:
+                return ""
+            try:
+                total_seconds = int(duration)
+            except (TypeError, ValueError):
+                return ""
+            hours, remainder = divmod(total_seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            if hours:
+                return f"{hours}:{minutes:02d}:{seconds:02d}"
+            return f"{minutes}:{seconds:02d}"
 
         return None
 
@@ -119,6 +142,7 @@ class ResourceListModel(QAbstractListModel):
         self.beginResetModel()
         self._resources = list(resources)
         self.endResetModel()
+        self.countChanged.emit()
 
     def get_resource_by_id(self, resource_id: int) -> Resource | None:
         for r in self._resources:

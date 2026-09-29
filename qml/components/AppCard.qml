@@ -24,6 +24,7 @@ Item {
     property string description: model ? model.description : ""
     property string thumbnailUrl: model ? model.thumbnailUrl : ""
     property int readingMinutes: model ? model.readingMinutes : 0
+    property string durationLabel: model ? model.durationLabel : ""
     property var tags: model ? model.tags : []
 
     signal clicked()
@@ -61,7 +62,10 @@ Item {
         }
 
         Column {
-            anchors.fill: parent
+            id: cardTopColumn
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
             spacing: 0
 
             // 1a. Sade Mod Üst Çubuğu (Kategori + Domain + Pin/Favori)
@@ -200,7 +204,7 @@ Item {
                     anchors.fill: parent
                     gradient: Gradient {
                         GradientStop { position: 0.0; color: "transparent" }
-                        GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.27) }
+                        GradientStop { position: 1.0; color: Theme.thumbnailOverlay }
                     }
                 }
 
@@ -317,7 +321,16 @@ Item {
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        visible: root.readingMinutes > 0
+                        visible: root.durationLabel !== ""
+                        text: "• " + root.durationLabel
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontXs
+                        color: Theme.textMuted
+                    }
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: root.durationLabel === "" && root.readingMinutes > 0
                         text: "• " + root.readingMinutes + " dk okuma"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontXs
@@ -354,12 +367,16 @@ Item {
                 }
             }
 
-            Item { Layout.fillHeight: true }
+        }
 
-            // 3. Kart Alt Barı (Durum ve Etiketler)
-            Item {
-                width: parent.width
-                height: root.isSimple ? 32 : 38
+        // 3. Kart Alt Barı (Durum ve Etiketler) -- Column disina alinip kartin
+        // en altina sabitlendi (Column, icindeki bosluk-doldurucu Item'i alta
+        // itmiyor; Layout.fillHeight RowLayout/ColumnLayout disinda no-op'tur).
+        Item {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: root.isSimple ? 32 : 38
 
                 Rectangle {
                     anchors.top: parent.top
@@ -414,9 +431,18 @@ Item {
                         textColor: Theme.textMuted
                     }
 
-                    // Okuma süresi (Sade modda alt barda)
+                    // Süre (video suresi varsa o, yoksa okuma suresi tahmini) - Sade modda alt barda
                     Text {
-                        visible: root.isSimple && root.readingMinutes > 0
+                        visible: root.isSimple && root.durationLabel !== ""
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "• " + root.durationLabel
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontXs
+                        color: Theme.textMuted
+                    }
+
+                    Text {
+                        visible: root.isSimple && root.durationLabel === "" && root.readingMinutes > 0
                         anchors.verticalCenter: parent.verticalCenter
                         text: "• " + root.readingMinutes + " dk"
                         font.family: Theme.fontFamily
@@ -425,7 +451,6 @@ Item {
                     }
                 }
             }
-        }
 
         // Kart Tıklama
         MouseArea {

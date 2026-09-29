@@ -23,7 +23,6 @@ Item {
     Image {
         id: iconImg
         anchors.fill: parent
-        anchors.centerIn: parent
         sourceSize.width: root.size * 2
         sourceSize.height: root.size * 2
         fillMode: Image.PreserveAspectFit

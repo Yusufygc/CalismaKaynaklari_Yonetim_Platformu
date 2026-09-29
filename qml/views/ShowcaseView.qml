@@ -113,46 +113,123 @@ Item {
                 }
             }
 
-            // Orta Alan: Yatay Kaydırılabilir Kategori Filtreleri
-            Flickable {
-                id: catFlickable
+            // Orta Alan: Kategori Filtresi (Açılır Kapanır Liste)
+            Rectangle {
+                id: categoryDropdownButton
                 anchors.left: searchBar.right
                 anchors.leftMargin: 12
-                anchors.right: rightActionsRow.left
-                anchors.rightMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
                 height: 32
-                contentWidth: catRow.implicitWidth
-                clip: true
+                width: 220
+                radius: Theme.radiusSm
+                color: categoryPopup.visible ? Theme.accentSubtle : (dropdownMouse.containsMouse ? Theme.bgHover : Theme.bgSurface)
+                border.width: 1
+                border.color: categoryPopup.visible ? Theme.accent : Theme.borderSubtle
+
+                Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+
+                readonly property var selectedCategory: {
+                    for (var i = 0; i < bridge.categories.length; i++) {
+                        if (bridge.categories[i].id === root.selectedCategoryId) return bridge.categories[i]
+                    }
+                    return null
+                }
 
                 Row {
-                    id: catRow
-                    spacing: 8
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.leftMargin: 10
+                    anchors.rightMargin: 10
                     anchors.verticalCenter: parent.verticalCenter
+                    spacing: 8
 
-                    AppFilterChip {
-                        text: "Tüm Kategoriler"
-                        isSelected: root.selectedCategoryId === 0
-                        onClicked: {
-                            root.selectedCategoryId = 0
-                            root.updateFilters()
-                        }
+                    Rectangle {
+                        visible: categoryDropdownButton.selectedCategory !== null
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 7
+                        height: 7
+                        radius: 3.5
+                        color: categoryDropdownButton.selectedCategory ? (categoryDropdownButton.selectedCategory.color_hex || Theme.fallbackCategoryColor) : "transparent"
                     }
 
-                    Repeater {
-                        model: bridge.categories
-                        AppFilterChip {
-                            text: modelData.name
-                            dotColor: modelData.color_hex || Theme.fallbackCategoryColor
-                            count: modelData.resource_count
-                            isSelected: root.selectedCategoryId === modelData.id
-                            onClicked: {
-                                if (root.selectedCategoryId === modelData.id) {
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width - 20
+                        elide: Text.ElideRight
+                        text: categoryDropdownButton.selectedCategory ? categoryDropdownButton.selectedCategory.name : "Tüm Kategoriler"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSm
+                        font.weight: root.selectedCategoryId !== 0 ? Font.DemiBold : Font.Normal
+                        color: root.selectedCategoryId !== 0 ? Theme.accentText : Theme.textPrimary
+                    }
+                }
+
+                AppIcon {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    name: "fa5s.chevron-down"
+                    size: 10
+                    color: Theme.textMuted
+                }
+
+                MouseArea {
+                    id: dropdownMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: categoryPopup.visible = !categoryPopup.visible
+                }
+
+                Popup {
+                    id: categoryPopup
+                    y: categoryDropdownButton.height + 4
+                    width: Math.max(categoryDropdownButton.width, 240)
+                    padding: 4
+                    implicitHeight: Math.min(popupColumn.implicitHeight + 8, 320)
+
+                    background: Rectangle {
+                        color: Theme.bgElevated
+                        radius: Theme.radiusSm
+                        border.width: 1
+                        border.color: Theme.borderStrong
+                    }
+
+                    contentItem: Flickable {
+                        clip: true
+                        contentHeight: popupColumn.implicitHeight
+
+                        Column {
+                            id: popupColumn
+                            width: parent.width
+                            spacing: 2
+
+                            CategoryDropdownRow {
+                                width: popupColumn.width
+                                label: "Tüm Kategoriler"
+                                isSelected: root.selectedCategoryId === 0
+                                onClicked: {
                                     root.selectedCategoryId = 0
-                                } else {
-                                    root.selectedCategoryId = modelData.id
+                                    root.updateFilters()
+                                    categoryPopup.visible = false
                                 }
-                                root.updateFilters()
+                            }
+
+                            Repeater {
+                                model: bridge.categories
+                                CategoryDropdownRow {
+                                    width: popupColumn.width
+                                    label: modelData.name
+                                    dotColor: modelData.color_hex || Theme.fallbackCategoryColor
+                                    count: modelData.resource_count
+                                    isSelected: root.selectedCategoryId === modelData.id
+                                    onClicked: {
+                                        root.selectedCategoryId = modelData.id
+                                        root.updateFilters()
+                                        categoryPopup.visible = false
+                                    }
+                                }
                             }
                         }
                     }
@@ -176,7 +253,7 @@ Item {
             Column {
                 anchors.centerIn: parent
                 spacing: 12
-                visible: bridge.resourcesModel.rowCount() === 0
+                visible: bridge.resourcesModel.count === 0
 
                 Rectangle {
                     width: 64
@@ -226,7 +303,7 @@ Item {
                 id: grid
                 anchors.fill: parent
                 anchors.margins: 24
-                visible: bridge.resourcesModel.rowCount() > 0
+                visible: bridge.resourcesModel.count > 0
                 clip: true
 
                 cellWidth: 290

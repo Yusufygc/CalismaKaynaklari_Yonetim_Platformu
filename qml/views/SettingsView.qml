@@ -157,8 +157,11 @@ Item {
 
                         Row {
                             id: addCatRow
-                            anchors.fill: parent
-                            anchors.margins: 10
+                            anchors.left: parent.left
+                            anchors.right: addCategoryButton.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 10
                             spacing: 10
 
                             // İsim Girişi
@@ -203,7 +206,7 @@ Item {
                                         height: 22
                                         radius: 11
                                         color: modelData
-                                        border.width: root.newCategoryColor === modelData ? 2 : 0
+                                        border.width: String(root.newCategoryColor).toLowerCase() === String(modelData).toLowerCase() ? 2 : 0
                                         border.color: Theme.textOnAccent
 
                                         MouseArea {
@@ -215,17 +218,20 @@ Item {
                                 }
                             }
 
-                            Item { Layout.fillWidth: true }
+                        }
 
-                            AppButton {
-                                text: "Kategori Ekle"
-                                iconName: "fa5s.plus"
-                                variant: "primary"
-                                enabledState: catNameInput.text.trim().length > 0
-                                onClicked: {
-                                    bridge.createCategory(catNameInput.text.trim(), root.newCategoryColor, "")
-                                    catNameInput.text = ""
-                                }
+                        AppButton {
+                            id: addCategoryButton
+                            anchors.right: parent.right
+                            anchors.rightMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "Kategori Ekle"
+                            iconName: "fa5s.plus"
+                            variant: "primary"
+                            enabledState: catNameInput.text.trim().length > 0
+                            onClicked: {
+                                bridge.createCategory(catNameInput.text.trim(), root.newCategoryColor, "")
+                                catNameInput.text = ""
                             }
                         }
                     }
@@ -255,9 +261,11 @@ Item {
                                 border.color: Theme.borderSubtle
 
                                 Row {
-                                    anchors.fill: parent
+                                    anchors.left: parent.left
+                                    anchors.right: deleteCategoryButton.left
+                                    anchors.verticalCenter: parent.verticalCenter
                                     anchors.leftMargin: 16
-                                    anchors.rightMargin: 16
+                                    anchors.rightMargin: 12
                                     spacing: 12
 
                                     Rectangle {
@@ -284,16 +292,17 @@ Item {
                                         borderColor: Theme.borderSubtle
                                         textColor: Theme.textMuted
                                     }
+                                }
 
-                                    Item { Layout.fillWidth: true }
-
-                                    AppIconButton {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        iconName: "fa5s.trash"
-                                        iconSize: 12
-                                        tooltip: "Kategoriyi Sil"
-                                        onClicked: bridge.deleteCategory(modelData.id)
-                                    }
+                                AppIconButton {
+                                    id: deleteCategoryButton
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 16
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    iconName: "fa5s.trash"
+                                    iconSize: 12
+                                    tooltip: "Kategoriyi Sil"
+                                    onClicked: bridge.deleteCategory(modelData.id)
                                 }
                             }
                         }
@@ -324,8 +333,11 @@ Item {
                         border.color: Theme.borderSubtle
 
                         Row {
-                            anchors.fill: parent
-                            anchors.margins: 10
+                            anchors.left: parent.left
+                            anchors.right: addTagButton.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 10
                             spacing: 10
 
                             Rectangle {
@@ -357,17 +369,20 @@ Item {
                                 }
                             }
 
-                            Item { Layout.fillWidth: true }
+                        }
 
-                            AppButton {
-                                text: "Etiket Ekle"
-                                iconName: "fa5s.plus"
-                                variant: "primary"
-                                enabledState: tagNameInput.text.trim().length > 0
-                                onClicked: {
-                                    bridge.createTag(tagNameInput.text.trim())
-                                    tagNameInput.text = ""
-                                }
+                        AppButton {
+                            id: addTagButton
+                            anchors.right: parent.right
+                            anchors.rightMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "Etiket Ekle"
+                            iconName: "fa5s.plus"
+                            variant: "primary"
+                            enabledState: tagNameInput.text.trim().length > 0
+                            onClicked: {
+                                bridge.createTag(tagNameInput.text.trim())
+                                tagNameInput.text = ""
                             }
                         }
                     }

@@ -35,7 +35,7 @@ Rectangle {
 
         // Renkli nokta
         Rectangle {
-            visible: root.dotColor !== "transparent"
+            visible: root.dotColor.a > 0
             width: 7
             height: 7
             radius: 3.5

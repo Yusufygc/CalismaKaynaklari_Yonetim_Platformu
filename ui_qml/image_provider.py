@@ -3,6 +3,8 @@ from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtQuick import QQuickImageProvider
 import qtawesome as qta
 
+from core.logger import log
+
 
 class IconImageProvider(QQuickImageProvider):
     """QML içinden 'image://icon/<icon_name>/<hex_color>' formatında
@@ -37,6 +39,7 @@ class IconImageProvider(QQuickImageProvider):
             pixmap.setDevicePixelRatio(2.0)
             return pixmap
         except Exception:
+            log.warning("Ikon yuklenemedi: name=%r color=%r", icon_name, color_str)
             empty = QPixmap(w, h)
             empty.fill(QColor(0, 0, 0, 0))
             return empty
