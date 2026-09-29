@@ -20,7 +20,7 @@ class TagController:
             event_bus.tag_added.emit(tag.id)
             return tag
         except Exception as exc:
-            log.error("Etiket eklenemedi: %s", exc)
+            log.exception("Etiket eklenemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
             return None
 
@@ -30,7 +30,7 @@ class TagController:
             event_bus.tag_updated.emit(tag.id)
             return tag
         except Exception as exc:
-            log.error("Etiket guncellenemedi: %s", exc)
+            log.exception("Etiket guncellenemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
             return None
 
@@ -40,6 +40,6 @@ class TagController:
             event_bus.tag_deleted.emit(tag_id)
             return True
         except Exception as exc:
-            log.error("Etiket silinemedi: %s", exc)
+            log.exception("Etiket silinemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
             return False

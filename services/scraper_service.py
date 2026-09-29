@@ -1,3 +1,4 @@
+import re
 from urllib.parse import parse_qs, urljoin, urlparse
 
 import requests
@@ -5,6 +6,8 @@ from bs4 import BeautifulSoup
 
 from core.logger import log
 from core.net_utils import safe_http_get
+
+_YOUTUBE_DURATION_RE = re.compile(r'"lengthSeconds"\s*:\s*"(\d+)"')
 
 
 class ScraperService:
@@ -36,6 +39,9 @@ class ScraperService:
 
         try:
             metadata = self._parse_html(response.text, response.url)
+            duration = self._youtube_duration_seconds(response.url, response.text)
+            if duration:
+                metadata["duration_seconds"] = duration
             return {**self._platform_fallback(response.url), **metadata}
         except Exception as exc:
             log.warning("URL metadata parse edilemedi: %s - %s", url, exc)
@@ -127,6 +133,20 @@ class ScraperService:
             "canonical_url": f"https://www.youtube.com/watch?v={youtube_id}",
             "site_name": "YouTube",
         }
+
+    def _youtube_duration_seconds(self, url: str, html: str) -> int | None:
+        """YouTube video sayfasinin ytInitialPlayerResponse JSON'undaki
+        `lengthSeconds` alanini regex ile cikarir (ayri bir oEmbed/API
+        cagrisi gerektirmez, sayfa zaten GET edilmis durumda)."""
+        if not self._youtube_video_id(url):
+            return None
+        match = _YOUTUBE_DURATION_RE.search(html)
+        if not match:
+            return None
+        try:
+            return int(match.group(1))
+        except ValueError:
+            return None
 
     @staticmethod
     def _youtube_video_id(url: str) -> str | None:

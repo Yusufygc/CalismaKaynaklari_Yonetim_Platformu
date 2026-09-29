@@ -17,7 +17,7 @@ class PdfNoteController:
             event_bus.pdf_note_added.emit(note.id)
             return note
         except Exception as exc:
-            log.error("PDF notu eklenemedi: %s", exc)
+            log.exception("PDF notu eklenemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
             return None
 
@@ -27,7 +27,7 @@ class PdfNoteController:
             event_bus.pdf_note_updated.emit(note_id)
             return note
         except Exception as exc:
-            log.error("PDF notu guncellenemedi: %s", exc)
+            log.exception("PDF notu guncellenemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
             return None
 
@@ -37,7 +37,7 @@ class PdfNoteController:
             event_bus.pdf_note_deleted.emit(note_id)
             return True
         except Exception as exc:
-            log.error("PDF notu silinemedi: %s", exc)
+            log.exception("PDF notu silinemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
             return False
 

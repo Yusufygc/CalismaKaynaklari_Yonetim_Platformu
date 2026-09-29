@@ -19,8 +19,9 @@ class ResourceController:
     def get_resource(self, resource_id: int) -> Resource | None:
         try:
             return self._svc.get_by_id(resource_id)
-        except Exception:
+        except Exception as exc:
             log.exception("Kaynak getirilemedi: id=%d", resource_id)
+            event_bus.error_occurred.emit(str(exc))
             return None
 
     def add_resource(self, data: dict) -> Resource | None:
@@ -30,7 +31,7 @@ class ResourceController:
             event_bus.resource_added.emit(resource.id)
             return resource
         except Exception as exc:
-            log.error("Kaynak eklenemedi: %s", exc)
+            log.exception("Kaynak eklenemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
             return None
 
@@ -41,30 +42,36 @@ class ResourceController:
             event_bus.resource_updated.emit(resource_id)
             return resource
         except Exception as exc:
-            log.error("[%s] Kaynak guncellenemedi: %s", exc.__class__.__name__, exc)
+            log.exception("[%s] Kaynak guncellenemedi: %s", exc.__class__.__name__, exc)
             event_bus.error_occurred.emit(str(exc))
             return None
 
-    def toggle_pin(self, resource_id: int) -> None:
+    def toggle_pin(self, resource_id: int) -> bool:
         try:
             self._svc.toggle_pin(resource_id)
             event_bus.resource_updated.emit(resource_id)
+            return True
         except Exception as exc:
-            log.error("Pin durumu degistirilemedi: %s", exc)
+            log.exception("Pin durumu degistirilemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
+            return False
 
-    def toggle_favorite(self, resource_id: int) -> None:
+    def toggle_favorite(self, resource_id: int) -> bool:
         try:
             self._svc.toggle_favorite(resource_id)
             event_bus.resource_updated.emit(resource_id)
+            return True
         except Exception as exc:
-            log.error("Favori durumu degistirilemedi: %s", exc)
+            log.exception("Favori durumu degistirilemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
+            return False
 
-    def delete_resource(self, resource_id: int) -> None:
+    def delete_resource(self, resource_id: int) -> bool:
         try:
             self._svc.delete_resource(resource_id)
             event_bus.resource_deleted.emit(resource_id)
+            return True
         except Exception as exc:
-            log.error("Kaynak silinemedi: %s", exc)
+            log.exception("Kaynak silinemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
+            return False

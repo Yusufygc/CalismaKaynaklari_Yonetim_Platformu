@@ -5,6 +5,7 @@ from controllers.category_controller import CategoryController
 from controllers.highlight_controller import HighlightController
 from controllers.pdf_note_controller import PdfNoteController
 from controllers.resource_controller import ResourceController
+from controllers.saved_search_controller import SavedSearchController
 from controllers.tag_controller import TagController
 from controllers.vocabulary_controller import VocabularyController
 
@@ -26,6 +27,7 @@ class MainController:
         self._highlight = HighlightController(session)
         self._vocabulary = VocabularyController(session)
         self._pdf_note = PdfNoteController(session)
+        self._saved_search = SavedSearchController(session)
 
     # ------------------------------------------------------------------ #
     # Kaynak islemleri
@@ -43,14 +45,14 @@ class MainController:
     def update_resource(self, resource_id: int, data: dict) -> Resource | None:
         return self._resource.update_resource(resource_id, data)
 
-    def toggle_pin(self, resource_id: int) -> None:
-        self._resource.toggle_pin(resource_id)
+    def toggle_pin(self, resource_id: int) -> bool:
+        return self._resource.toggle_pin(resource_id)
 
-    def toggle_favorite(self, resource_id: int) -> None:
-        self._resource.toggle_favorite(resource_id)
+    def toggle_favorite(self, resource_id: int) -> bool:
+        return self._resource.toggle_favorite(resource_id)
 
-    def delete_resource(self, resource_id: int) -> None:
-        self._resource.delete_resource(resource_id)
+    def delete_resource(self, resource_id: int) -> bool:
+        return self._resource.delete_resource(resource_id)
 
     # ------------------------------------------------------------------ #
     # Kategori / Etiket
@@ -99,8 +101,14 @@ class MainController:
     def update_highlight_color(self, highlight_id: int, color: str) -> object:
         return self._highlight.update_highlight_color(highlight_id, color)
 
+    def update_highlight_comment(self, highlight_id: int, comment: str) -> object:
+        return self._highlight.update_highlight_comment(highlight_id, comment)
+
     def delete_highlight(self, highlight_id: int) -> bool:
         return self._highlight.delete_highlight(highlight_id)
+
+    def delete_highlights(self, highlight_ids: list[int]) -> int | None:
+        return self._highlight.delete_highlights(highlight_ids)
 
     def load_resource_highlights(self, resource_id: int) -> list:
         return self._highlight.load_resource_highlights(resource_id)
@@ -137,3 +145,27 @@ class MainController:
 
     def load_resource_pdf_notes(self, resource_id: int) -> list:
         return self._pdf_note.load_resource_notes(resource_id)
+
+    # ------------------------------------------------------------------ #
+    # Kayitli aramalar (Makale Market)
+    # ------------------------------------------------------------------ #
+
+    def load_saved_searches(self) -> list:
+        return self._saved_search.load_saved_searches()
+
+    def create_saved_search(
+        self, topic: str, filters: dict | None, tag_name: str | None, seen_ids: list[str] | None
+    ) -> object:
+        return self._saved_search.create_saved_search(topic, filters, tag_name, seen_ids)
+
+    def delete_saved_search(self, search_id: int) -> bool:
+        return self._saved_search.delete_saved_search(search_id)
+
+    def mark_saved_search_seen(self, search_id: int, ids: list[str]) -> object:
+        return self._saved_search.mark_saved_search_seen(search_id, ids)
+
+    def record_saved_search_check(self, search_id: int, new_count: int) -> object:
+        return self._saved_search.record_saved_search_check(search_id, new_count)
+
+    def load_due_saved_searches(self, max_age) -> list:
+        return self._saved_search.load_due_saved_searches(max_age)

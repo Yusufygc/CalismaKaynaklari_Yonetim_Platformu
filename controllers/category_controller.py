@@ -20,7 +20,7 @@ class CategoryController:
             event_bus.category_added.emit(cat.id)
             return cat
         except Exception as exc:
-            log.error("Kategori eklenemedi: %s", exc)
+            log.exception("Kategori eklenemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
             return None
 
@@ -31,7 +31,7 @@ class CategoryController:
             event_bus.category_updated.emit(cat.id)
             return cat
         except Exception as exc:
-            log.error("Kategori guncellenemedi: %s", exc)
+            log.exception("Kategori guncellenemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
             return None
 
@@ -41,6 +41,6 @@ class CategoryController:
             event_bus.category_deleted.emit(category_id)
             return True
         except Exception as exc:
-            log.error("Kategori silinemedi: %s", exc)
+            log.exception("Kategori silinemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
             return False

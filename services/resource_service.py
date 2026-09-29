@@ -9,11 +9,25 @@ from core.exceptions import (
     ValidationError,
 )
 from core.logger import log
-from models import Resource, ResourceStatus, Tag
+from models import Category, Resource, ResourceStatus, Tag
 from repositories.category_repo import CategoryRepository
 from repositories.resource_repo import ResourceRepository
 from repositories.tag_repo import TagRepository
+from utils.url_utils import PLATFORM_NAMES, detect_category_name
 from .schemas import ResourceCreateSchema, ResourceUpdateSchema
+
+_AUTO_CATEGORY_COLORS = {
+    "YouTube": "#EF4444",
+    "Instagram": "#EC4899",
+    "LinkedIn": "#38BDF8",
+    "GitHub": "#64748B",
+    "Twitter": "#38BDF8",
+    "Medium": "#10B981",
+    "Substack": "#F59E0B",
+    "Reddit": "#F97316",
+    "Makale": "#8B5CF6",
+    "Web": "#6366F1",
+}
 
 _URL_RE = re.compile(
     r"^https?://"
@@ -23,19 +37,6 @@ _URL_RE = re.compile(
     r"$",
     re.IGNORECASE,
 )
-
-_PLATFORM_TAGS = {
-    "youtube.com": "youtube",
-    "youtu.be": "youtube",
-    "linkedin.com": "linkedin",
-    "instagram.com": "instagram",
-    "github.com": "github",
-    "x.com": "twitter",
-    "twitter.com": "twitter",
-    "medium.com": "medium",
-    "substack.com": "substack",
-    "reddit.com": "reddit",
-}
 
 
 def _validate_url(url: str) -> None:
@@ -71,7 +72,7 @@ def _url_tag_names(url: str | None) -> list[str]:
     if host.startswith("m."):
         host = host[2:]
 
-    for suffix, tag_name in _PLATFORM_TAGS.items():
+    for suffix, tag_name in PLATFORM_NAMES.items():
         if host == suffix or host.endswith(f".{suffix}"):
             return [tag_name]
 
@@ -170,6 +171,8 @@ class ResourceService:
         if category_id is not None:
             if self._category_repo.get_by_id(category_id) is None:
                 raise ResourceNotFoundError(f"Kategori bulunamadi: id={category_id}")
+        else:
+            category_id = self._auto_category_id(url)
 
         priority = payload.priority
         if priority not in (1, 2, 3):
@@ -210,22 +213,28 @@ class ResourceService:
         resource = self.get_by_id(resource_id)
         fields = payload.model_fields_set
 
-        self._apply_title(resource, payload, fields)
-        self._apply_url(resource, payload, fields)
-        self._apply_category(resource, payload, fields)
-        self._apply_status(resource, payload, fields)
-        self._apply_priority(resource, payload, fields)
-
-        if "content" in fields:
-            resource.content = payload.content
-        if "full_text" in fields:
-            resource.full_text = payload.full_text
-        if "is_pinned" in fields:
-            resource.is_pinned = bool(payload.is_pinned)
-
-        self._apply_metadata(resource, payload, fields)
-
+        # Tum mutasyonlar (attribute atamalari + _apply_* validasyonlari) try
+        # icinde: _apply_category/_apply_priority gibi metotlar ortada hata
+        # firlatirsa, o ana kadar resource uzerinde yapilmis degisiklikler
+        # rollback ile geri alinmali -- aksi halde paylasilan, uzun omurlu
+        # session'da kirli/yari-guncellenmis bir obje asili kalip, sonraki
+        # alakasiz bir commit'te sessizce kalicilasabilirdi.
         try:
+            self._apply_title(resource, payload, fields)
+            self._apply_url(resource, payload, fields)
+            self._apply_category(resource, payload, fields)
+            self._apply_status(resource, payload, fields)
+            self._apply_priority(resource, payload, fields)
+
+            if "content" in fields:
+                resource.content = payload.content
+            if "full_text" in fields:
+                resource.full_text = payload.full_text
+            if "is_pinned" in fields:
+                resource.is_pinned = bool(payload.is_pinned)
+
+            self._apply_metadata(resource, payload, fields)
+
             if "tag_names" in fields or "url" in fields:
                 base_tag_names = (
                     payload.tag_names
@@ -321,15 +330,41 @@ class ResourceService:
         return resource
 
     def delete_resource(self, resource_id: int) -> None:
-        deleted = self._resource_repo.delete(resource_id)
-        if not deleted:
-            raise ResourceNotFoundError(f"Kaynak bulunamadi: id={resource_id}")
         try:
+            deleted = self._resource_repo.delete(resource_id)
+            if not deleted:
+                raise ResourceNotFoundError(f"Kaynak bulunamadi: id={resource_id}")
             self._session.commit()
             log.info("Kaynak silindi: id=%d", resource_id)
         except Exception:
             self._session.rollback()
+            log.exception("Kaynak silinirken hata olustu.")
             raise
+
+    def backfill_auto_categories(self) -> int:
+        """Kategorisiz ve URL'si olan mevcut kaynaklara otomatik kategori atar.
+
+        Otomatik kategori tespiti sadece yeni kaynak eklerken calisir
+        (bkz. `add_new_resource`); bu metot ozellik eklenmeden once
+        olusturulmus kaynaklari geriye donuk doldurmak icindir.
+        Etkilenen kaynak sayisini dondurur.
+        """
+        updated = 0
+        try:
+            for resource in self._resource_repo.get_all():
+                if resource.category_id is not None or not resource.url:
+                    continue
+                category_id = self._auto_category_id(resource.url)
+                if category_id is not None:
+                    resource.category_id = category_id
+                    updated += 1
+            self._session.commit()
+            log.info("Otomatik kategori geri dolumu: %d kaynak guncellendi.", updated)
+        except Exception:
+            self._session.rollback()
+            log.exception("Otomatik kategori geri dolumu basarisiz.")
+            raise
+        return updated
 
     def _get_or_create_tags(self, tag_names: list[str]) -> list[Tag]:
         tags: list[Tag] = []
@@ -341,3 +376,21 @@ class ResourceService:
                 self._session.flush()
             tags.append(tag)
         return tags
+
+    def _auto_category_id(self, url: str | None) -> int | None:
+        """Kullanici kategori secmediyse URL'den otomatik kategori atar
+        (orn. youtube.com -> 'YouTube', bir PDF/DOI linki -> 'Makale').
+        Kategori DB'de yoksa olusturur; varsa mevcut kaydi kullanir."""
+        name = detect_category_name(url)
+        if name is None:
+            return None
+
+        category = self._category_repo.get_by_name(name)
+        if category is None:
+            category = Category(
+                name=name,
+                color_hex=_AUTO_CATEGORY_COLORS.get(name, "#64748B"),
+            )
+            self._category_repo.create(category)
+
+        return category.id

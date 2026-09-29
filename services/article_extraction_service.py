@@ -10,6 +10,7 @@ from pypdf import PdfReader
 
 from core.logger import log
 from core.net_utils import is_blocked_host, safe_http_get
+from utils.text_utils import sanitize_utf8
 
 _TIMEOUT_SECONDS = 10
 _MAX_REDIRECTS = 5
@@ -37,7 +38,7 @@ def _extract_pdf_html(content: bytes) -> str | None:
     reader = PdfReader(BytesIO(content))
     parts = []
     for i, page in enumerate(reader.pages, start=1):
-        text = " ".join((page.extract_text() or "").split())
+        text = sanitize_utf8(" ".join((page.extract_text() or "").split()))
         if text:
             parts.append(f"<h3>Sayfa {i}</h3><p>{html.escape(text)}</p>")
     return "".join(parts) or None

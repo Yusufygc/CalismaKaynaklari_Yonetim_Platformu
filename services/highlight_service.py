@@ -61,11 +61,42 @@ class HighlightService:
             log.exception("Alinti rengi guncellenirken hata olustu.")
             raise
 
+    def update_highlight_comment(self, highlight_id: int, comment: str) -> Highlight:
+        highlight = self._repo.get_by_id(highlight_id)
+        if highlight is None:
+            raise ResourceNotFoundError(f"Alinti bulunamadi: id={highlight_id}")
+        try:
+            highlight.comment = (comment or "").strip() or None
+            self._repo.update(highlight)
+            self._session.commit()
+            log.info("Alinti yorumu guncellendi: id=%d", highlight_id)
+            return highlight
+        except Exception:
+            self._session.rollback()
+            log.exception("Alinti yorumu guncellenirken hata olustu.")
+            raise
+
     def get_by_resource(self, resource_id: int) -> list[Highlight]:
         return self._repo.get_by_resource(resource_id)
 
     def get_all(self) -> list[Highlight]:
         return self._repo.get_all_with_resource()
+
+    def delete_highlights(self, highlight_ids: list[int]) -> int:
+        """Birden cok alintiyi tek islemde (tek commit) siler; silinen sayisini doner.
+
+        Zaten silinmis/olmayan kimlikler sessizce atlanir (toplu islem kismen basarisiz
+        sayilmaz); bir hata olursa hicbiri silinmez."""
+        unique_ids = list(dict.fromkeys(highlight_ids))
+        try:
+            deleted = sum(1 for highlight_id in unique_ids if self._repo.delete(highlight_id))
+            self._session.commit()
+            log.info("Alintilar toplu silindi: %d/%d", deleted, len(unique_ids))
+            return deleted
+        except Exception:
+            self._session.rollback()
+            log.exception("Alintilar toplu silinirken hata olustu.")
+            raise
 
     def delete_highlight(self, highlight_id: int) -> None:
         try:

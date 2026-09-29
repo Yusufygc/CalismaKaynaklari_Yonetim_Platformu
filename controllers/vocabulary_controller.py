@@ -21,7 +21,7 @@ class VocabularyController:
             event_bus.vocabulary_added.emit(vocabulary.id)
             return vocabulary
         except Exception as exc:
-            log.error("Kelime eklenemedi: %s", exc)
+            log.exception("Kelime eklenemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
             return None
 
@@ -31,7 +31,7 @@ class VocabularyController:
             event_bus.vocabulary_deleted.emit(vocabulary_id)
             return True
         except Exception as exc:
-            log.error("Kelime silinemedi: %s", exc)
+            log.exception("Kelime silinemedi: %s", exc)
             event_bus.error_occurred.emit(str(exc))
             return False
 
