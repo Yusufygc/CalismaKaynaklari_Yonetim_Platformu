@@ -43,3 +43,7 @@ Bu geçiş, gerçek kullanıcı veritabanının (`%APPDATA%/PKM/pkm_app.db`) bir
 ## ⚠️ Tuzak: `env.py` her zaman `settings.DATABASE_URL`'i kullanır
 
 `migrations/env.py:36` — `config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)` — bu satır, `alembic_command.upgrade(cfg, ...)` çağrısına **hangi `AlembicConfig` nesnesi verilirse verilsin**, env.py import edildiği an URL'i `core.config.settings.DATABASE_URL` (gerçek prod DB yolu) ile ezer. Bir migration'ı bir **kopya** DB üzerinde test etmek için `cfg.set_main_option("sqlalchemy.url", ...)` YETMEZ — `core.config.settings.DATABASE_URL`'in kendisini (örn. `monkeypatch.setattr(db_utils.settings, "DATABASE_URL", kopya_url)` ile, bkz. `tests/test_repositories/test_db_utils.py`) geçici olarak değiştirmek gerekir. Aksi halde migration sessizce gerçek veritabanına uygulanır.
+
+## Migration Öncesi Otomatik Yedek (2026-09-30)
+
+`utils/db_utils.py::init_db` bekleyen migration varsa (ya da Alembic-öncesi `legacy` DB ise) upgrade/stamp'ten **önce** `pkm_app.db.bak-<YYYYmmdd-HHMMSS>-<mevcut revision>` dosyası oluşturur (SQLite `backup` API'si — WAL içeriğini de kapsar). Son 3 yedek tutulur (`_prune_backups`). Yeni kurulumda ve güncel (head) DB'de yedek alınmaz. Yedekten dönmek için uygulamayı kapatıp `.bak-...` dosyasını `pkm_app.db` adıyla geri kopyalamak yeterlidir. Testler: `tests/test_repositories/test_db_backup.py`.

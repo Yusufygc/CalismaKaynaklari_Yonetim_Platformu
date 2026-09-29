@@ -1,5 +1,11 @@
+import sqlite3
+from datetime import datetime
+from pathlib import Path
+
 from alembic import command as alembic_command
 from alembic.config import Config as AlembicConfig
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -71,6 +77,59 @@ def _alembic_config() -> AlembicConfig:
     return cfg
 
 
+_BACKUP_KEEP = 3
+
+
+def _sqlite_file(target: Engine) -> Path | None:
+    """SQLite dosya yolu; bellek ici/baska motor ya da henuz olusmamis dosya icin None."""
+    if target.url.get_backend_name() != "sqlite":
+        return None
+    database = target.url.database
+    if not database or database == ":memory:":
+        return None
+    path = Path(database)
+    return path if path.is_file() else None
+
+
+def _pending_migration(cfg: AlembicConfig, target: Engine) -> tuple[bool, str]:
+    """(bekleyen migration var mi, mevcut revision etiketi). Sema hic yoksa (yeni kurulum) False;
+    Alembic-oncesi (legacy) DB `legacy` etiketiyle bekleyen sayilir (stamp + hafif migration
+    calisacagi icin yedek alinir)."""
+    tables = set(inspect(target).get_table_names())
+    if not tables:
+        return False, ""
+    if "alembic_version" not in tables:
+        return True, "legacy"
+    with target.connect() as conn:
+        current = MigrationContext.configure(conn).get_current_revision() or "none"
+    head = ScriptDirectory.from_config(cfg).get_current_head()
+    return current != head, current
+
+
+def _prune_backups(db_file: Path, keep: int = _BACKUP_KEEP) -> None:
+    backups = sorted(db_file.parent.glob(f"{db_file.name}.bak-*"))
+    for old in backups[:-keep] if keep else backups:
+        old.unlink(missing_ok=True)
+
+
+def _backup_before_migration(db_file: Path, revision: str) -> Path:
+    """Migration oncesi tutarli bir yedek alir (SQLite backup API: WAL dosyasini da kapsar)."""
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    destination = db_file.with_name(f"{db_file.name}.bak-{stamp}-{revision}")
+    source = sqlite3.connect(db_file)
+    try:
+        target_conn = sqlite3.connect(destination)
+        try:
+            source.backup(target_conn)
+        finally:
+            target_conn.close()
+    finally:
+        source.close()
+    _prune_backups(db_file)
+    log.info("Migration oncesi veritabani yedeklendi: %s", destination.name)
+    return destination
+
+
 def init_db() -> None:
     """Veritabani semasini Alembic ile olusturur/gunceller. Uygulama baslarken
     bir kez cagrilir.
@@ -80,10 +139,19 @@ def init_db() -> None:
       semaya dokunmadan mevcut durum 'head' olarak isaretlenir (stamp),
       boylece kullanici verisi CREATE TABLE ile catismaz.
     - Zaten Alembic ile yonetilen DB: sadece bekleyen migration'lar uygulanir.
+
+    Bekleyen migration varsa (ya da legacy DB) once yedek alinir (son 3 yedek tutulur);
+    yeni kurulum ve guncel DB'de yedek alinmaz.
     """
+    cfg = _alembic_config()
+    db_file = _sqlite_file(engine)
+    if db_file is not None:
+        pending, revision = _pending_migration(cfg, engine)
+        if pending:
+            _backup_before_migration(db_file, revision)
+
     _apply_lightweight_migrations(engine)
 
-    cfg = _alembic_config()
     existing_tables = set(inspect(engine).get_table_names())
     if existing_tables and "alembic_version" not in existing_tables:
         alembic_command.stamp(cfg, "head")

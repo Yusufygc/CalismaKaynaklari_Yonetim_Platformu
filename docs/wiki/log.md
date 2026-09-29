@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] FIX | Migration öncesi otomatik veritabanı yedeği
+
+`utils/db_utils.py::init_db`: bekleyen migration ya da legacy DB varsa upgrade/stamp öncesi `pkm_app.db.bak-<zaman>-<revision>` yedeği (SQLite backup API), son 3 yedek tutulur; yeni/güncel DB için yedek yok. Denetim bulgusu 2 (yarım kalan migration kullanıcının tek veri kopyasını bozabilirdi). 6 yeni test (`test_db_backup.py`). 314 test geçti.
+
+---
+
 ## [2026-09-30] FEAT | Bilgi Havuzu: alıntıları toplu seçip silme
 
 Alıntı kartlarına seçim kutusu, listenin üstüne toplu seçim çubuğu (Tümünü seç / Seçimi temizle / Seçilenleri Sil (N)) ve onay penceresi eklendi. Backend: `HighlightService.delete_highlights` (tek commit, hata olursa geri alınır, olmayan/yinelenen kimlikler atlanır), `HighlightController.delete_highlights`, `MainController` facade, `QmlBridge.deleteHighlights` (tek yenileme, tek toast, açık okuyucu tazelenir). Etiket filtresi/arama/sekme değişince seçim bırakılır (görünmeyen alıntı yanlışlıkla silinmesin). Geçici DB ile QTest gerçek fare akışı doğrulandı (seç, tümünü seç, temizle, vazgeç, onayla). 308 test geçti.
