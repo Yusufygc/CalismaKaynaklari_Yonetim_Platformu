@@ -1,0 +1,79 @@
+REGRESYON TEST LISTESI - Denetim duzeltmeleri sonrasi (2026-09-30)
+==================================================================
+Calistir: python main.py
+Bu turda degisenler: Koprü katmani 4 alt-bridge'e bolundu, tarihler yerel saat, Turkce arama, PDF/dosya IO arka plan,
+DB otomatik yedek, tam metin sorgu optimizasyonu, buyuk QML dosyalari bilesenlere bolundu.
+Otomatik testler (474) bunlarin cogunu kapsar; asagisi GERCEK pencere/dosya diyalogu/dokunmatik gerektirenler.
+Bir sey bozuk cikarsa: ekran goruntusu + "python -X faulthandler main.py" ciktisi.
+
+
+1. ACILIS VE VERITABANI
+-----------------------
+[ ] Uygulama hatasiz aciliyor mu? (Ilk acilista yeni migration uygulanir.)
+[ ] %APPDATA%\PKM klasorunde "pkm_app.db.bak-<tarih>-<revision>" yedegi olustu mu? (Yalniz migration bekliyorsa.)
+[ ] Eski kaynaklar/alintilar/kelimeler yerinde mi?
+[ ] Kartlardaki "N dk okuma" degerleri makul mu? (Migration mevcut kayitlari geri doldurdu.)
+
+2. VITRIN (Baglanti Vitrini)
+----------------------------
+[ ] Kartlar, kategori renkleri, etiketler, favori/pin ikonlari gorunuyor mu? Sidebar sayaclari dogru mu?
+[ ] Arama: "Istanbul", "ISTANBUL", "istanbul" ayni sonucu veriyor mu? Basliktaki "Seker" icin "seker" yazinca bulunuyor mu?
+[ ] Kategori/durum/favori filtreleri calisiyor mu?
+[ ] Karta tikla: sag cekmece aciliyor mu? Durum degistir, not yaz+kaydet, pin, favori calisiyor mu?
+[ ] Cekmecedeki tarih dogru mu? (Yerel saat: gece yarisina yakin kayit dogru gunu gostermeli.)
+[ ] Kaynagi sil: cekmece kapaniyor, kart gidiyor mu? Acik okuyucudaki kaynagi silince okuyucu kapaniyor mu?
+
+3. KAYNAK EKLE / DUZENLE
+------------------------
+[ ] "Yeni Ekle": URL yapistir, baslik/aciklama otomatik doluyor mu? Kaydet.
+[ ] Kaynagi duzenle, URL'yi degistir, kaydet. Eski PDF kopyasi (varsa) temizleniyor mu?
+[ ] "Bilgisayardan PDF Yukle": dosya sec (cift dosya dene). Pencere DONMADAN kapaniyor, kaynak(lar) ekleniyor mu?
+[ ] Buyuk bir PDF'i (50 MB+) surukle-birak: arayuz donmuyor, ekleme sonunda toast cikiyor mu?
+[ ] Gecersiz dosyayi (.txt) surukle-birak: hata toast'i cikiyor mu?
+
+4. AYARLAR (Kategori/Etiket)
+----------------------------
+[ ] Kategori ekle/sil, etiket ekle/sil. Ayni isimle tekrar eklemede hata toast'i cikiyor mu?
+[ ] Bir kategoriye filtre uygulayip o kategoriyi sil: vitrin filtresi sifirlaniyor, tum kaynaklar geri geliyor mu?
+[ ] Acik cekmeceyle bir kategori/etiket adini degistir: cekmece ve kartlar yeni adi gosteriyor mu?
+
+5. OKUYUCU (HTML makale)
+------------------------
+[ ] Web makalesini ac: metin geliyor mu? Metin sec, renkli alinti kaydet, kelime havuzuna ekle calisiyor mu?
+[ ] "Vitrine Don" calisiyor mu?
+
+6. PDF OKUYUCU
+--------------
+[ ] PDF sayfalari render oluyor, sayfa sayaci kaydirmayi takip ediyor mu?
+[ ] Ctrl+tekerlek zoom calisiyor mu? %150'de metin sec -> alinti kaydet: TAM secilen satira oturuyor mu? (Rastgele yer OLMAMALI)
+[ ] Art arda 3-4 alinti yap: cokme yok mu?
+[ ] Kaydedilmis alintiya tikla: duzenleme popover'i aciliyor mu? Renk degistir, yorum yaz+kaydet, sil calisiyor mu?
+[ ] Metin sec -> dil ikonu (Kelime Havuzuna Ekle) -> ceviri yaz -> Kaydet: Bilgi Havuzu'nda cumle baglamiyla gorunuyor mu?
+[ ] "Not Ekle" modu: sayfaya tikla, not yaz, kaydet. Not isaretine tiklayip duzenle/sil.
+[ ] Yan panel: Sayfalar (kucuk resimler), Anahat (yuklenirken "yukleniyor", sonra baslik listesi), Notlarim, Kaynakca.
+[ ] Ctrl+F arama: sonuc sayaci, ileri/geri, Esc ile kapanma.
+[ ] Atif ikonu: APA/IEEE/BibTeX kopyalama; "OpenAlex'ten Getir" calisiyor mu?
+[ ] Dis aktar (Markdown) ikonu: dosya diyalogu aciliyor, dosya yaziliyor mu?
+[ ] Web PDF (arXiv gibi) kaynagini ac: indiriliyor mesaji, sonra native okuyucuda aciliyor mu? Indirilemezse metin okuyucuya dusuyor mu?
+
+7. BILGI HAVUZU
+---------------
+[ ] Alintilar/Kelimeler sekmeleri, sayilar dogru mu? Etiket (anlam) filtresi calisiyor mu?
+[ ] Arama Turkce harflere duyarsiz mi? ("ısparta", "ISPARTA", "seker")
+[ ] Toplu secim: kutucuklar, "Tumunu sec", onay penceresi, "Vazgec", silme. (Ayrintili liste: MAKALE_MARKET_TEST_TODO.txt bolum 7)
+[ ] "Tumunu Disa Aktar (.md)": dosya diyalogu + dosya.
+[ ] Tarihler dogru saatte mi?
+
+8. MAKALE MARKET
+----------------
+[ ] Tum maddeler icin MAKALE_MARKET_TEST_TODO.txt (bolum 1-6): arama, filtre, sayfalama, kesif, toplu islem, kayitli aramalar.
+[ ] Ozellikle: Wi-Fi kapat -> ara -> "Tekrar dene" tiklanabiliyor mu?
+[ ] Kayitli arama cipine tikla: arama alanlari doluyor, sonuc geliyor, "yeni" rozeti sifirlaniyor mu?
+[ ] Bir makaleyi kaydet: kart "Kutuphanede" oluyor; vitrinde yeni kaynak gorunuyor mu?
+
+9. GENEL
+--------
+[ ] Koyu/acik tema gecisi: tum sayfalarda (Market, Bilgi Havuzu, PDF, Ayarlar) renkler dogru mu?
+[ ] Sade/Zengin gorunum gecisi (vitrin ust cubugu).
+[ ] Pencereyi kucult/buyut: ust cubuklar birbirine binmiyor mu?
+[ ] Uygulamayi kapat-ac: kayitli aramalar, alintilar, kelimeler duruyor mu?

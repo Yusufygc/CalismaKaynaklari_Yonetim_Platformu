@@ -14,12 +14,12 @@ from services.schemas import HighlightPosition
 from ui_qml.bridges.library_bridge import LibraryBridge
 from ui_qml.context import BridgeContext
 from ui_qml.file_export import write_export
-from ui_qml.serializers import annotate_library, serialize_paper, serialize_pool_highlight, serialize_pool_vocabulary
+from ui_qml.serializers import (
+    DEFAULT_HIGHLIGHT_COLOR, annotate_library, serialize_paper, serialize_pool_highlight, serialize_pool_vocabulary,
+)
 from utils.doi_utils import doi_from_url
 from utils.text_utils import extract_sentence, sanitize_utf8
 from workers import PaperMetadataWorker, PdfOutlineWorker, RelatedPapersWorker
-
-_DEFAULT_HIGHLIGHT_COLOR = "#B45309"
 
 
 class ReaderBridge(QObject):
@@ -230,7 +230,7 @@ class ReaderBridge(QObject):
         self,
         resource_id: int,
         content: str,
-        color: str = _DEFAULT_HIGHLIGHT_COLOR,
+        color: str = DEFAULT_HIGHLIGHT_COLOR,
         position: dict | None = None,
     ) -> None:
         """HTML okuyucudan alinti ekler. `position` (opsiyonel): {page, startIndex, length}."""

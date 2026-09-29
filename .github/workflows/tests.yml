@@ -28,5 +28,5 @@ jobs:
       - name: Testleri calistir (kapsam esigi ile)
         env:
           QT_QPA_PLATFORM: offscreen
-        # Olculen taban %82 (2026-09-30); esik 2 puan altinda tutulur.
-        run: pytest tests/ --cov --cov-report=term --cov-fail-under=80
+        # Olculen taban %86 (2026-09-30); esik 2 puan altinda tutulur.
+        run: pytest tests/ --cov --cov-report=term --cov-fail-under=84
