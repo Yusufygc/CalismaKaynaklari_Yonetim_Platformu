@@ -1,5 +1,6 @@
 import re
 import uuid
+from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
 
@@ -47,14 +48,25 @@ from services.export_service import ExportService
 from services.library_index import LibraryIndex
 from services.paper_export_service import PaperExportService
 from services.pdf_download_service import looks_like_remote_pdf
+from services.schemas import HighlightPosition
 from ui_qml.models.resource_list_model import ResourceListModel
+from ui_qml.serializers import has_pdf_position, serialize_highlight, serialize_resource
 from utils.text_utils import extract_sentence, sanitize_utf8
 from utils.date_utils import format_local_datetime
 from utils.doi_utils import doi_from_url
-from utils.url_utils import format_display_url
 
 _UNSAFE_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*]')
 _MARKET_HISTORY_LIMIT = 10
+
+
+@dataclass
+class _PreviousResource:
+    """`saveResource` duzenlemesinden onceki kaynagin temizlik icin gereken bilgileri."""
+
+    url: str | None = None
+    pdf_urls: list[str] = field(default_factory=list)
+    had_local_pdf: bool = False
+
 _SAVED_SEARCH_CHECK_INTERVAL = timedelta(hours=1)
 
 
@@ -411,47 +423,13 @@ class QmlBridge(QObject):
     @Slot(dict)
     def saveResource(self, data: dict) -> None:
         """Yeni kaynak ekler veya mevcudu günceller."""
-        resource_id = data.get("id")
-        
-        status_val = data.get("status", "INBOX")
-        try:
-            status_enum = ResourceStatus[status_val]
-        except Exception:
-            status_enum = ResourceStatus.INBOX
-
-        tag_names = []
-        if "tag_names" in data:
-            tag_names = [str(t) for t in data["tag_names"]]
-        elif "tag_ids" in data and data["tag_ids"]:
-            tag_id_set = set(data["tag_ids"])
-            tag_names = [t["name"] for t in self._tags_cache if t["id"] in tag_id_set]
-
-        try:
-            category_id = int(data["category_id"]) if data.get("category_id") else None
-            priority = int(data.get("priority", 2))
-        except (TypeError, ValueError):
-            self.notificationEmitted.emit("error", AppStrings.NOTIFICATION_INVALID_FORM_DATA)
+        payload = self._parse_form_payload(data)
+        if payload is None:
             return
 
-        payload = {
-            "title": data.get("title", "").strip(),
-            "url": data.get("url", "").strip() or None,
-            "category_id": category_id,
-            "status": status_enum,
-            "priority": priority,
-            "content": data.get("content", ""),
-            "tag_names": tag_names,
-        }
-
-        old_url = None
-        old_pdf_urls: list[str] = []
-        had_local_pdf = False
+        resource_id = data.get("id")
+        previous = self._snapshot_before_edit(int(resource_id)) if resource_id else None
         if resource_id:
-            old_resource = self._controller.get_resource(int(resource_id))
-            old_url = old_resource.url if old_resource else None
-            if old_resource:
-                old_pdf_urls = self._owned_pdf_urls(old_resource)
-                had_local_pdf = "local_pdf" in (old_resource.extra_metadata or {})
             res = self._controller.update_resource(int(resource_id), payload)
             action_text = AppStrings.NOTIFICATION_ACTION_UPDATED
         else:
@@ -464,15 +442,8 @@ class QmlBridge(QObject):
         if res is None:
             return
 
-        # Duzenlemede URL degistiyse/kaldirildiysa, eski URL bizim kopyaladigimiz
-        # bir yerel PDF'e isaret ediyorsa dosyasi/onbellek girdisi oksuz kalirdi.
-        if old_url and old_url != (res.url or None):
-            for pdf_url in old_pdf_urls:
-                self._cleanup_local_pdf(pdf_url)
-            self._pdf_download_failed.discard(res.id)
-            if had_local_pdf:
-                metadata = {k: v for k, v in (res.extra_metadata or {}).items() if k != "local_pdf"}
-                self._controller.update_resource(res.id, {"extra_metadata": metadata})
+        if previous is not None:
+            self._cleanup_replaced_url(previous, res)
 
         self._reload_resources()
         self.selectResource(res.id)
@@ -480,6 +451,57 @@ class QmlBridge(QObject):
             "info",
             AppStrings.NOTIFICATION_RESOURCE_SAVED_FMT.format(action=action_text),
         )
+
+    def _parse_form_payload(self, data: dict) -> dict | None:
+        """Form verisini controller yukune cevirir; gecersiz sayisal alanda bildirim verip None doner."""
+        try:
+            status = ResourceStatus[data.get("status", "INBOX")]
+        except KeyError:
+            status = ResourceStatus.INBOX
+        try:
+            category_id = int(data["category_id"]) if data.get("category_id") else None
+            priority = int(data.get("priority", 2))
+        except (TypeError, ValueError):
+            self.notificationEmitted.emit("error", AppStrings.NOTIFICATION_INVALID_FORM_DATA)
+            return None
+        return {
+            "title": data.get("title", "").strip(),
+            "url": data.get("url", "").strip() or None,
+            "category_id": category_id,
+            "status": status,
+            "priority": priority,
+            "content": data.get("content", ""),
+            "tag_names": self._form_tag_names(data),
+        }
+
+    def _form_tag_names(self, data: dict) -> list[str]:
+        if "tag_names" in data:
+            return [str(t) for t in data["tag_names"]]
+        selected_ids = set(data.get("tag_ids") or [])
+        return [t["name"] for t in self._tags_cache if t["id"] in selected_ids]
+
+    def _snapshot_before_edit(self, resource_id: int) -> _PreviousResource:
+        """Duzenlemeden onceki URL/yerel PDF bilgisi (URL degisirse eski dosyalar temizlensin diye)."""
+        old = self._controller.get_resource(resource_id)
+        if old is None:
+            return _PreviousResource()
+        return _PreviousResource(
+            url=old.url,
+            pdf_urls=self._owned_pdf_urls(old),
+            had_local_pdf="local_pdf" in (old.extra_metadata or {}),
+        )
+
+    def _cleanup_replaced_url(self, previous: _PreviousResource, res: Resource) -> None:
+        """Duzenlemede URL degistiyse/kaldirildiysa, eski URL bizim kopyaladigimiz bir yerel PDF'e
+        isaret ediyorsa dosyasi/onbellek girdisi oksuz kalirdi."""
+        if not previous.url or previous.url == (res.url or None):
+            return
+        for pdf_url in previous.pdf_urls:
+            self._cleanup_local_pdf(pdf_url)
+        self._pdf_download_failed.discard(res.id)
+        if previous.had_local_pdf:
+            metadata = {k: v for k, v in (res.extra_metadata or {}).items() if k != "local_pdf"}
+            self._controller.update_resource(res.id, {"extra_metadata": metadata})
 
     @Slot(str)
     def scrapeUrl(self, url: str) -> None:
@@ -584,65 +606,70 @@ class QmlBridge(QObject):
             self._refresh_reader_resource(resource_id)
             self.setCurrentView("reader")
 
-    @Slot(int, str, str, int, int, int)
+    @Slot(int, str, str)
+    @Slot(int, str, str, "QVariantMap")
     def addHighlight(
         self,
         resource_id: int,
         content: str,
         color: str = "#B45309",
-        page: int = -1,
-        startIndex: int = -1,
-        length: int = -1,
+        position: dict | None = None,
     ) -> None:
+        """HTML okuyucudan alinti ekler. `position` (opsiyonel): {page, startIndex, length}."""
         if not content.strip():
             return
-        result = self._controller.create_highlight(
-            resource_id,
-            content.strip(),
-            color,
-            page if page >= 0 else None,
-            startIndex if startIndex >= 0 else None,
-            length if length >= 0 else None,
-        )
+        self._save_highlight(resource_id, content.strip(), color, self._position_from_map(position))
+
+    @staticmethod
+    def _position_from_map(position: dict | None) -> HighlightPosition | None:
+        if not position:
+            return None
+        page, start, length = (position.get(k, -1) for k in ("page", "startIndex", "length"))
+        if page < 0 or start < 0 or length < 0:
+            return None
+        return HighlightPosition(int(page), int(start), int(length))
+
+    def _save_highlight(
+        self, resource_id: int, content: str, color: str, position: HighlightPosition | None
+    ) -> None:
+        result = self._controller.create_highlight(resource_id, content, color, position)
         if result is None:
             return  # Hata zaten event_bus.error_occurred uzerinden toast olarak gosterildi
         self.reload_highlights()
         self._refresh_reader_resource(resource_id)
         self.notificationEmitted.emit("info", AppStrings.NOTIFICATION_HIGHLIGHT_SAVED)
 
-    @Slot(int, str, int, float, float, float, float, str)
-    def addPdfHighlight(
-        self,
-        resource_id: int,
-        file_url: str,
-        page: int,
-        from_x: float,
-        from_y: float,
-        to_x: float,
-        to_y: float,
-        color: str,
-    ) -> None:
-        """QML'den `QPdfSelection` donen metotlar (getSelection/getSelectionAtIndex)
-        cagrilamiyor -- "Unknown method return type: QPdfSelection" (calisma
-        zamaninda dogrulandi). Bu yuzden secim noktalarini (page-point uzayinda)
-        Python'a tasiyip QPdfDocument islemlerini burada yapiyoruz.
+    def _pdf_selection(self, file_url: str, selection: dict):
+        """QML'in gonderdigi secim ({page, fromX, fromY, toX, toY}; page-point uzayinda) icin
+        `(page, QPdfSelection)` doner; belge/secim gecersizse None.
+
+        QML'den `QPdfSelection` donen metotlar (getSelection/getSelectionAtIndex) cagrilamiyor --
+        "Unknown method return type: QPdfSelection" (calisma zamaninda dogrulandi). Bu yuzden secim
+        noktalari Python'a tasinip QPdfDocument islemleri burada yapiliyor.
         """
         doc = self._load_pdf_document(file_url)
         if doc is None:
-            return
-        selection = doc.getSelection(page, QPointF(from_x, from_y), QPointF(to_x, to_y))
-        if not selection.isValid() or not selection.text().strip():
-            return
-        start_index = selection.startIndex()
-        length = selection.endIndex() - selection.startIndex()
-        result = self._controller.create_highlight(
-            resource_id, sanitize_utf8(selection.text()), color, page, start_index, length
+            return None
+        page = int(selection["page"])
+        pdf_selection = doc.getSelection(
+            page,
+            QPointF(selection["fromX"], selection["fromY"]),
+            QPointF(selection["toX"], selection["toY"]),
         )
-        if result is None:
+        if not pdf_selection.isValid() or not sanitize_utf8(pdf_selection.text()).strip():
+            return None
+        return doc, page, pdf_selection
+
+    @Slot(int, str, "QVariantMap", str)
+    def addPdfHighlight(self, resource_id: int, file_url: str, selection: dict, color: str) -> None:
+        """PDF'te secili metni alinti olarak kaydeder. `selection`: {page, fromX, fromY, toX, toY}."""
+        resolved = self._pdf_selection(file_url, selection)
+        if resolved is None:
             return
-        self.reload_highlights()
-        self._refresh_reader_resource(resource_id)
-        self.notificationEmitted.emit("info", AppStrings.NOTIFICATION_HIGHLIGHT_SAVED)
+        _doc, page, pdf_selection = resolved
+        start = pdf_selection.startIndex()
+        position = HighlightPosition(page, start, pdf_selection.endIndex() - start)
+        self._save_highlight(resource_id, sanitize_utf8(pdf_selection.text()), color, position)
 
     @Slot(int, str)
     def updateHighlightColor(self, highlight_id: int, color: str) -> None:
@@ -872,34 +899,18 @@ class QmlBridge(QObject):
             return
         self.notificationEmitted.emit("info", AppStrings.NOTIFICATION_EXPORT_DONE_FMT.format(name=path.name))
 
-    @Slot(int, str, int, float, float, float, float, str)
-    def addPdfVocabulary(
-        self,
-        resource_id: int,
-        file_url: str,
-        page: int,
-        from_x: float,
-        from_y: float,
-        to_x: float,
-        to_y: float,
-        translation: str,
-    ) -> None:
+    @Slot(int, str, "QVariantMap", str)
+    def addPdfVocabulary(self, resource_id: int, file_url: str, selection: dict, translation: str) -> None:
         """PDF'te secili kelimeyi, gectigi cumleyle (baglam) birlikte kelime havuzuna ekler.
-
-        QPdfSelection QML'den cagrilamadigi icin (bkz. addPdfHighlight) secim
-        noktalari Python'a tasinir; sayfa metninden cumle burada cikarilir.
-        """
-        doc = self._load_pdf_document(file_url)
-        if doc is None:
+        `selection`: {page, fromX, fromY, toX, toY} (bkz. `_pdf_selection`)."""
+        resolved = self._pdf_selection(file_url, selection)
+        if resolved is None:
             return
-        selection = doc.getSelection(page, QPointF(from_x, from_y), QPointF(to_x, to_y))
-        word = sanitize_utf8(selection.text()).strip() if selection.isValid() else ""
-        if not word:
-            return
+        doc, page, pdf_selection = resolved
+        word = sanitize_utf8(pdf_selection.text()).strip()
         page_text = sanitize_utf8(doc.getSelectionAtIndex(page, 0, 1_000_000).text())
-        start = selection.startIndex()
-        length = selection.endIndex() - start
-        context = extract_sentence(page_text, start, length)
+        start = pdf_selection.startIndex()
+        context = extract_sentence(page_text, start, pdf_selection.endIndex() - start)
         self.addVocabulary(resource_id, " ".join(word.split()), translation, context)
 
     # ------------------------------------------------------------------ #
@@ -1516,84 +1527,39 @@ class QmlBridge(QObject):
         bounding_rect = [rect.x(), rect.y(), rect.width(), rect.height()]
         return polygons, bounding_rect
 
-    def _serialize_resource(self, r: Resource) -> dict:
-        meta = r.extra_metadata or {}
-        # Alıntılar listesi -- yerel PDF ise, kalici highlight'lari yeniden
-        # cizebilmesi icin geometri (poligon + bounding rect) onceden hesaplanir
-        # (QML'den QPdfSelection donen metotlar cagrilamiyor, bkz. addPdfHighlight).
-        pdf_file_url = self._pdf_file_url(r)
-        pdf_doc = self._load_pdf_document(pdf_file_url) if pdf_file_url else None
+    def _pdf_state(self, resource: Resource, pdf_file_url: str | None) -> str:
+        """Kaynagin yerel PDF durumu: ready | downloading | failed | '' (PDF degil)."""
         if pdf_file_url:
-            pdf_state = "ready"
-        elif r.id in self._pdf_downloads_in_progress:
-            pdf_state = "downloading"
-        elif r.id in self._pdf_download_failed:
-            pdf_state = "failed"
-        else:
-            pdf_state = ""
-        hl_list = []
-        for h in (r.highlights or []):
-            item = {
-                "id": h.id,
-                "content": h.content,
-                "color": h.color or "#B45309",
-                "label": label_for_color(h.color),
-                "comment": h.comment or "",
-                "page": h.page_number if h.page_number is not None else -1,
-                "startIndex": h.start_index if h.start_index is not None else -1,
-                "length": h.length if h.length is not None else -1,
-            }
-            if pdf_doc is not None and h.page_number is not None and h.start_index is not None and h.length:
-                geometry = self._highlight_geometry(pdf_doc, h.page_number, h.start_index, h.length)
-                if geometry is not None:
-                    item["boundsPolygons"], item["boundingRect"] = geometry
-            hl_list.append(item)
+            return "ready"
+        if resource.id in self._pdf_downloads_in_progress:
+            return "downloading"
+        if resource.id in self._pdf_download_failed:
+            return "failed"
+        return ""
 
-        # Kelimeler listesi
-        vocab_list = [
-            {"id": v.id, "word": v.word, "translation": v.translation, "context": v.context_sentence or ""}
-            for v in (r.vocabulary or [])
-        ]
+    def _serialize_highlights(self, resource: Resource, pdf_file_url: str | None) -> list[dict]:
+        """Alintilar; yerel PDF ise kalici alintilarin yeniden cizilebilmesi icin geometri
+        (poligon + bounding rect) onceden hesaplanir (QML'den QPdfSelection donen metotlar
+        cagrilamiyor, bkz. addPdfHighlight)."""
+        pdf_doc = self._load_pdf_document(pdf_file_url) if pdf_file_url else None
+        items = []
+        for highlight in resource.highlights or []:
+            geometry = None
+            if pdf_doc is not None and has_pdf_position(highlight):
+                geometry = self._highlight_geometry(
+                    pdf_doc, highlight.page_number, highlight.start_index, highlight.length
+                )
+            items.append(serialize_highlight(highlight, geometry))
+        return items
 
-        # PDF notlari (sadece yerel PDF kaynaklarinda anlamli)
-        note_list = [
-            {"id": n.id, "page": n.page, "x": n.x, "y": n.y, "text": n.note_text}
-            for n in (r.pdf_notes or [])
-        ]
-
-        return {
-            "id": r.id,
-            "title": r.title or "",
-            "url": r.url or "",
-            "domain": format_display_url(r.url) if r.url else "",
-            "categoryId": r.category_id or 0,
-            "categoryName": r.category.name if r.category else "",
-            "categoryColor": r.category.color_hex if r.category and r.category.color_hex else "#64748B",
-            "status": r.status.value if hasattr(r.status, "value") else str(r.status),
-            "priority": r.priority,
-            "isPinned": bool(r.is_pinned),
-            "isFavorite": bool(r.is_favorite),
-            "content": r.content or "",
-            "fullText": r.full_text or "",
-            "thumbnailUrl": str(meta.get("image") or meta.get("thumbnail") or ""),
-            "description": str(meta.get("description") or ""),
-            "readingMinutes": r.reading_minutes or 0,
-            "tags": [{"id": t.id, "name": t.name} for t in r.tags],
-            "highlights": hl_list,
-            "vocabulary": vocab_list,
-            "pdfNotes": note_list,
-            "pdfFileUrl": pdf_file_url or "",
-            "pdfState": pdf_state,
-            "paper": {
-                "authors": meta.get("authors") or [],
-                "year": meta.get("year"),
-                "venue": meta.get("venue") or "",
-                "doi": meta.get("doi") or "",
-                "openalexId": meta.get("openalex_id") or "",
-                "citationCount": meta.get("citation_count") or 0,
-            },
-            "createdAt": format_local_datetime(r.created_at),
-        }
+    def _serialize_resource(self, r: Resource) -> dict:
+        pdf_file_url = self._pdf_file_url(r)
+        return serialize_resource(
+            r,
+            highlights=self._serialize_highlights(r, pdf_file_url),
+            pdf_file_url=pdf_file_url or "",
+            pdf_state=self._pdf_state(r, pdf_file_url),
+        )
 
     def _serialize_paper(self, paper: PaperResult) -> dict:
         return {

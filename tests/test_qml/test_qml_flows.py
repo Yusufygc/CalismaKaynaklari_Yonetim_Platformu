@@ -177,3 +177,89 @@ def test_knowledge_pool_search_is_turkish_insensitive(qapp, bridge):
     assert visible_cards(fold_tr("seker")) == 1
     assert visible_cards("yok boyle bir sey") == 0
     del engine
+
+
+def _white_page_box(window) -> tuple[int, int, int]:
+    """Goruntude beyaz PDF sayfasinin (sol x, sag x, ust y) piksel konumu."""
+    from PySide6.QtGui import QImage
+
+    image = window.grabWindow().convertToFormat(QImage.Format.Format_RGB32)
+
+    def white(x, y):
+        c = image.pixelColor(x, y)
+        return c.red() > 250 and c.green() > 250 and c.blue() > 250
+
+    xs = [x for x in range(240, image.width(), 2) if white(x, 450)]
+    x_left, x_right = xs[0], xs[-1]
+    ys = [y for y in range(60, image.height(), 2) if white((x_left + x_right) // 2, y)]
+    return x_left, x_right, ys[0]
+
+
+def _drag(app, window, x0: int, x1: int, y: int) -> None:
+    from PySide6.QtCore import QPoint
+
+    start, end = QPoint(x0, y), QPoint(x1, y)
+    QTest.mouseMove(window, start)
+    QTest.qWait(30)
+    QTest.mousePress(window, Qt.LeftButton, Qt.NoModifier, start)
+    QTest.qWait(30)
+    for i in range(1, 11):
+        QTest.mouseMove(window, QPoint(x0 + (x1 - x0) * i // 10, y))
+        QTest.qWait(30)
+    QTest.mouseRelease(window, Qt.LeftButton, Qt.NoModifier, end)
+    QTest.qWait(100)
+
+
+def test_pdf_reader_drag_selection_highlights_exactly_the_selected_word(qapp, bridge, monkeypatch, tmp_path):
+    """Gercek fare surukleme: secilen kelime kaydedilir, konumu (sayfa + karakter indeksi) dogrudur.
+    Onceki hatalar: highlight rastgele yere oturuyordu (piksel/pt karisikligi), 2.-3. highlight cokuyordu."""
+    from tests.pdf_factory import write_text_pdf
+    from tests.test_qml.qml_harness import walk
+
+    storage = tmp_path / "depo"
+    storage.mkdir()
+    monkeypatch.setattr("ui_qml.bridge.pdf_storage_dir", lambda: storage)
+    source = write_text_pdf(tmp_path / "makale.pdf")
+    bridge.importLocalPdf(source.as_uri())
+    resource = bridge._controller.load_resources_with_filters({})[0]
+    engine, window = open_window(qapp, bridge, "showcase", width=1400, height=900)
+    bridge.openReader(resource.id)
+    pump(qapp, 150)
+
+    from PySide6.QtCore import QMetaObject
+
+    page_area = window.findChild(QObject, "pageArea")
+    for _ in range(2):  # %100 disinda: piksel/pt karisikligi ancak zoom != 1 iken gorunur
+        QMetaObject.invokeMethod(page_area, "zoomIn")
+    pump(qapp, 60)
+
+    doc = bridge._load_pdf_document(bridge.currentReaderResource["pdfFileUrl"])
+    page_w = doc.pagePointSize(0).width()
+    x_left, x_right, y_top = _white_page_box(window)
+    scale = (x_right - x_left) / page_w
+    assert scale > 1.2, f"zoom uygulanmadi (olcek {scale:.2f})"
+    page_text = doc.getSelectionAtIndex(0, 0, 100000).text()
+
+    for word in ("tilki", "paragrafin", "kopegin"):  # ardisik 3 alinti: coken senaryo
+        start = page_text.index(word)
+        rect = doc.getSelectionAtIndex(0, start, len(word)).boundingRectangle()
+        y = int(y_top + (rect.y() + rect.height() / 2) * scale)
+        _drag(qapp, window, int(x_left + (rect.x() + 1) * scale), int(x_left + (rect.x() + rect.width() + 1) * scale), y)
+
+        toolbar = next(i for i in walk(window.contentItem()) if i.objectName() == "newHighlightToolbar" and i.isVisible())
+        from PySide6.QtCore import QPoint, QPointF
+        scene = toolbar.mapToScene(QPointF(19, toolbar.property("height") / 2))
+        QTest.mouseClick(window, Qt.LeftButton, Qt.NoModifier, QPoint(int(scene.x()), int(scene.y())))
+        pump(qapp, 30)
+
+    highlights = bridge._controller.load_resource_highlights(resource.id)
+    assert len(highlights) == 3
+    for word, h in zip(("tilki", "paragrafin", "kopegin"), sorted(highlights, key=lambda h: h.id)):
+        # Sinir karakteri Qt'nin secim kuralina baglidir (+-1 bosluk olabilir); onemli olan konumun metinle tutarliligi.
+        assert word in h.content
+        assert len(h.content.strip()) <= len(word) + 1
+        assert h.page_number == 0
+        assert page_text[h.start_index:h.start_index + h.length].strip() == h.content.strip()  # kalici konum secilen metni gosteriyor
+        assert abs(h.start_index - page_text.index(word)) <= 1
+    assert engine.captured_warnings == []
+    del engine

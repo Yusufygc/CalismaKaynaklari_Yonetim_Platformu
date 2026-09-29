@@ -1,5 +1,5 @@
 from models import Category, Resource, ResourceStatus, Tag
-from repositories.resource_repo import ResourceRepository
+from repositories.resource_repo import ResourceFilter, ResourceRepository
 
 
 def _make_resource(**overrides) -> Resource:
@@ -92,7 +92,7 @@ def test_query_filtered_combines_status_and_priority(session):
     repo.create(_make_resource(title="Yanlis Durum", status=ResourceStatus.COMPLETED, priority=1))
     repo.create(_make_resource(title="Yanlis Oncelik", status=ResourceStatus.INBOX, priority=3))
 
-    result = repo.query_filtered(statuses=[ResourceStatus.INBOX], priorities=[1])
+    result = repo.query_filtered(ResourceFilter(statuses=[ResourceStatus.INBOX], priorities=[1]))
 
     assert [r.title for r in result] == ["Eslesen"]
 
@@ -105,7 +105,7 @@ def test_query_filtered_favorites_and_urls_only(session):
     repo.create(_make_resource(title="Favori Ama URL Yok", is_favorite=True, url=None))
     repo.create(_make_resource(title="URL Var Ama Favori Degil", url="https://example.com"))
 
-    result = repo.query_filtered(favorites_only=True, urls_only=True)
+    result = repo.query_filtered(ResourceFilter(favorites_only=True, urls_only=True))
 
     assert [r.title for r in result] == ["Eslesen"]
 
@@ -115,7 +115,7 @@ def test_query_filtered_keyword_matches_title(session):
     repo.create(_make_resource(title="Python Rehberi"))
     repo.create(_make_resource(title="Alakasiz"))
 
-    result = repo.query_filtered(keyword="python")
+    result = repo.query_filtered(ResourceFilter(keyword="python"))
 
     assert [r.title for r in result] == ["Python Rehberi"]
 
@@ -137,7 +137,7 @@ def test_query_filtered_tag_ids_uses_or_semantics_and_dedupes(session):
     only_a.tags.append(tag_a)
     session.flush()
 
-    result = repo.query_filtered(tag_ids=[tag_a.id, tag_b.id])
+    result = repo.query_filtered(ResourceFilter(tag_ids=[tag_a.id, tag_b.id]))
 
     titles = sorted(r.title for r in result)
     assert titles == ["Iki Etiketli", "Sadece A"]
@@ -153,7 +153,7 @@ def test_query_filtered_category_id_filters_correctly(session):
     repo.create(_make_resource(title="Kategorili", category_id=category.id))
     repo.create(_make_resource(title="Kategorisiz"))
 
-    result = repo.query_filtered(category_id=category.id)
+    result = repo.query_filtered(ResourceFilter(category_id=category.id))
 
     assert [r.title for r in result] == ["Kategorili"]
 

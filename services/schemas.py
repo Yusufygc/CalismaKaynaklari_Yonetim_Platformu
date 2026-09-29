@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
@@ -36,3 +37,13 @@ class ResourceUpdateSchema(BaseModel):
     is_pinned: Optional[bool] = None
     tag_names: Optional[list[str]] = None
     extra_metadata: Optional[dict] = None
+
+
+@dataclass(frozen=True)
+class HighlightPosition:
+    """PDF alintisinin konumu: sayfa (0-bazli) ve sayfa metnindeki karakter araligi.
+    Konumsuz (HTML okuyucu) alintilarda `None` gecilir."""
+
+    page: int
+    start_index: int
+    length: int

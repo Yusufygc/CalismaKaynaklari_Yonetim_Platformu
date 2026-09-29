@@ -1,7 +1,7 @@
 import pytest
 
 from models import Resource, ResourceStatus
-from repositories.resource_repo import ResourceRepository
+from repositories.resource_repo import ResourceFilter, ResourceRepository
 
 
 def _add(repo, title, **extra):
@@ -33,17 +33,17 @@ def repo(session):
 )
 @pytest.mark.parametrize("method", ["search_by_keyword", "query_filtered"])
 def test_keyword_search_is_turkish_case_and_diacritic_insensitive(repo, method, keyword, expected_title):
-    result = repo.search_by_keyword(keyword) if method == "search_by_keyword" else repo.query_filtered(keyword=keyword)
+    result = repo.search_by_keyword(keyword) if method == "search_by_keyword" else repo.query_filtered(ResourceFilter(keyword=keyword))
 
     assert [r.title for r in result] == [expected_title]
 
 
 @pytest.mark.parametrize("keyword", ["%", "_", "\\"])
 def test_like_wildcards_in_keyword_are_literal(repo, keyword):
-    assert repo.query_filtered(keyword=keyword) == []
+    assert repo.query_filtered(ResourceFilter(keyword=keyword)) == []
 
 
 def test_percent_matches_only_literal_percent(repo):
     _add(repo, "Yüzde %50 indirim")
 
-    assert [r.title for r in repo.query_filtered(keyword="%50")] == ["Yüzde %50 indirim"]
+    assert [r.title for r in repo.query_filtered(ResourceFilter(keyword="%50"))] == ["Yüzde %50 indirim"]

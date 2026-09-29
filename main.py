@@ -34,9 +34,7 @@ def _install_global_exception_hook() -> None:
     sys.excepthook = _hook
 
 
-def main() -> None:
-    _install_global_exception_hook()
-
+def _create_application() -> QGuiApplication:
     # Native (Windows) stil ComboBox/Popup gibi kontrollerin background/contentItem
     # ozellestirmesini yok sayip OS'un kendi acik renkli dropdown'unu gosteriyordu
     # (koyu temayla cakisiyordu). Basic stil tum ozellestirmeleri uyguluyor.
@@ -45,32 +43,35 @@ def main() -> None:
     app = QGuiApplication(sys.argv)
     app.setApplicationName("PKM")
     app.setOrganizationName("PKM")
+    return app
 
+
+def _create_engine(bridge: QmlBridge) -> QQmlApplicationEngine:
+    """QML motorunu kurar ve `main.qml`'i yukler (ikon saglayici, import yolu, `bridge` context'i)."""
+    engine = QQmlApplicationEngine()
+    engine.addImageProvider("icon", IconImageProvider())  # qtawesome: image://icon/...
+
+    qml_dir = Path(__file__).resolve().parent / "qml"
+    engine.addImportPath(str(qml_dir))
+    engine.rootContext().setContextProperty("bridge", bridge)
+    engine.load(str(qml_dir / "main.qml"))
+    return engine
+
+
+def main() -> None:
+    _install_global_exception_hook()
+    app = _create_application()
     log.info("Uygulama baslatiliyor (QML Arayuzu)...")
 
     init_db()
-
     session = get_session()
     controller = MainController(session)
     # Onceki oturumda Windows dosya kilidi yuzunden silinememis PDF'leri temizle.
     PdfStorageService(pdf_storage_dir()).sweep_orphans(controller.load_resources_with_filters({}))
     bridge = QmlBridge(controller=controller)
+    engine = _create_engine(bridge)
 
-    engine = QQmlApplicationEngine()
-
-    # qtawesome ikon sağlayıcısını kaydet (image://icon/...)
-    engine.addImageProvider("icon", IconImageProvider())
-
-    # QML import dizinlerini ekle
-    qml_dir = Path(__file__).resolve().parent / "qml"
-    engine.addImportPath(str(qml_dir))
-
-    # Python Bridge nesnesini QML context'ine ata
-    engine.rootContext().setContextProperty("bridge", bridge)
-
-    main_qml_path = qml_dir / "main.qml"
-    engine.load(str(main_qml_path))
-
+    # Yok etme sirasi onemli (motor -> bridge -> oturum), bu yuzden `del`ler burada, helper'da degil.
     if not engine.rootObjects():
         log.error("QML ana penceresi yuklenemedi!")
         del engine

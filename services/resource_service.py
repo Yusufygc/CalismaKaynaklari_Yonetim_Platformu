@@ -11,7 +11,7 @@ from core.exceptions import (
 from core.logger import log
 from models import Category, Resource, ResourceStatus, Tag
 from repositories.category_repo import CategoryRepository
-from repositories.resource_repo import ResourceRepository
+from repositories.resource_repo import ResourceFilter, ResourceRepository
 from repositories.tag_repo import TagRepository
 from utils.reading_time import estimate_reading_minutes
 from utils.url_utils import PLATFORM_NAMES, detect_category_name
@@ -50,6 +50,29 @@ def _validate_url(url: str) -> None:
         return
     if not _URL_RE.match(url):
         raise InvalidURLError(f"Gecersiz URL formati: {url!r}")
+
+
+def _as_tuple(filters: dict, plural: str, singular: str) -> tuple:
+    """`statuses`/`status` gibi cogul + tekil (takma ad) anahtarlari birlestirir; skaler degeri listeler."""
+    values = filters.get(plural)
+    if values is None:
+        values = filters.get(singular)
+    if values is None:
+        return ()
+    return tuple(values) if isinstance(values, (list, set, tuple)) else (values,)
+
+
+def _resource_filter_from_dict(filters: dict) -> ResourceFilter:
+    """Bridge/controller'in gevsek filtre sozlugunu (takma adlarla) tipli sorgu kriterine cevirir."""
+    return ResourceFilter(
+        statuses=_as_tuple(filters, "statuses", "status"),
+        category_id=filters.get("category_id"),
+        tag_ids=_as_tuple(filters, "tag_ids", "tag_id"),
+        priorities=_as_tuple(filters, "priorities", "priority"),
+        favorites_only=bool(filters.get("favorites_only", filters.get("is_favorite", False))),
+        urls_only=bool(filters.get("urls_only", False)),
+        keyword=filters.get("keyword"),
+    )
 
 
 def _normalize_tag_names(tag_names: list[str]) -> list[str]:
@@ -124,35 +147,7 @@ class ResourceService:
         return self._resource_repo.get_favorites()
 
     def query_resources(self, filters: dict) -> list[Resource]:
-        statuses = filters.get("statuses")
-        if statuses is None and "status" in filters:
-            st = filters.get("status")
-            if st is not None:
-                statuses = [st] if not isinstance(st, (list, set, tuple)) else list(st)
-
-        tag_ids = filters.get("tag_ids")
-        if tag_ids is None and "tag_id" in filters:
-            tid = filters.get("tag_id")
-            if tid is not None:
-                tag_ids = [tid] if not isinstance(tid, (list, set, tuple)) else list(tid)
-
-        priorities = filters.get("priorities")
-        if priorities is None and "priority" in filters:
-            pr = filters.get("priority")
-            if pr is not None:
-                priorities = [pr] if not isinstance(pr, (list, set, tuple)) else list(pr)
-
-        favorites_only = bool(filters.get("favorites_only", filters.get("is_favorite", False)))
-
-        return self._resource_repo.query_filtered(
-            statuses=statuses,
-            category_id=filters.get("category_id"),
-            tag_ids=tag_ids,
-            priorities=priorities,
-            favorites_only=favorites_only,
-            urls_only=bool(filters.get("urls_only", False)),
-            keyword=filters.get("keyword"),
-        )
+        return self._resource_repo.query_filtered(_resource_filter_from_dict(filters))
 
     # ------------------------------------------------------------------ #
     # Yazma

@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Iterable
 
 from sqlalchemy import func, or_
@@ -6,6 +7,24 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from models import Resource, ResourceStatus, resource_tags_link
 from utils.text_utils import fold_tr
 from .base_repository import BaseRepository
+
+
+@dataclass(frozen=True)
+class ResourceFilter:
+    """`ResourceRepository.query_filtered` sorgu kriterleri; bos/None alanlar kosula donusmez."""
+
+    statuses: tuple[ResourceStatus, ...] = ()
+    category_id: int | None = None
+    tag_ids: tuple[int, ...] = ()
+    priorities: tuple[int, ...] = ()
+    favorites_only: bool = False
+    urls_only: bool = False
+    keyword: str | None = None
+
+    def __post_init__(self) -> None:
+        # Cagiranlar liste/kume verebilir; dondurulmus (hashlenebilir) kriter icin tuple'a cevrilir.
+        for name in ("statuses", "tag_ids", "priorities"):
+            object.__setattr__(self, name, tuple(getattr(self, name) or ()))
 
 
 def _default_order(query):
@@ -62,49 +81,31 @@ class ResourceRepository(BaseRepository[Resource]):
         )
         return list(_default_order(q).all())
 
-    def query_filtered(
-        self,
-        *,
-        statuses: Iterable[ResourceStatus] | None = None,
-        category_id: int | None = None,
-        tag_ids: Iterable[int] | None = None,
-        priorities: Iterable[int] | None = None,
-        favorites_only: bool = False,
-        urls_only: bool = False,
-        keyword: str | None = None,
-    ) -> list[Resource]:
+    def query_filtered(self, criteria: ResourceFilter | None = None) -> list[Resource]:
         """Kombinasyonel filtre — bos/None alanlar koşula donusmez.
 
         Etiket filtresi OR semantigi: kayit, secilen etiketlerden en az birine
         sahipse listeye girer.
         """
+        criteria = criteria or ResourceFilter()
         q = self._base_query()
 
-        statuses_list = list(statuses) if statuses else []
-        if statuses_list:
-            q = q.filter(Resource.status.in_(statuses_list))
-
-        if category_id is not None:
-            q = q.filter(Resource.category_id == category_id)
-
-        priorities_list = list(priorities) if priorities else []
-        if priorities_list:
-            q = q.filter(Resource.priority.in_(priorities_list))
-
-        if favorites_only:
+        if criteria.statuses:
+            q = q.filter(Resource.status.in_(criteria.statuses))
+        if criteria.category_id is not None:
+            q = q.filter(Resource.category_id == criteria.category_id)
+        if criteria.priorities:
+            q = q.filter(Resource.priority.in_(criteria.priorities))
+        if criteria.favorites_only:
             q = q.filter(Resource.is_favorite.is_(True))
-
-        if urls_only:
+        if criteria.urls_only:
             q = q.filter(Resource.url.isnot(None), Resource.url != "")
-
-        if keyword:
-            q = q.filter(_keyword_condition(keyword))
-
-        tag_ids_list = list(tag_ids) if tag_ids else []
-        if tag_ids_list:
+        if criteria.keyword:
+            q = q.filter(_keyword_condition(criteria.keyword))
+        if criteria.tag_ids:
             q = (
                 q.join(resource_tags_link, Resource.id == resource_tags_link.c.resource_id)
-                .filter(resource_tags_link.c.tag_id.in_(tag_ids_list))
+                .filter(resource_tags_link.c.tag_id.in_(criteria.tag_ids))
                 .distinct()
             )
 

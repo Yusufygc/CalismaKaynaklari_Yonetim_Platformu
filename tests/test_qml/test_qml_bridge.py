@@ -4,6 +4,7 @@ import pytest
 
 from ui_qml.bridge import QmlBridge
 from services.paper_market_service import MarketPage, PaperResult
+from services.schemas import HighlightPosition
 
 
 @pytest.fixture(autouse=True)
@@ -158,7 +159,7 @@ def test_qml_bridge_add_highlight_with_pdf_position(qapp, session, monkeypatch):
     })
     res_id = bridge._controller.load_resources_with_filters({})[0].id
 
-    bridge.addHighlight(res_id, "sayfa alintisi", "#EAB308", 2, 100, 30)
+    bridge.addHighlight(res_id, "sayfa alintisi", "#EAB308", {"page": 2, "startIndex": 100, "length": 30})
 
     hl = bridge._controller.load_resource_highlights(res_id)[0]
     assert hl.page_number == 2
@@ -631,7 +632,7 @@ def test_qml_bridge_related_papers_without_openalex_id_starts_nothing(qapp, sess
 def test_qml_bridge_export_markdown_writes_file_and_adds_extension(qapp, session, tmp_path):
     bridge = QmlBridge(session)
     res = _paper_resource(bridge)
-    bridge._controller.create_highlight(res.id, "onemli cumle", "#22C55E", 0, 1, 5)
+    bridge._controller.create_highlight(res.id, "onemli cumle", "#22C55E", HighlightPosition(0, 1, 5))
     notifications = []
     bridge.notificationEmitted.connect(lambda t, m: notifications.append((t, m)))
 
@@ -660,41 +661,13 @@ def test_qml_bridge_export_library_empty_notifies(qapp, session, tmp_path):
 def test_qml_bridge_export_write_failure_is_reported(qapp, session, tmp_path):
     bridge = QmlBridge(session)
     res = _paper_resource(bridge)
-    bridge._controller.create_highlight(res.id, "x", "#22C55E", 0, 1, 1)
+    bridge._controller.create_highlight(res.id, "x", "#22C55E", HighlightPosition(0, 1, 1))
     notifications = []
     bridge.notificationEmitted.connect(lambda t, m: notifications.append((t, m)))
 
     bridge.exportResourceMarkdown(res.id, (tmp_path / "yok_klasor" / "a.md").as_uri())
 
     assert notifications[-1][0] == "error"
-
-
-def test_qml_bridge_add_pdf_vocabulary_stores_sentence_context(qapp, session):
-    """Gercek bir PDF uzerinde: secilen kelime + gectigi cumle kelime havuzuna yazilir."""
-    import pytest
-    from PySide6.QtCore import QPointF
-    from PySide6.QtPdf import QPdfDocument
-    from core.paths import pdf_storage_dir
-
-    candidates = list(pdf_storage_dir().glob("*Hybrid*.pdf")) if pdf_storage_dir().exists() else []
-    if not candidates:
-        pytest.skip("Gercek test PDF'i yok")
-    pdf = candidates[0]
-    bridge = QmlBridge(session)
-    res = bridge._controller.add_resource(
-        {"title": "PDF", "url": pdf.as_uri(), "category_id": None, "priority": 2}
-    )
-    doc = bridge._load_pdf_document(pdf.as_uri())
-    size = doc.pagePointSize(0)
-    x0, y0, x1, y1 = size.width() * 0.2, size.height() * 0.40, size.width() * 0.5, size.height() * 0.41
-
-    bridge.addPdfVocabulary(res.id, pdf.as_uri(), 0, x0, y0, x1, y1, "ceviri")
-
-    vocab = bridge._controller.get_resource(res.id).vocabulary
-    assert len(vocab) == 1
-    assert vocab[0].translation == "ceviri"
-    assert vocab[0].context_sentence and len(vocab[0].context_sentence) > len(vocab[0].word)
-    assert "\n" not in vocab[0].context_sentence
 
 
 def test_qml_bridge_import_local_pdf_rejects_non_pdf(qapp, session, monkeypatch, tmp_path):

@@ -5,6 +5,7 @@ from core.logger import log
 from models import Highlight
 from repositories.highlight_repo import HighlightRepository
 from repositories.resource_repo import ResourceRepository
+from services.schemas import HighlightPosition
 
 
 class HighlightService:
@@ -19,9 +20,7 @@ class HighlightService:
         resource_id: int,
         content: str,
         color: str | None = None,
-        page: int | None = None,
-        start_index: int | None = None,
-        length: int | None = None,
+        position: HighlightPosition | None = None,
     ) -> Highlight:
         content = (content or "").strip()
         if not content:
@@ -33,9 +32,9 @@ class HighlightService:
                 resource_id=resource_id,
                 content=content,
                 color=color,
-                page_number=page,
-                start_index=start_index,
-                length=length,
+                page_number=position.page if position else None,
+                start_index=position.start_index if position else None,
+                length=position.length if position else None,
             )
             self._repo.create(highlight)
             self._session.commit()

@@ -438,6 +438,11 @@ Item {
                     readonly property point pointFrom: Qt.point(capturedFrom.x / safeScale, capturedFrom.y / safeScale)
                     readonly property point pointTo: Qt.point(capturedTo.x / safeScale, capturedTo.y / safeScale)
 
+                    // bridge.addPdfHighlight / addPdfVocabulary'nin bekledigi secim haritasi (page-point uzayinda)
+                    function selectionMap(page) {
+                        return { page: page, fromX: pointFrom.x, fromY: pointFrom.y, toX: pointTo.x, toY: pointTo.y }
+                    }
+
                     property real selectionCenterX: (capturedFrom.x + capturedTo.x) / 2
                     property real selectionTopY: Math.min(capturedFrom.y, capturedTo.y)
                     property real selectionBottomY: Math.max(capturedFrom.y, capturedTo.y)
@@ -474,9 +479,8 @@ Item {
                                     onClicked: {
                                         if (newHighlightToolbar.capturedText.trim().length > 0 && root.resource) {
                                             bridge.addPdfHighlight(
-                                                root.resource.id, root.resource.pdfFileUrl, pageHolder.index,
-                                                newHighlightToolbar.pointFrom.x, newHighlightToolbar.pointFrom.y,
-                                                newHighlightToolbar.pointTo.x, newHighlightToolbar.pointTo.y,
+                                                root.resource.id, root.resource.pdfFileUrl,
+                                                newHighlightToolbar.selectionMap(pageHolder.index),
                                                 parent.modelData
                                             )
                                         }
@@ -595,9 +599,8 @@ Item {
                                     if (root.resource) {
                                         // Secim noktalariyla gonderilir: gectigi cumle baglam olarak da kaydedilir.
                                         bridge.addPdfVocabulary(
-                                            root.resource.id, root.resource.pdfFileUrl, pageHolder.index,
-                                            newHighlightToolbar.pointFrom.x, newHighlightToolbar.pointFrom.y,
-                                            newHighlightToolbar.pointTo.x, newHighlightToolbar.pointTo.y,
+                                            root.resource.id, root.resource.pdfFileUrl,
+                                            newHighlightToolbar.selectionMap(pageHolder.index),
                                             vocabTranslationInput.text.trim()
                                         )
                                     }

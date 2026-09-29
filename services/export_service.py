@@ -23,59 +23,77 @@ class ExportService:
 
     @classmethod
     def resource_markdown(cls, resource: Resource, level: int = 1) -> str:
-        h = "#" * level
-        h2 = "#" * (level + 1)
-        h3 = "#" * (level + 2)
-        metadata = resource.extra_metadata or {}
-        lines = [f"{h} {resource.title}", ""]
+        heading, section = "#" * level, "#" * (level + 1)
+        lines = [f"{heading} {resource.title}", ""]
+        lines += cls._citation_block(resource)
+        lines += cls._highlights_section(resource, section, "#" * (level + 2))
+        lines += cls._notes_section(resource, section)
+        lines += cls._vocabulary_section(resource, section)
+        lines += cls._personal_notes_section(resource, section)
+        return "\n".join(lines).rstrip() + "\n"
 
-        lines.append(f"> {CitationService.format(resource.title, metadata, 'apa')}")
+    @staticmethod
+    def _citation_block(resource: Resource) -> list[str]:
+        lines = [f"> {CitationService.format(resource.title, resource.extra_metadata or {}, 'apa')}"]
         if resource.url and not resource.url.startswith("file://"):
             lines.append(f"> Bağlantı: {resource.url}")
-        lines.append("")
+        return lines + [""]
 
+    @staticmethod
+    def _highlights_section(resource: Resource, section: str, subsection: str) -> list[str]:
+        """Alıntılar, akademik anlam etiketine göre gruplu (sayfa/konum sırasıyla)."""
         highlights = sorted(
             resource.highlights or [],
             key=lambda x: (x.page_number if x.page_number is not None else 10**6, x.start_index or 0),
         )
-        if highlights:
-            lines += [f"{h2} Alıntılar", ""]
-            label_order = [entry["label"] for entry in HIGHLIGHT_LABELS] + ["Genel"]
-            grouped: dict[str, list] = {label: [] for label in label_order}
-            for highlight in highlights:
-                grouped[label_for_color(highlight.color)].append(highlight)
-            for label in label_order:
-                items = grouped[label]
-                if not items:
-                    continue
-                lines += [f"{h3} {label} ({len(items)})", ""]
-                for item in items:
-                    page = f" (s. {item.page_number + 1})" if item.page_number is not None else ""
-                    lines.append(f"- “{_quote(item.content)}”{page}")
-                    if item.comment:
-                        lines.append(f"  - Yorum: {_quote(item.comment)}")
+        if not highlights:
+            return []
+        label_order = [entry["label"] for entry in HIGHLIGHT_LABELS] + ["Genel"]
+        grouped: dict[str, list] = {label: [] for label in label_order}
+        for highlight in highlights:
+            grouped[label_for_color(highlight.color)].append(highlight)
+
+        lines = [f"{section} Alıntılar", ""]
+        for label in label_order:
+            items = grouped[label]
+            if items:
+                lines += [f"{subsection} {label} ({len(items)})", ""]
+                lines += [line for item in items for line in ExportService._highlight_lines(item)]
                 lines.append("")
+        return lines
 
+    @staticmethod
+    def _highlight_lines(item) -> list[str]:
+        page = f" (s. {item.page_number + 1})" if item.page_number is not None else ""
+        lines = [f"- “{_quote(item.content)}”{page}"]
+        if item.comment:
+            lines.append(f"  - Yorum: {_quote(item.comment)}")
+        return lines
+
+    @staticmethod
+    def _notes_section(resource: Resource, section: str) -> list[str]:
         notes = sorted(resource.pdf_notes or [], key=lambda n: (n.page, n.y))
-        if notes:
-            lines += [f"{h2} Sayfa Notları", ""]
-            lines += [f"- s. {n.page + 1}: {_quote(n.note_text)}" for n in notes]
-            lines.append("")
+        if not notes:
+            return []
+        return [f"{section} Sayfa Notları", ""] + [f"- s. {n.page + 1}: {_quote(n.note_text)}" for n in notes] + [""]
 
-        vocabulary = resource.vocabulary or []
-        if vocabulary:
-            lines += [f"{h2} Kelimeler", ""]
-            for v in vocabulary:
-                entry = f"- **{v.word}**: {v.translation}"
-                if v.context_sentence:
-                    entry += f" — _{_quote(v.context_sentence)}_"
-                lines.append(entry)
-            lines.append("")
+    @staticmethod
+    def _vocabulary_section(resource: Resource, section: str) -> list[str]:
+        if not resource.vocabulary:
+            return []
+        lines = [f"{section} Kelimeler", ""]
+        for v in resource.vocabulary:
+            entry = f"- **{v.word}**: {v.translation}"
+            if v.context_sentence:
+                entry += f" — _{_quote(v.context_sentence)}_"
+            lines.append(entry)
+        return lines + [""]
 
+    @staticmethod
+    def _personal_notes_section(resource: Resource, section: str) -> list[str]:
         if resource.content and resource.content.strip():
-            lines += [f"{h2} Kişisel Notlar", "", resource.content.strip(), ""]
-
-        return "\n".join(lines).rstrip() + "\n"
+            return [f"{section} Kişisel Notlar", "", resource.content.strip(), ""]
+        return []
 
     @classmethod
     def library_markdown(cls, resources: list[Resource]) -> str:

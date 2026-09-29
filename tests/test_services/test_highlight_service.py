@@ -4,7 +4,7 @@ from core.exceptions import ResourceNotFoundError, ValidationError
 from models import Highlight
 from services.highlight_service import HighlightService
 from services.resource_service import ResourceService
-from services.schemas import ResourceCreateSchema
+from services.schemas import HighlightPosition, ResourceCreateSchema
 
 
 def _make_resource(session, title="Test Kaynak"):
@@ -28,7 +28,7 @@ def test_create_highlight_persists_pdf_position(session):
     resource = _make_resource(session)
 
     highlight = HighlightService(session).create_highlight(
-        resource.id, "pdf alintisi", color="#EAB308", page=3, start_index=120, length=45
+        resource.id, "pdf alintisi", color="#EAB308", position=HighlightPosition(3, 120, 45)
     )
 
     assert highlight.page_number == 3

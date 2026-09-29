@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] REFACTOR | Karmaşıklık ve parametre eşikleri (bulgu 16) + PDF seçim testleri
+
+`_serialize_resource` (CC 47, 82 satır) → saf `ui_qml/serializers.py` fonksiyonları + bridge'de `_pdf_state`/`_serialize_highlights`. `saveResource` (CC 24, 71 satır) → `_parse_form_payload`, `_form_tag_names`, `_snapshot_before_edit`, `_cleanup_replaced_url`. `ExportService.resource_markdown` (CC 25) → bölüm metotları (çıktı aynı). `ResourceRepository.query_filtered` 7 parametre → `ResourceFilter` dataclass (`_resource_filter_from_dict` dönüştürür). `create_highlight` 6 parametre → `HighlightPosition` (3 katman). `addPdfHighlight`/`addPdfVocabulary` 8 parametre → `selection` haritası, `addHighlight` 6 → 4 (`PdfPageArea.qml` `selectionMap(page)`). `main.main` (58 satır) → `_create_application`, `_create_engine`. **Test iyileştirmesi:** eski PDF testleri yalnızca belirli adlı gerçek bir dosya varsa çalışıyor (fiilen hep atlanıyordu → alıntı koordinat yolu kapsamsızdı); `tests/pdf_factory.py` ile deterministik PDF üretildi: seçim→alıntı/kelime bağlamı testleri, anahat testleri ve gerçek fare sürüklemeli regresyon testi (zoom ≠ %100; `pointFrom` piksel/pt bölmesi kaldırılınca düştüğü doğrulandı). 426 test geçti, 0 atlandı. Kalan eşik aşımları sonraki adımlarda: `ResourceListModel.data` (Adım 12), `QmlBridge` (Adım 13).
+
+---
+
 ## [2026-09-30] FIX | OpenAlex kimlikleri doğrulanıyor (filtre enjeksiyonu)
 
 Denetim bulgusu 15. `PaperMarketService.related_papers` kimliği `f"cited_by:{id}"` gibi `filter=` ifadesine ham koyuyordu (`W1,type:x` ek filtre enjekte edebilirdi; yalnızca `author_id` doğrulanıyordu). Artık tür başına regex (`W\d+` / `A\d+`), geçersizde istek atılmadan `ValueError`; toplu sorgular (`referenced_work_ids`, `works_by_ids`) geçersizleri süzer; `find_paper_strict` biçimsiz DOI'yi URL yoluna koymaz. Canlı OpenAlex ile geçerli kimlik/DOI'ler doğrulandı (arXiv DOI'sinin bulunamaması eski davranışla aynı). 16 yeni test, 410 test geçti.

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from core.events import event_bus
 from core.logger import log
 from services.highlight_service import HighlightService
+from services.schemas import HighlightPosition
 
 
 class HighlightController:
@@ -16,12 +17,10 @@ class HighlightController:
         resource_id: int,
         content: str,
         color: str | None = None,
-        page: int | None = None,
-        start_index: int | None = None,
-        length: int | None = None,
+        position: HighlightPosition | None = None,
     ) -> object:
         try:
-            highlight = self._svc.create_highlight(resource_id, content, color, page, start_index, length)
+            highlight = self._svc.create_highlight(resource_id, content, color, position)
             event_bus.highlight_added.emit(highlight.id)
             return highlight
         except Exception as exc:

@@ -1,20 +1,49 @@
-import pytest
-
+from tests.pdf_factory import write_outline_pdf
 from utils.pdf_outline import read_outline
 
 
-def test_read_outline_on_real_pdf():
-    from core.paths import pdf_storage_dir
+def test_read_outline_returns_titles_levels_and_pages(tmp_path):
+    pdf = write_outline_pdf(tmp_path / "anahat.pdf", ["Giris", "Yontem", "Sonuc"])
 
-    candidates = list(pdf_storage_dir().glob("*Hafta*.pdf")) if pdf_storage_dir().exists() else []
-    if not candidates:
-        pytest.skip("Gercek anahatli test PDF'i yok")
+    items = read_outline(pdf)
 
-    items = read_outline(candidates[0])
+    assert items == [
+        {"title": "Giris", "level": 0, "page": 0},
+        {"title": "Yontem", "level": 0, "page": 1},
+        {"title": "Sonuc", "level": 0, "page": 2},
+    ]
 
-    assert len(items) > 5
-    assert all({"title", "level", "page"} <= set(i) for i in items)
-    assert all(i["page"] >= 0 for i in items)
+
+def test_read_outline_reports_nested_levels(tmp_path):
+    from pypdf import PdfWriter
+
+    pdf = tmp_path / "ic_ice.pdf"
+    writer = PdfWriter()
+    for _ in range(3):
+        writer.add_blank_page(width=200, height=200)
+    parent = writer.add_outline_item("Bolum 1", 0)
+    writer.add_outline_item("Alt baslik", 1, parent=parent)
+    writer.add_outline_item("Bolum 2", 2)
+    with open(pdf, "wb") as handle:
+        writer.write(handle)
+
+    items = read_outline(pdf)
+
+    assert [(i["title"], i["level"], i["page"]) for i in items] == [
+        ("Bolum 1", 0, 0), ("Alt baslik", 1, 1), ("Bolum 2", 0, 2),
+    ]
+
+
+def test_read_outline_without_bookmarks_is_empty(tmp_path):
+    from pypdf import PdfWriter
+
+    pdf = tmp_path / "duz.pdf"
+    writer = PdfWriter()
+    writer.add_blank_page(width=100, height=100)
+    with open(pdf, "wb") as handle:
+        writer.write(handle)
+
+    assert read_outline(pdf) == []
 
 
 def test_read_outline_returns_empty_for_unreadable_file(tmp_path):

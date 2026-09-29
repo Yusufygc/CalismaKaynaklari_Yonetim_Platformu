@@ -82,6 +82,7 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 ├── ui_qml/                     # Python ↔ QML köprü katmanı
 │   ├── bridge.py               # QmlBridge (State, filtreler, Q_PROPERTY/Slot'lar)
 │   ├── image_provider.py       # IconImageProvider (qtawesome vektörel ikon sağlayıcı)
+│   ├── serializers.py          # Model → QML sözlüğü dönüşümleri (saf fonksiyonlar)
 │   └── models/
 │       └── resource_list_model.py # ResourceListModel (QAbstractListModel)
 │

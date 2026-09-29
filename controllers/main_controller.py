@@ -8,6 +8,7 @@ from controllers.resource_controller import ResourceController
 from controllers.saved_search_controller import SavedSearchController
 from controllers.tag_controller import TagController
 from controllers.vocabulary_controller import VocabularyController
+from services.schemas import HighlightPosition
 
 
 class MainController:
@@ -92,11 +93,9 @@ class MainController:
         resource_id: int,
         content: str,
         color: str | None = None,
-        page: int | None = None,
-        start_index: int | None = None,
-        length: int | None = None,
+        position: HighlightPosition | None = None,
     ) -> object:
-        return self._highlight.create_highlight(resource_id, content, color, page, start_index, length)
+        return self._highlight.create_highlight(resource_id, content, color, position)
 
     def update_highlight_color(self, highlight_id: int, color: str) -> object:
         return self._highlight.update_highlight_color(highlight_id, color)
