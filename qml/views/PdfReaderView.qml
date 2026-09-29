@@ -9,7 +9,7 @@ Item {
     id: root
     objectName: "pdfReaderView"
 
-    property var resource: bridge.currentReaderResource
+    property var resource: bridge.reader.currentReaderResource
     // Okuyucu kapaninca resource bosalir; source'u "" yapmak Qt'de "Cannot open" uyarisi
     // basiyor. Son gecerli dosya URL'si tutulur, yalnizca yeni gecerli URL gelince degisir.
     property url lastPdfUrl: ""
@@ -51,7 +51,7 @@ Item {
         fileMode: FileDialog.SaveFile
         nameFilters: ["Markdown (*.md)"]
         defaultSuffix: "md"
-        onAccepted: if (root.resource) bridge.exportResourceMarkdown(root.resource.id, selectedFile)
+        onAccepted: if (root.resource) bridge.reader.exportResourceMarkdown(root.resource.id, selectedFile)
     }
 
     PdfDocument {
@@ -80,7 +80,7 @@ Item {
                     text: "Vitrine Dön"
                     iconName: "fa5s.arrow-left"
                     variant: "ghost"
-                    onClicked: bridge.closeReader()
+                    onClicked: bridge.reader.closeReader()
                 }
 
                 Rectangle {
@@ -366,7 +366,7 @@ Item {
                              || (root.resource && root.resource.pdfState === "downloading")
                     text: "Metin Okuyucusunda Aç"
                     variant: "subtle"
-                    onClicked: if (root.resource) bridge.openTextReader(root.resource.id)
+                    onClicked: if (root.resource) bridge.reader.openTextReader(root.resource.id)
                 }
             }
         }

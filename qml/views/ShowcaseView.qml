@@ -16,7 +16,7 @@ Item {
     signal cardSelected(int resourceId)
 
     function updateFilters() {
-        bridge.applyFilter(
+        bridge.library.applyFilter(
             searchQuery,
             selectedCategoryId.toString(),
             "0",
@@ -130,8 +130,8 @@ Item {
                 Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
                 readonly property var selectedCategory: {
-                    for (var i = 0; i < bridge.categories.length; i++) {
-                        if (bridge.categories[i].id === root.selectedCategoryId) return bridge.categories[i]
+                    for (var i = 0; i < bridge.settings.categories.length; i++) {
+                        if (bridge.settings.categories[i].id === root.selectedCategoryId) return bridge.settings.categories[i]
                     }
                     return null
                 }
@@ -217,7 +217,7 @@ Item {
                             }
 
                             Repeater {
-                                model: bridge.categories
+                                model: bridge.settings.categories
                                 CategoryDropdownRow {
                                     width: popupColumn.width
                                     label: modelData.name
@@ -253,7 +253,7 @@ Item {
             Column {
                 anchors.centerIn: parent
                 spacing: 12
-                visible: bridge.resourcesModel.count === 0
+                visible: bridge.library.resourcesModel.count === 0
 
                 Rectangle {
                     width: 64
@@ -303,23 +303,23 @@ Item {
                 id: grid
                 anchors.fill: parent
                 anchors.margins: 24
-                visible: bridge.resourcesModel.count > 0
+                visible: bridge.library.resourcesModel.count > 0
                 clip: true
 
                 cellWidth: 290
                 cellHeight: bridge.isSimpleMode ? 148 : 305
-                model: bridge.resourcesModel
+                model: bridge.library.resourcesModel
 
                 delegate: AppCard {
                     isSimple: bridge.isSimpleMode
                     cardWidth: 274
                     cardHeight: bridge.isSimpleMode ? 136 : 290
                     onClicked: {
-                        bridge.selectResource(model.id)
+                        bridge.library.selectResource(model.id)
                         root.cardSelected(model.id)
                     }
-                    onPinToggled: bridge.togglePin(model.id)
-                    onFavoriteToggled: bridge.toggleFavorite(model.id)
+                    onPinToggled: bridge.library.togglePin(model.id)
+                    onFavoriteToggled: bridge.library.toggleFavorite(model.id)
                 }
 
                 ScrollBar.vertical: ScrollBar {

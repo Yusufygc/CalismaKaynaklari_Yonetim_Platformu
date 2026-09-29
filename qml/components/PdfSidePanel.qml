@@ -25,18 +25,18 @@ Rectangle {
     function ensureRelatedLoaded() {
         if (activeTab !== 3 || !resource || !resource.id || paperOpenAlexId === "")
             return
-        if (bridge.relatedPapers.openalexId !== paperOpenAlexId)
-            bridge.loadRelatedPapers(resource.id)
+        if (bridge.reader.relatedPapers.openalexId !== paperOpenAlexId)
+            bridge.reader.loadRelatedPapers(resource.id)
     }
 
     // Anahat (içindekiler) arka planda okunur; yüklenene kadar anahtar yoktur.
     readonly property string pdfUrl: (resource && resource.pdfFileUrl) ? resource.pdfFileUrl : ""
-    readonly property bool outlineLoaded: pdfUrl !== "" && bridge.pdfOutlines[pdfUrl] !== undefined
-    readonly property var outlineItems: outlineLoaded ? bridge.pdfOutlines[pdfUrl] : []
+    readonly property bool outlineLoaded: pdfUrl !== "" && bridge.reader.pdfOutlines[pdfUrl] !== undefined
+    readonly property var outlineItems: outlineLoaded ? bridge.reader.pdfOutlines[pdfUrl] : []
 
     function ensureOutlineLoaded() {
         if (activeTab === 1 && pdfUrl !== "")
-            bridge.loadPdfOutline(pdfUrl)
+            bridge.reader.loadPdfOutline(pdfUrl)
     }
 
     onActiveTabChanged: {
@@ -168,7 +168,7 @@ Rectangle {
             }
 
             // --- Anahat (içindekiler) ---
-            // Doğrulanmış düz liste (bridge.pdfOutline): PdfBookmarkModel'in QML'e doğrudan
+            // Doğrulanmış düz liste (bridge.reader.loadPdfOutline / pdfOutlines): PdfBookmarkModel'in QML'e doğrudan
             // bağlanması geçersiz yer imli PDF'lerde çökme riski taşıyordu.
             Item {
                 anchors.fill: parent
@@ -245,7 +245,7 @@ Rectangle {
                     }
 
                     Repeater {
-                        model: bridge.highlightLabels
+                        model: bridge.reader.highlightLabels
                         AppFilterChip {
                             required property var modelData
                             text: modelData.label
@@ -379,7 +379,7 @@ Rectangle {
                 anchors.fill: parent
                 visible: root.activeTab === 3
 
-                readonly property var related: bridge.relatedPapers
+                readonly property var related: bridge.reader.relatedPapers
                 readonly property var current: related[root.relatedKind]
 
                 // OpenAlex kimliği yoksa: önce bilgi getirilmeli
@@ -404,7 +404,7 @@ Rectangle {
                         text: "OpenAlex'ten Getir"
                         iconName: "fa5s.cloud-download-alt"
                         variant: "primary"
-                        onClicked: if (root.resource && root.resource.id) bridge.fetchPaperMetadata(root.resource.id)
+                        onClicked: if (root.resource && root.resource.id) bridge.reader.fetchPaperMetadata(root.resource.id)
                     }
                 }
 
@@ -452,7 +452,7 @@ Rectangle {
                             width: relatedList.width - 16
                             x: 8
                             paper: modelData
-                            onSaveRequested: bridge.saveMarketResult(modelData)
+                            onSaveRequested: bridge.market.saveMarketResult(modelData)
                         }
                     }
 

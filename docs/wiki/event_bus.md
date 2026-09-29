@@ -49,7 +49,7 @@ Not: düzenleme sinyali yok (`_updated`) — bu iki varlık bu turda sadece olu�
 
 ## Kullanım Kuralları
 - **Emit:** Controller, servis işlemi başarılı olduktan **hemen sonra** sinyal fırlatır.
-- **Connect:** View / bileşen `__init__` içinde bus'a abone olur.
+- **Connect:** View / bileşen `__init__` içinde bus'a abone olur. Bridge'lerde yalnızca QObject'e bağlı metotlarla (lambda değil) bağlanılır; alt-bridge dinleyicileri: `LibraryBridge` (`resource_*`, `category_updated/deleted`, `tag_updated/deleted`), `ReaderBridge` (`highlight_*`, `vocabulary_*`, `resource_deleted`, `category_*`, `tag_*`), `MarketBridge` (`saved_search_changed`), `LibraryIndexCache` (`resource_*`), kök `QmlBridge` (`error_occurred` → toast).
 - **Bellek:** Bileşen yok edilirken `disconnect()` çağrılmalı veya PySide6 parent-child yaşam döngüsüne güvenilmeli.
 - **error_occurred:** Controller `try/except` bloklarında hata → `event_bus.error_occurred.emit(str(exc))`. Banner bileşeni (InlineBanner) bunu yakalar.
 

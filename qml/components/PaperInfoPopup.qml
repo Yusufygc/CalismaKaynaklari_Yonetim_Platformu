@@ -46,7 +46,7 @@ Popup {
                 iconName: "fa5s.cloud-download-alt"
                 variant: "subtle"
                 implicitHeight: 28
-                onClicked: if (root.resource && root.resource.id) bridge.fetchPaperMetadata(root.resource.id)
+                onClicked: if (root.resource && root.resource.id) bridge.reader.fetchPaperMetadata(root.resource.id)
             }
         }
 
@@ -129,7 +129,7 @@ Popup {
                         iconName: "fa5s.copy"
                         variant: "ghost"
                         implicitHeight: 26
-                        onClicked: bridge.copyCitation(root.resource.id, citationBlock.modelData.style)
+                        onClicked: bridge.reader.copyCitation(root.resource.id, citationBlock.modelData.style)
                     }
                 }
 
@@ -149,7 +149,7 @@ Popup {
                         selectByMouse: true
                         wrapMode: TextEdit.Wrap
                         text: root.resource && root.resource.id
-                              ? bridge.citationText(root.resource.id, citationBlock.modelData.style) : ""
+                              ? bridge.reader.citationText(root.resource.id, citationBlock.modelData.style) : ""
                         font.family: citationBlock.modelData.style === "bibtex" ? "Consolas" : Theme.fontFamily
                         font.pixelSize: Theme.fontXs
                         color: Theme.textPrimary

@@ -7,7 +7,7 @@ import "../theme"
 Item {
     id: root
 
-    property var resource: bridge.currentReaderResource
+    property var resource: bridge.reader.currentReaderResource
     property int baseFontSize: 16
     property int zoomLevel: 0
 
@@ -31,7 +31,7 @@ Item {
                     text: "Vitrine Dön"
                     iconName: "fa5s.arrow-left"
                     variant: "ghost"
-                    onClicked: bridge.closeReader()
+                    onClicked: bridge.reader.closeReader()
                 }
 
                 Rectangle {
@@ -281,7 +281,7 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     if (root.resource) {
-                                        bridge.addHighlight(root.resource.id, textContent.selectedText, modelData, -1, -1, -1)
+                                        bridge.reader.addHighlight(root.resource.id, textContent.selectedText, modelData, -1, -1, -1)
                                         textContent.deselect()
                                     }
                                 }
@@ -366,7 +366,7 @@ Item {
 
         onAccepted: {
             if (root.resource && translationInput.text.trim()) {
-                bridge.addVocabulary(root.resource.id, vocabModal.word, translationInput.text.trim())
+                bridge.reader.addVocabulary(root.resource.id, vocabModal.word, translationInput.text.trim())
                 translationInput.text = ""
                 textContent.deselect()
             }

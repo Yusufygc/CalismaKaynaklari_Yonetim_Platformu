@@ -3,7 +3,7 @@ import QtQuick.Controls
 import "../theme"
 
 // Makale Market sonuç kartı: başlık, yazar/yıl, atıf, dergi, rozetler (açık erişim / PDF /
-// kütüphanede), açılır özet ve "Kaydet". `paper` bridge._serialize_paper çıktısıdır.
+// kütüphanede), açılır özet ve "Kaydet". `paper` `ui_qml/serializers.py::serialize_paper` çıktısıdır.
 Rectangle {
     id: root
 
@@ -23,7 +23,7 @@ Rectangle {
     function toggleDiscovery(kind) {
         root.discoveryKind = root.discoveryKind === kind ? "" : kind
         if (root.discoveryKind !== "")
-            bridge.loadDiscovery(kind, root.paper.openalexId)
+            bridge.market.loadDiscovery(kind, root.paper.openalexId)
     }
 
     implicitHeight: content.implicitHeight + 24
@@ -285,7 +285,7 @@ Rectangle {
             visible: root.discoveryKind !== ""
 
             readonly property var panel: root.discoveryKind !== ""
-                ? bridge.marketDiscovery[root.discoveryKind + ":" + root.paper.openalexId] : undefined
+                ? bridge.market.marketDiscovery[root.discoveryKind + ":" + root.paper.openalexId] : undefined
 
             Text {
                 width: parent.width
@@ -306,7 +306,7 @@ Rectangle {
                     width: discoveryPanel.width
                     paper: modelData
                     color: Theme.bgSurface
-                    onSaveRequested: bridge.saveMarketResult(modelData)
+                    onSaveRequested: bridge.market.saveMarketResult(modelData)
                 }
             }
         }

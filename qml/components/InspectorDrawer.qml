@@ -6,8 +6,8 @@ import "../theme"
 Rectangle {
     id: root
 
-    property var resource: bridge.selectedResource
-    property bool isOpen: bridge.isDrawerOpen
+    property var resource: bridge.library.selectedResource
+    property bool isOpen: bridge.library.isDrawerOpen
     property int drawerWidth: 420
     property bool confirmDelete: false
 
@@ -112,7 +112,7 @@ Rectangle {
                     tooltip: "Sabitle"
                     tooltipPosition: "bottom"
                     onClicked: {
-                        if (root.resource) bridge.togglePin(root.resource.id)
+                        if (root.resource) bridge.library.togglePin(root.resource.id)
                     }
                 }
 
@@ -124,7 +124,7 @@ Rectangle {
                     tooltip: (root.resource && root.resource.isFavorite) ? "Favorilerden Çıkar" : "Favorilere Ekle"
                     tooltipPosition: "bottom"
                     onClicked: {
-                        if (root.resource) bridge.toggleFavorite(root.resource.id)
+                        if (root.resource) bridge.library.toggleFavorite(root.resource.id)
                     }
                 }
 
@@ -135,7 +135,7 @@ Rectangle {
                     tooltipPosition: "bottom"
                     onClicked: {
                         root.confirmDelete = false
-                        bridge.closeDrawer()
+                        bridge.library.closeDrawer()
                     }
                 }
             }
@@ -225,7 +225,7 @@ Rectangle {
                             statusKey: "INBOX"
                             dotColor: Theme.statusInbox
                             isSelected: root.resource && root.resource.status === "INBOX"
-                            onClicked: bridge.updateResourceStatus(root.resource.id, "INBOX")
+                            onClicked: bridge.library.updateResourceStatus(root.resource.id, "INBOX")
                         }
 
                         StatusPill {
@@ -233,7 +233,7 @@ Rectangle {
                             statusKey: "PLANNED"
                             dotColor: Theme.statusPlanned
                             isSelected: root.resource && root.resource.status === "PLANNED"
-                            onClicked: bridge.updateResourceStatus(root.resource.id, "PLANNED")
+                            onClicked: bridge.library.updateResourceStatus(root.resource.id, "PLANNED")
                         }
 
                         StatusPill {
@@ -241,7 +241,7 @@ Rectangle {
                             statusKey: "IN_PROGRESS"
                             dotColor: Theme.statusInProgress
                             isSelected: root.resource && root.resource.status === "IN_PROGRESS"
-                            onClicked: bridge.updateResourceStatus(root.resource.id, "IN_PROGRESS")
+                            onClicked: bridge.library.updateResourceStatus(root.resource.id, "IN_PROGRESS")
                         }
 
                         StatusPill {
@@ -249,7 +249,7 @@ Rectangle {
                             statusKey: "COMPLETED"
                             dotColor: Theme.statusCompleted
                             isSelected: root.resource && root.resource.status === "COMPLETED"
-                            onClicked: bridge.updateResourceStatus(root.resource.id, "COMPLETED")
+                            onClicked: bridge.library.updateResourceStatus(root.resource.id, "COMPLETED")
                         }
                     }
                 }
@@ -298,7 +298,7 @@ Rectangle {
                         // yuzden kalan genislik elle hesaplaniyor.
                         width: drawerActionsRow.width - editButton.width - deleteButton.width - drawerActionsRow.spacing * 2
                         onClicked: {
-                            if (root.resource) bridge.openReader(root.resource.id)
+                            if (root.resource) bridge.reader.openReader(root.resource.id)
                         }
                     }
 
@@ -320,7 +320,7 @@ Rectangle {
                         onClicked: {
                             if (root.confirmDelete) {
                                 root.confirmDelete = false
-                                if (root.resource) bridge.deleteResource(root.resource.id)
+                                if (root.resource) bridge.library.deleteResource(root.resource.id)
                             } else {
                                 root.confirmDelete = true
                             }
@@ -365,7 +365,7 @@ Rectangle {
                             implicitHeight: 26
                             onClicked: {
                                 if (root.resource) {
-                                    bridge.updateResourceNotes(root.resource.id, notesArea.text)
+                                    bridge.library.updateResourceNotes(root.resource.id, notesArea.text)
                                 }
                             }
                         }

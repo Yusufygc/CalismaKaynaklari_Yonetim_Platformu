@@ -6,29 +6,29 @@ from ui_qml.bridge import QmlBridge
 @pytest.fixture()
 def bridge(qapp, session, monkeypatch):
     b = QmlBridge(session)
-    monkeypatch.setattr(b, "_schedule_full_text_extract", lambda *args: None)
+    monkeypatch.setattr(b.ctx.extractor, "schedule", lambda *args: None)
     return b
 
 
 def _resource_with_highlights(bridge, count):
-    bridge.saveMarketResult({"title": "Kaynak", "url": "https://x.org/a"})
-    resource = bridge._controller.load_resources_with_filters({})[0]
+    bridge.market.saveMarketResult({"title": "Kaynak", "url": "https://x.org/a"})
+    resource = bridge.controllers.resources.load_resources_with_filters({})[0]
     for i in range(count):
-        bridge._controller.create_highlight(resource.id, f"alinti {i}", "#EAB308")
-    bridge.reload_highlights()
+        bridge.controllers.highlights.create_highlight(resource.id, f"alinti {i}", "#EAB308")
+    bridge.reader.reload_highlights()
     return resource
 
 
 def test_delete_highlights_removes_selected_reloads_once_and_notifies(bridge):
     _resource_with_highlights(bridge, 4)
-    ids = [h["id"] for h in bridge.highlights]
+    ids = [h["id"] for h in bridge.reader.highlights]
     notes, reloads = [], []
     bridge.notificationEmitted.connect(lambda kind, msg: notes.append((kind, msg)))
-    bridge.highlightsChanged.connect(lambda: reloads.append(1))
+    bridge.reader.highlightsChanged.connect(lambda: reloads.append(1))
 
-    bridge.deleteHighlights(ids[:3])
+    bridge.reader.deleteHighlights(ids[:3])
 
-    assert [h["id"] for h in bridge.highlights] == [ids[3]]
+    assert [h["id"] for h in bridge.reader.highlights] == [ids[3]]
     assert notes == [("info", "3 alıntı silindi.")]
     assert len(reloads) >= 1
 
@@ -38,16 +38,16 @@ def test_delete_highlights_empty_selection_does_nothing(bridge):
     notes = []
     bridge.notificationEmitted.connect(lambda kind, msg: notes.append(msg))
 
-    bridge.deleteHighlights([])
+    bridge.reader.deleteHighlights([])
 
-    assert len(bridge.highlights) == 2 and notes == []
+    assert len(bridge.reader.highlights) == 2 and notes == []
 
 
 def test_delete_highlights_refreshes_open_reader(bridge):
     resource = _resource_with_highlights(bridge, 2)
-    bridge.openReader(resource.id)
-    assert len(bridge.currentReaderResource["highlights"]) == 2
+    bridge.reader.openReader(resource.id)
+    assert len(bridge.reader.currentReaderResource["highlights"]) == 2
 
-    bridge.deleteHighlights([h["id"] for h in bridge.highlights])
+    bridge.reader.deleteHighlights([h["id"] for h in bridge.reader.highlights])
 
-    assert bridge.currentReaderResource["highlights"] == []
+    assert bridge.reader.currentReaderResource["highlights"] == []

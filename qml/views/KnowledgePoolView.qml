@@ -36,7 +36,7 @@ Item {
     }
 
     function deleteSelected() {
-        bridge.deleteHighlights(Object.keys(root.selectedIds).map(Number))
+        bridge.reader.deleteHighlights(Object.keys(root.selectedIds).map(Number))
         root.clearSelection()
     }
 
@@ -154,7 +154,7 @@ Item {
                                 }
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: "Alıntılar (" + bridge.highlights.length + ")"
+                                    text: "Alıntılar (" + bridge.reader.highlights.length + ")"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSm
                                     font.weight: root.activeTab === 0 ? Font.DemiBold : Font.Normal
@@ -189,7 +189,7 @@ Item {
                                 }
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: "Kelimeler (" + bridge.vocabulary.length + ")"
+                                    text: "Kelimeler (" + bridge.reader.vocabulary.length + ")"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSm
                                     font.weight: root.activeTab === 1 ? Font.DemiBold : Font.Normal
@@ -233,7 +233,7 @@ Item {
                 fileMode: FileDialog.SaveFile
                 nameFilters: ["Markdown (*.md)"]
                 defaultSuffix: "md"
-                onAccepted: bridge.exportLibraryMarkdown(selectedFile)
+                onAccepted: bridge.reader.exportLibraryMarkdown(selectedFile)
             }
 
             Rectangle {
@@ -253,7 +253,7 @@ Item {
             // Toplu seçim çubuğu
             Item {
                 id: selectionBar
-                visible: root.activeTab === 0 && bridge.highlights.length > 0
+                visible: root.activeTab === 0 && bridge.reader.highlights.length > 0
                 width: parent.width
                 height: visible ? 44 : 0
 
@@ -323,7 +323,7 @@ Item {
                 clip: true
 
                 model: {
-                    var all = bridge.highlights
+                    var all = bridge.reader.highlights
                     return all.filter(function(h) {
                         if (root.labelFilter !== "" && h.label !== root.labelFilter) return false
                         if (!root.searchQuery) return true
@@ -346,7 +346,7 @@ Item {
                     }
 
                     Repeater {
-                        model: bridge.highlightLabels
+                        model: bridge.reader.highlightLabels
                         delegate: AppFilterChip {
                             required property var modelData
                             text: modelData.label
@@ -478,7 +478,7 @@ Item {
                                     MouseArea {
                                         anchors.fill: parent
                                         cursorShape: Qt.PointingHandCursor
-                                        onClicked: bridge.openReader(modelData.resource_id)
+                                        onClicked: bridge.reader.openReader(modelData.resource_id)
                                     }
                                 }
 
@@ -498,7 +498,7 @@ Item {
                                 iconName: "fa5s.trash"
                                 iconSize: 11
                                 tooltip: "Alıntıyı Sil"
-                                onClicked: bridge.deleteHighlight(modelData.id)
+                                onClicked: bridge.reader.deleteHighlight(modelData.id)
                             }
                         }
                     }
@@ -517,7 +517,7 @@ Item {
                 clip: true
 
                 model: {
-                    var all = bridge.vocabulary
+                    var all = bridge.reader.vocabulary
                     if (!root.searchQuery) return all
                     return all.filter(function(v) {
                         return TextUtils.foldTr(v.word).indexOf(root.searchQuery) !== -1 ||
@@ -567,7 +567,7 @@ Item {
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: bridge.openReader(modelData.resource_id)
+                                    onClicked: bridge.reader.openReader(modelData.resource_id)
                                 }
                             }
                         }
@@ -594,7 +594,7 @@ Item {
                         iconName: "fa5s.trash"
                         iconSize: 11
                         tooltip: "Kelimeyi Sil"
-                        onClicked: bridge.deleteVocabulary(modelData.id)
+                        onClicked: bridge.reader.deleteVocabulary(modelData.id)
                     }
                 }
 

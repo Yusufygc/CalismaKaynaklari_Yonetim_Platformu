@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 
-from controllers.main_controller import MainController
+from controllers.resource_controller import ResourceController
 from core.events import event_bus
 
 
@@ -17,13 +17,13 @@ def _capture(signal):
 
 
 def test_get_resource_returns_none_when_missing(qapp, session):
-    controller = MainController(session)
+    controller = ResourceController(session)
 
     assert controller.get_resource(999) is None
 
 
 def test_add_resource_success_emits_resource_added(qapp, session):
-    controller = MainController(session)
+    controller = ResourceController(session)
     with _capture(event_bus.resource_added) as received:
         resource = controller.add_resource({"title": "Test Kaynak"})
 
@@ -32,7 +32,7 @@ def test_add_resource_success_emits_resource_added(qapp, session):
 
 
 def test_add_resource_failure_emits_error_and_returns_none(qapp, session):
-    controller = MainController(session)
+    controller = ResourceController(session)
     with _capture(event_bus.error_occurred) as received:
         result = controller.add_resource({"title": ""})
 
@@ -41,7 +41,7 @@ def test_add_resource_failure_emits_error_and_returns_none(qapp, session):
 
 
 def test_delete_resource_failure_emits_error(qapp, session):
-    controller = MainController(session)
+    controller = ResourceController(session)
     with _capture(event_bus.error_occurred) as received:
         controller.delete_resource(999)
 
@@ -49,7 +49,7 @@ def test_delete_resource_failure_emits_error(qapp, session):
 
 
 def test_toggle_pin_flips_value_and_emits_resource_updated(qapp, session):
-    controller = MainController(session)
+    controller = ResourceController(session)
     resource = controller.add_resource({"title": "Pin Me"})
     with _capture(event_bus.resource_updated) as received:
         controller.toggle_pin(resource.id)

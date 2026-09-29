@@ -70,7 +70,6 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   └── schemas.py              # Pydantic modelleri
 │
 ├── controllers/                # UI-agnostik denetleyiciler (Hata yakalama, sinyal fırlatma)
-│   ├── main_controller.py      # Facade controller
 │   ├── resource_controller.py
 │   ├── category_controller.py
 │   ├── tag_controller.py
@@ -80,7 +79,17 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   └── saved_search_controller.py
 │
 ├── ui_qml/                     # Python ↔ QML köprü katmanı
-│   ├── bridge.py               # QmlBridge (State, filtreler, Q_PROPERTY/Slot'lar)
+│   ├── bridge.py               # QmlBridge: ince kabuk / composition root (tema, sayfa, sade mod, toast) + 4 alt-bridge
+│   ├── context.py              # BridgeContext + Controllers (DI): controller'lar, thread pool, notifier, PDF/tam metin yardımcıları
+│   ├── bridges/                # İş alanı köprüleri (QML: bridge.library / reader / market / settings)
+│   │   ├── library_bridge.py   # Kaynak listesi/filtre, çekmece, ekle-düzenle-sil, yerel PDF içe aktarma, istatistik
+│   │   ├── reader_bridge.py    # Okuyucu, alıntı/kelime/not, PDF anahat, atıf, OpenAlex bilgisi, Markdown dışa aktarım
+│   │   ├── market_bridge.py    # Makale Market, keşif/öneri, toplu kaydet/dışa aktar, kayıtlı aramalar
+│   │   └── settings_bridge.py  # Kategori ve etiket yönetimi
+│   ├── pdf_files.py            # PdfFileManager: yerel PDF URL/durum, QPdfDocument önbelleği, indirme, seçim, temizlik
+│   ├── full_text.py            # FullTextExtractor: tam metin çıkarımı (arka plan)
+│   ├── notifier.py             # Notifier: tek toast kanalı
+│   ├── file_export.py          # write_export: Markdown/BibTeX/CSV dosya yazımı
 │   ├── image_provider.py       # IconImageProvider (qtawesome vektörel ikon sağlayıcı)
 │   ├── serializers.py          # Model → QML sözlüğü dönüşümleri (saf fonksiyonlar)
 │   └── models/

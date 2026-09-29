@@ -230,14 +230,14 @@ Item {
                             variant: "primary"
                             enabledState: catNameInput.text.trim().length > 0
                             onClicked: {
-                                bridge.createCategory(catNameInput.text.trim(), root.newCategoryColor, "")
+                                bridge.settings.createCategory(catNameInput.text.trim(), root.newCategoryColor, "")
                                 catNameInput.text = ""
                             }
                         }
                     }
 
                     Text {
-                        text: "Mevcut Kategoriler (" + bridge.categories.length + ")"
+                        text: "Mevcut Kategoriler (" + bridge.settings.categories.length + ")"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontMd
                         font.weight: Font.DemiBold
@@ -251,7 +251,7 @@ Item {
                         spacing: 8
 
                         Repeater {
-                            model: bridge.categories
+                            model: bridge.settings.categories
                             Rectangle {
                                 width: parent.width
                                 height: 44
@@ -302,7 +302,7 @@ Item {
                                     iconName: "fa5s.trash"
                                     iconSize: 12
                                     tooltip: "Kategoriyi Sil"
-                                    onClicked: bridge.deleteCategory(modelData.id)
+                                    onClicked: bridge.settings.deleteCategory(modelData.id)
                                 }
                             }
                         }
@@ -381,14 +381,14 @@ Item {
                             variant: "primary"
                             enabledState: tagNameInput.text.trim().length > 0
                             onClicked: {
-                                bridge.createTag(tagNameInput.text.trim())
+                                bridge.settings.createTag(tagNameInput.text.trim())
                                 tagNameInput.text = ""
                             }
                         }
                     }
 
                     Text {
-                        text: "Mevcut Etiketler (" + bridge.tags.length + ")"
+                        text: "Mevcut Etiketler (" + bridge.settings.tags.length + ")"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontMd
                         font.weight: Font.DemiBold
@@ -402,7 +402,7 @@ Item {
                         spacing: 8
 
                         Repeater {
-                            model: bridge.tags
+                            model: bridge.settings.tags
                             Rectangle {
                                 implicitWidth: tagRow.implicitWidth + 20
                                 implicitHeight: 32
@@ -441,7 +441,7 @@ Item {
                                         implicitWidth: 18
                                         implicitHeight: 18
                                         tooltip: "Etiketi Sil"
-                                        onClicked: bridge.deleteTag(modelData.id)
+                                        onClicked: bridge.settings.deleteTag(modelData.id)
                                     }
                                 }
                             }

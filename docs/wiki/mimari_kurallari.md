@@ -27,12 +27,12 @@
 - **Event-Driven UI:** UI güncellemeleri için PySide6 `Signal/Slot` ve `event_bus` kullanılır → bkz. [[event_bus]].
 
 ## Katman Hiyerarşisi
-- `qml/` (Views, Components, Theme) -> `ui_qml/` (Bridge, List Models) -> `controllers/` (MainController Facade & Sub-controllers) -> `services/` (Business Logic & Transactions) -> `repositories/` (SQLAlchemy Queries) -> `models/` (Declarative Entities)
+- `qml/` (Views, Components, Theme) -> `ui_qml/` (kök Bridge + alt-bridge'ler, List Models) -> `controllers/` (alan bazlı controller'lar) -> `services/` (Business Logic & Transactions) -> `repositories/` (SQLAlchemy Queries) -> `models/` (Declarative Entities)
 - `workers/`: Arka plan iş parçacıkları (`scrape_worker.py`, `extract_worker.py`) `QThreadPool` ile yönetilir.
 - `core/`: En alt altyapı katmanıdır (logger, paths, config, exceptions, net_utils, events). Üst katmanlara bağımlılığı kesinlikle yoktur.
 
 ## Controller Mimarisi
-- `MainController` (`controllers/main_controller.py`): Tek bir DI noktası sağlayan ince bir facade'dir. Alan bazlı 5 alt-controller'a delege eder: `ResourceController`, `CategoryController`, `TagController`, `HighlightController`, `VocabularyController` (hepsi `controllers/` altında).
+- **Controller'lar doğrudan enjekte edilir** (2026-09-30): eski `MainController` facade'i kaldırıldı (37 metotluk salt delege sınıf; her özellik 4-5 dosyada delege gerektiriyordu). `ui_qml/context.py::Controllers` yedi controller'ı (`resources, categories, tags, highlights, vocabulary, pdf_notes, saved_searches`) tek `session`'dan kurar; alt-bridge'ler yalnızca ihtiyaç duyduklarını `BridgeContext.controllers` üzerinden kullanır.
 
 ## Konfigürasyon, Hata, Log
 - **Config:** `core/config.py` (Pydantic BaseSettings veya `os.environ`)

@@ -44,8 +44,8 @@ Item {
         
         // Kategori index bul
         var catIndex = 0
-        for (var i = 0; i < bridge.categories.length; i++) {
-            if (bridge.categories[i].id === res.categoryId) {
+        for (var i = 0; i < bridge.settings.categories.length; i++) {
+            if (bridge.settings.categories[i].id === res.categoryId) {
                 catIndex = i + 1
                 break
             }
@@ -72,16 +72,16 @@ Item {
             root.importsInFlight = selectedFiles.length
             root.importsSucceeded = 0
             for (const file of selectedFiles)
-                bridge.importLocalPdf(file)
+                bridge.library.importLocalPdf(file)
         }
     }
 
-    // Kopyalama arka planda: her dosya için bridge.pdfImportFinished(ok) gelir; en az biri başarılıysa kapan.
+    // Kopyalama arka planda: her dosya için bridge.library.pdfImportFinished(ok) gelir; en az biri başarılıysa kapan.
     property int importsInFlight: 0
     property int importsSucceeded: 0
 
     Connections {
-        target: bridge
+        target: bridge.library
         function onPdfImportFinished(ok) {
             if (root.importsInFlight === 0) return  // Sürükle-bırakla gelen içe aktarma: pencereyi etkilemez
             root.importsInFlight--
@@ -206,7 +206,7 @@ Item {
                         enabledState: !root.isScraping && urlInput.text.length > 5
                         onClicked: {
                             root.isScraping = true
-                            bridge.scrapeUrl(urlInput.text)
+                            bridge.library.scrapeUrl(urlInput.text)
                         }
                     }
                 }
@@ -291,8 +291,8 @@ Item {
                         width: parent.width
                         model: {
                             var list = ["Kategorisiz"]
-                            for (var i = 0; i < bridge.categories.length; i++) {
-                                list.push(bridge.categories[i].name)
+                            for (var i = 0; i < bridge.settings.categories.length; i++) {
+                                list.push(bridge.settings.categories[i].name)
                             }
                             return list
                         }
@@ -369,7 +369,7 @@ Item {
     }
 
     Connections {
-        target: bridge
+        target: bridge.library
         function onUrlScraped(metadata) {
             root.isScraping = false
             if (metadata && metadata.title && !titleInput.text) {
@@ -388,8 +388,8 @@ Item {
         var selectedStatus = statuses[statusCombo.currentIndex]
 
         var catId = 0
-        if (categoryCombo.currentIndex > 0 && categoryCombo.currentIndex <= bridge.categories.length) {
-            catId = bridge.categories[categoryCombo.currentIndex - 1].id
+        if (categoryCombo.currentIndex > 0 && categoryCombo.currentIndex <= bridge.settings.categories.length) {
+            catId = bridge.settings.categories[categoryCombo.currentIndex - 1].id
         }
 
         var data = {
@@ -405,7 +405,7 @@ Item {
             data["id"] = root.resourceId
         }
 
-        bridge.saveResource(data)
+        bridge.library.saveResource(data)
         closeModal()
     }
 }

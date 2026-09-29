@@ -31,8 +31,8 @@ def _paper(n: int) -> PaperResult:
 @pytest.fixture()
 def bridge(qapp, session, monkeypatch):
     b = QmlBridge(session)
-    monkeypatch.setattr(b, "_thread_pool", SyncThreadPool())
-    monkeypatch.setattr(b, "_schedule_full_text_extract", lambda *args: None)
+    b.ctx.thread_pool = SyncThreadPool()
+    monkeypatch.setattr(b.ctx.extractor, "schedule", lambda *args: None)
     return b
 
 
@@ -56,7 +56,7 @@ def test_market_retry_button_is_clickable_and_searches_again(qapp, bridge, monke
     engine, window = open_window(qapp, bridge, "articleMarket")
 
     _search_and_enter(qapp, window, "gan")
-    assert state["calls"] == 1 and bridge.marketMeta["recent"]["error"] == "offline"
+    assert state["calls"] == 1 and bridge.market.marketMeta["recent"]["error"] == "offline"
 
     state["fail"] = False
     retry = find_text(window, "Tekrar dene")
@@ -64,7 +64,7 @@ def test_market_retry_button_is_clickable_and_searches_again(qapp, bridge, monke
     click(qapp, window, retry)
 
     assert state["calls"] == 2  # tiklama listeye degil butona ulasti (eski hata: z-order)
-    assert len(bridge.marketResults["recent"]) == 1
+    assert len(bridge.market.marketResults["recent"]) == 1
     assert engine.captured_warnings == []
     del engine
 
@@ -88,7 +88,7 @@ def test_market_bulk_selection_and_save_by_real_clicks(qapp, bridge, monkeypatch
 
     click(qapp, window, find_text(window, "Seçilenleri Kaydet (3)"))
 
-    assert bridge.resourcesModel.count == 3
+    assert bridge.library.resourcesModel.count == 3
     assert view.property("selectionCount") == 0
     del engine
 
@@ -113,11 +113,11 @@ def test_saved_search_flow_save_badge_run_and_delete(qapp, bridge, monkeypatch):
     QTest.keyClick(window, Qt.Key_Return)  # popup onAccepted -> Kaydet
     pump(qapp, 30)
 
-    assert [(s["label"], s["tag"]) for s in bridge.savedSearches] == [("gan", "tez")]
-    assert bridge.activeSavedSearchId == bridge.savedSearches[0]["id"]
+    assert [(s["label"], s["tag"]) for s in bridge.market.savedSearches] == [("gan", "tez")]
+    assert bridge.market.activeSavedSearchId == bridge.market.savedSearches[0]["id"]
     assert find_text(window, "Aramayı kaydet") is None  # zaten kayitli: buton gizlendi
 
-    bridge._controller.record_saved_search_check(bridge.savedSearches[0]["id"], 2)  # yeni yayin var
+    bridge.controllers.saved_searches.record_saved_search_check(bridge.market.savedSearches[0]["id"], 2)  # yeni yayin var
     pump(qapp, 10)
     chip = find_item(window, lambda i: i.property("text") == "gan  ·  2 yeni")
     assert chip is not None, "yeni yayin rozeti cipte gorunmeli"
@@ -125,16 +125,16 @@ def test_saved_search_flow_save_badge_run_and_delete(qapp, bridge, monkeypatch):
     delete_button = find_item(window, lambda i: i.property("tooltip") == "Kayıtlı aramayı sil")
     click(qapp, window, delete_button)
 
-    assert bridge.savedSearches == [] and bridge.activeSavedSearchId == 0
+    assert bridge.market.savedSearches == [] and bridge.market.activeSavedSearchId == 0
     del engine
 
 
 def test_knowledge_pool_bulk_delete_with_confirmation(qapp, bridge):
-    bridge.saveMarketResult({"title": "Kaynak", "url": "https://x.org/a"})
-    resource = bridge._controller.load_resources_with_filters({})[0]
+    bridge.market.saveMarketResult({"title": "Kaynak", "url": "https://x.org/a"})
+    resource = bridge.controllers.resources.load_resources_with_filters({})[0]
     for i in range(4):
-        bridge._controller.create_highlight(resource.id, f"alinti {i}", "#EAB308")
-    bridge.reload_highlights()
+        bridge.controllers.highlights.create_highlight(resource.id, f"alinti {i}", "#EAB308")
+    bridge.reader.reload_highlights()
     engine, window = open_window(qapp, bridge, "knowledge")
     view = find_item(window, lambda i: i.property("selectedCount") is not None)
 
@@ -146,23 +146,23 @@ def test_knowledge_pool_bulk_delete_with_confirmation(qapp, bridge):
 
     click(qapp, window, find_text(window, "Seçilenleri Sil (2)"))
     click(qapp, window, find_text(window, "Vazgeç"))  # onay penceresi: vazgec
-    assert len(bridge.highlights) == 4
+    assert len(bridge.reader.highlights) == 4
 
     click(qapp, window, find_text(window, "Seçilenleri Sil (2)"))
     click(qapp, window, find_text(window, "Sil (2)"))
 
-    assert len(bridge.highlights) == 2
+    assert len(bridge.reader.highlights) == 2
     assert view.property("selectedCount") == 0
     assert engine.captured_warnings == []
     del engine
 
 
 def test_knowledge_pool_search_is_turkish_insensitive(qapp, bridge):
-    bridge.saveMarketResult({"title": "Kaynak", "url": "https://x.org/a"})
-    resource = bridge._controller.load_resources_with_filters({})[0]
+    bridge.market.saveMarketResult({"title": "Kaynak", "url": "https://x.org/a"})
+    resource = bridge.controllers.resources.load_resources_with_filters({})[0]
     for content in ("İstanbul'un tarihi", "Isparta gülleri", "Şeker üretimi"):
-        bridge._controller.create_highlight(resource.id, content, "#EAB308")
-    bridge.reload_highlights()
+        bridge.controllers.highlights.create_highlight(resource.id, content, "#EAB308")
+    bridge.reader.reload_highlights()
     engine, window = open_window(qapp, bridge, "knowledge")
     view = find_item(window, lambda i: i.property("selectedCount") is not None)
 
@@ -218,12 +218,12 @@ def test_pdf_reader_drag_selection_highlights_exactly_the_selected_word(qapp, br
 
     storage = tmp_path / "depo"
     storage.mkdir()
-    monkeypatch.setattr("ui_qml.bridge.pdf_storage_dir", lambda: storage)
+    monkeypatch.setattr("ui_qml.pdf_files.pdf_storage_dir", lambda: storage)
     source = write_text_pdf(tmp_path / "makale.pdf")
-    bridge.importLocalPdf(source.as_uri())
-    resource = bridge._controller.load_resources_with_filters({})[0]
+    bridge.library.importLocalPdf(source.as_uri())
+    resource = bridge.controllers.resources.load_resources_with_filters({})[0]
     engine, window = open_window(qapp, bridge, "showcase", width=1400, height=900)
-    bridge.openReader(resource.id)
+    bridge.reader.openReader(resource.id)
     pump(qapp, 150)
 
     from PySide6.QtCore import QMetaObject
@@ -233,7 +233,7 @@ def test_pdf_reader_drag_selection_highlights_exactly_the_selected_word(qapp, br
         QMetaObject.invokeMethod(page_area, "zoomIn")
     pump(qapp, 60)
 
-    doc = bridge._load_pdf_document(bridge.currentReaderResource["pdfFileUrl"])
+    doc = bridge.ctx.pdf_files.load_document(bridge.reader.currentReaderResource["pdfFileUrl"])
     page_w = doc.pagePointSize(0).width()
     x_left, x_right, y_top = _white_page_box(window)
     scale = (x_right - x_left) / page_w
@@ -252,7 +252,7 @@ def test_pdf_reader_drag_selection_highlights_exactly_the_selected_word(qapp, br
         QTest.mouseClick(window, Qt.LeftButton, Qt.NoModifier, QPoint(int(scene.x()), int(scene.y())))
         pump(qapp, 30)
 
-    highlights = bridge._controller.load_resource_highlights(resource.id)
+    highlights = bridge.controllers.highlights.load_resource_highlights(resource.id)
     assert len(highlights) == 3
     for word, h in zip(("tilki", "paragrafin", "kopegin"), sorted(highlights, key=lambda h: h.id)):
         # Sinir karakteri Qt'nin secim kuralina baglidir (+-1 bosluk olabilir); onemli olan konumun metinle tutarliligi.
@@ -262,4 +262,42 @@ def test_pdf_reader_drag_selection_highlights_exactly_the_selected_word(qapp, br
         assert page_text[h.start_index:h.start_index + h.length].strip() == h.content.strip()  # kalici konum secilen metni gosteriyor
         assert abs(h.start_index - page_text.index(word)) <= 1
     assert engine.captured_warnings == []
+    del engine
+
+
+def test_every_page_renders_with_data_and_no_qml_warnings(qapp, bridge, tmp_path, monkeypatch):
+    """Bridge bolunmesi gibi buyuk degisikliklerde QML'de `undefined` baglama hatasi kalmasin:
+    her sayfa gercek veriyle (kaynak, kategori, etiket, alinti, kelime, PDF) acilir, uyari cikmamali."""
+    from PySide6.QtCore import QMetaObject
+
+    from tests.pdf_factory import write_text_pdf
+
+    storage = tmp_path / "depo"
+    storage.mkdir()
+    monkeypatch.setattr("ui_qml.pdf_files.pdf_storage_dir", lambda: storage)
+    bridge.settings.createCategory("Makale", "#123456", "")
+    bridge.settings.createTag("ai")
+    web = bridge.controllers.resources.add_resource(
+        {"title": "Web makalesi", "url": "https://example.org/a", "category_id": None, "priority": 2,
+         "tag_names": ["ai"], "content": "kelime " * 300}
+    )
+    bridge.library.importLocalPdf(write_text_pdf(tmp_path / "a.pdf").as_uri())
+    pdf = next(r for r in bridge.controllers.resources.load_resources_with_filters({}) if r.url.startswith("file://"))
+    bridge.controllers.highlights.create_highlight(web.id, "web alintisi", "#EAB308")
+    bridge.controllers.vocabulary.create_vocabulary(web.id, "kelime", "word", "cumle")
+    engine, window = open_window(qapp, bridge, "showcase")
+
+    click(qapp, window, find_item(window, lambda i: i.property("cardWidth") is not None))  # kart -> cekmece
+    QMetaObject.invokeMethod(window.findChild(QObject, "resourceFormModal"), "openForNew")
+    pump(qapp, 20)
+    for view in ("settings", "knowledge", "articleMarket", "showcase"):
+        bridge.setCurrentView(view)
+        pump(qapp, 20)
+    bridge.reader.openReader(web.id)      # HTML okuyucu
+    pump(qapp, 30)
+    bridge.reader.openReader(pdf.id)      # native PDF okuyucu
+    pump(qapp, 80)
+
+    assert bridge.currentView == "pdfReader"
+    assert engine.captured_warnings == [], engine.captured_warnings
     del engine

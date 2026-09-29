@@ -23,7 +23,7 @@ Three-layer separation — UI never touches the database directly:
 
 ```
 QML UI (qml/ views, components, theme)
-  └── QmlBridge & Controllers (controllers/ dir)
+  └── QmlBridge → library / reader / market / settings sub-bridges (ui_qml/) → Controllers (controllers/ dir)
           └── Services (business logic, validation, commit/rollback)
                   └── Repositories (SQLAlchemy queries only, no business logic)
                           └── Models (SQLAlchemy declarative, models/ dir)
@@ -77,9 +77,11 @@ Her kod değişikliği, yeni modül, kütüphane ekleme veya mimari karar sonras
 | Entry point | `main.py` |
 | QML Root Window | `qml/main.qml` |
 | Theme Singleton | `qml/theme/Theme.qml` |
-| Python-QML Bridge | `ui_qml/bridge.py` |
+| Python-QML Bridge (root shell) | `ui_qml/bridge.py` |
+| Sub-bridges (library / reader / market / settings) | `ui_qml/bridges/` |
+| Shared bridge context (controllers, thread pool, notifier, PDF/extract helpers) | `ui_qml/context.py` |
 | Virtualized List Model | `ui_qml/models/resource_list_model.py` |
-| Main Controller Facade | `controllers/main_controller.py` |
+| Controllers (injected via `Controllers` container) | `controllers/` (`ui_qml/context.py::Controllers`) |
 | Core business logic | `services/resource_service.py` |
 | Background workers | `workers/` (`scrape_worker.py`, `extract_worker.py`) |
 

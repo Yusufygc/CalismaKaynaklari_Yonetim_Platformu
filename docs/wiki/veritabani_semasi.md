@@ -35,7 +35,7 @@
 | is_pinned | Boolean | default False — listede üste sabitler, **indexed** (2026-07-03) |
 | is_favorite | Boolean | default False — "Favoriler" koleksiyonu, **indexed** (2026-07-03) |
 | content | Text | Markdown formatında notlar |
-| full_text | Text | Nullable — okuyucu sayfasında gösterilen ham kaynak metni: URL'den `trafilatura` ile çıkarılan makale gövdesi (2026-07-06, migration `73989d002a5c`). `content`'ten ayrı — biri kullanıcının kendi notu, diğeri kaynağın orijinal metni. **`deferred`** (2026-09-30): liste/filtre sorguları tam metni yüklemez, yalnızca özniteliğe erişilince (okuyucu, `_serialize_resource`) lazy yüklenir |
+| full_text | Text | Nullable — okuyucu sayfasında gösterilen ham kaynak metni: URL'den `trafilatura` ile çıkarılan makale gövdesi (2026-07-06, migration `73989d002a5c`). `content`'ten ayrı — biri kullanıcının kendi notu, diğeri kaynağın orijinal metni. **`deferred`** (2026-09-30): liste/filtre sorguları tam metni yüklemez, yalnızca özniteliğe erişilince (okuyucu, `ResourceSerializer`) lazy yüklenir |
 | reading_minutes | Integer | Required, varsayılan 0 — tahmini okuma süresi (dk). `full_text` (yoksa `content`) değişince `ResourceService` `utils/reading_time.estimate_reading_minutes` ile yeniden hesaplar; migration `e1f4a9c07b2d` mevcut kayıtları geri doldurdu. Kartlar ve okuyucu bunu okur (2026-09-30) |
 | extra_metadata | JSON | **Esnek alan** — tip-özel veriler (süre, yıldız, yazar…) |
 | created_at | DateTime | default now |
@@ -66,7 +66,7 @@
 | comment | Text | Nullable (2026-09-29) — kullanıcının alıntıya eklediği serbest yorum (Alembic `8b3f1c2d9a47`). Anlam etiketi (Önemli/Bulgu/Yöntem/…) DB'de tutulmaz, `color`'dan türetilir (`core/constants/highlight_labels.py`) |
 | created_at | DateTime | |
 
-Repo/servis: `repositories/highlight_repo.py::HighlightRepository`, `services/highlight_service.py::HighlightService`. HTML okuyucusunda metin seçilip renk paletinden birine tıklanarak oluşturulur, silinebilir. Native PDF okuyucusunda (`PdfReaderView`, bkz. [[qml_arayuz]]) aynı highlight tablosu kullanılır ama oluşturma `bridge.addPdfHighlight` (page-point koordinatlarından `start_index`/`length` hesaplar) üzerinden, düzenleme (`updateHighlightColor`) + silme reader içinden yapılabilir — manuel ekleme formu hiçbir zaman olmadı.
+Repo/servis: `repositories/highlight_repo.py::HighlightRepository`, `services/highlight_service.py::HighlightService`. HTML okuyucusunda metin seçilip renk paletinden birine tıklanarak oluşturulur, silinebilir. Native PDF okuyucusunda (`PdfReaderView`, bkz. [[qml_arayuz]]) aynı highlight tablosu kullanılır ama oluşturma `bridge.reader.addPdfHighlight` (page-point koordinatlarından `start_index`/`length` hesaplar) üzerinden, düzenleme (`updateHighlightColor`) + silme reader içinden yapılabilir — manuel ekleme formu hiçbir zaman olmadı.
 
 ### `vocabulary` (Kelime Dağarcığı — 2026-07-06'da aktif edildi)
 | Alan | Tip | Not |
@@ -105,7 +105,7 @@ Repo/servis/controller: `repositories/pdf_note_repo.py::PdfNoteRepository`, `ser
 | last_checked_at | DateTime | Nullable — kontrol edilmemişse ya da ağ hatasıyla kontrol başarısızsa bir sonraki açılışta yeniden denenir |
 | created_at | DateTime | |
 
-Repo/servis/controller: `repositories/saved_search_repo.py`, `services/saved_search_service.py` (aynı konu+filtre tekrar kaydedilemez → `DuplicateRecordError`), `controllers/saved_search_controller.py` (+ `MainController` facade). Kaynaklarla ilişkisi yoktur (bağımsız tablo).
+Repo/servis/controller: `repositories/saved_search_repo.py`, `services/saved_search_service.py` (aynı konu+filtre tekrar kaydedilemez → `DuplicateRecordError`), `controllers/saved_search_controller.py`. Kaynaklarla ilişkisi yoktur (bağımsız tablo).
 
 ## Hafif Migration
 `utils/db_utils.py:_apply_lightweight_migrations()` mevcut SQLite dosyalarına eksik kolonları ekler (idempotent). `init_db()` her başlangıçta önce bunu çağırır, sonra `Base.metadata.create_all` ile yeni tabloları oluşturur. Şu an listedeki tek migration: `resources.is_favorite` kolonu (2026-05-17).

@@ -39,10 +39,10 @@ Item {
         })
     }
 
-    // Highlight renginin akademik anlami (bridge.highlightLabels: renk -> etiket).
+    // Highlight renginin akademik anlami (bridge.reader.highlightLabels: renk -> etiket).
     function labelForColor(color) {
         const wanted = String(color).toUpperCase()
-        for (const entry of bridge.highlightLabels) {
+        for (const entry of bridge.reader.highlightLabels) {
             if (String(entry.color).toUpperCase() === wanted)
                 return entry.label
         }
@@ -438,7 +438,7 @@ Item {
                     readonly property point pointFrom: Qt.point(capturedFrom.x / safeScale, capturedFrom.y / safeScale)
                     readonly property point pointTo: Qt.point(capturedTo.x / safeScale, capturedTo.y / safeScale)
 
-                    // bridge.addPdfHighlight / addPdfVocabulary'nin bekledigi secim haritasi (page-point uzayinda)
+                    // bridge.reader.addPdfHighlight / addPdfVocabulary'nin bekledigi secim haritasi (page-point uzayinda)
                     function selectionMap(page) {
                         return { page: page, fromX: pointFrom.x, fromY: pointFrom.y, toX: pointTo.x, toY: pointTo.y }
                     }
@@ -478,7 +478,7 @@ Item {
                                     ToolTip.text: root.labelForColor(parent.modelData)
                                     onClicked: {
                                         if (newHighlightToolbar.capturedText.trim().length > 0 && root.resource) {
-                                            bridge.addPdfHighlight(
+                                            bridge.reader.addPdfHighlight(
                                                 root.resource.id, root.resource.pdfFileUrl,
                                                 newHighlightToolbar.selectionMap(pageHolder.index),
                                                 parent.modelData
@@ -513,7 +513,7 @@ Item {
 
                 // Secili kelimeyi/ifadeyi Bilgi Havuzu'na (kelime listesi) ekleme
                 // popover'i -- HTML okuyucudaki "Kelime Havuzuna Ekle" ozelligiyle
-                // ayni: bridge.addVocabulary(resourceId, word, translation).
+                // ayni: bridge.reader.addVocabulary(resourceId, word, translation).
                 Rectangle {
                     id: newVocabPopover
                     property string word: ""
@@ -598,7 +598,7 @@ Item {
                                 onClicked: {
                                     if (root.resource) {
                                         // Secim noktalariyla gonderilir: gectigi cumle baglam olarak da kaydedilir.
-                                        bridge.addPdfVocabulary(
+                                        bridge.reader.addPdfVocabulary(
                                             root.resource.id, root.resource.pdfFileUrl,
                                             newHighlightToolbar.selectionMap(pageHolder.index),
                                             vocabTranslationInput.text.trim()
@@ -710,7 +710,7 @@ Item {
                                         ToolTip.visible: containsMouse
                                         ToolTip.text: root.labelForColor(parent.modelData)
                                         onClicked: {
-                                            bridge.updateHighlightColor(editHighlightPopover.highlightId, parent.modelData)
+                                            bridge.reader.updateHighlightColor(editHighlightPopover.highlightId, parent.modelData)
                                             editHighlightPopover.visible = false
                                         }
                                     }
@@ -732,7 +732,7 @@ Item {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        bridge.deleteHighlight(editHighlightPopover.highlightId)
+                                        bridge.reader.deleteHighlight(editHighlightPopover.highlightId)
                                         editHighlightPopover.visible = false
                                     }
                                 }
@@ -785,7 +785,7 @@ Item {
                                 variant: "primary"
                                 implicitHeight: 28
                                 onClicked: {
-                                    bridge.updateHighlightComment(editHighlightPopover.highlightId, editCommentInput.text)
+                                    bridge.reader.updateHighlightComment(editHighlightPopover.highlightId, editCommentInput.text)
                                     editHighlightPopover.visible = false
                                 }
                             }
@@ -885,7 +885,7 @@ Item {
                                 variant: "primary"
                                 onClicked: {
                                     if (newNoteInput.text.trim().length > 0 && root.resource) {
-                                        bridge.addPdfNote(root.resource.id, newNotePopover.pendingPage,
+                                        bridge.reader.addPdfNote(root.resource.id, newNotePopover.pendingPage,
                                                            newNotePopover.pendingX, newNotePopover.pendingY,
                                                            newNoteInput.text.trim())
                                     }
@@ -953,7 +953,7 @@ Item {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        bridge.deletePdfNote(editNotePopover.noteId)
+                                        bridge.reader.deletePdfNote(editNotePopover.noteId)
                                         editNotePopover.visible = false
                                     }
                                 }
@@ -963,7 +963,7 @@ Item {
                                 variant: "primary"
                                 onClicked: {
                                     if (editNoteInput.text.trim().length > 0) {
-                                        bridge.updatePdfNote(editNotePopover.noteId, editNoteInput.text.trim())
+                                        bridge.reader.updatePdfNote(editNotePopover.noteId, editNoteInput.text.trim())
                                     }
                                     editNotePopover.visible = false
                                 }

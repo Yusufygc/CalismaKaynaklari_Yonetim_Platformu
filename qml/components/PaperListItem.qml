@@ -2,7 +2,7 @@ import QtQuick
 import "../theme"
 
 // Kompakt makale satırı (Kaynakça sekmesi, Market kartı altındaki keşif listeleri, öneriler).
-// `paper` bridge._serialize_paper çıktısıdır.
+// `paper` `ui_qml/serializers.py::serialize_paper` çıktısıdır.
 Rectangle {
     id: root
 

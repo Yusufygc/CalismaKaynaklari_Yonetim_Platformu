@@ -40,8 +40,8 @@ ApplicationWindow {
         onActivated: {
             if (formModal.isOpen) {
                 formModal.closeModal()
-            } else if (bridge.isDrawerOpen) {
-                bridge.closeDrawer()
+            } else if (bridge.library.isDrawerOpen) {
+                bridge.library.closeDrawer()
             }
         }
     }
@@ -207,7 +207,7 @@ ApplicationWindow {
                 for (var i = 0; i < drop.urls.length; i++) {
                     var u = drop.urls[i].toString()
                     if (u.toLowerCase().endsWith(".pdf")) {
-                        bridge.importLocalPdf(u)
+                        bridge.library.importLocalPdf(u)
                     }
                 }
             }

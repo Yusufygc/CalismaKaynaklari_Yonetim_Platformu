@@ -14,7 +14,7 @@ Item {
 
     readonly property var tabKinds: ["recent", "popular", "cited"]
     readonly property string activeKind: tabKinds[activeTab]
-    readonly property var activeMeta: bridge.marketMeta[activeKind]
+    readonly property var activeMeta: bridge.market.marketMeta[activeKind]
     readonly property var workTypeOptions: [
         { label: "Tüm türler", value: "" },
         { label: "Makale", value: "article" },
@@ -34,9 +34,9 @@ Item {
     property var selection: ({})
     // Çalışan kayıtlı arama (varsa): koleksiyon etiketi ipucu için
     readonly property var activeSaved: {
-        const list = bridge.savedSearches
+        const list = bridge.market.savedSearches
         for (let i = 0; i < list.length; i++)
-            if (list[i].id === bridge.activeSavedSearchId) return list[i]
+            if (list[i].id === bridge.market.activeSavedSearchId) return list[i]
         return null
     }
     readonly property int selectionCount: Object.keys(selection).length
@@ -61,7 +61,7 @@ Item {
         return 0
     }
 
-    // Kayıtlı arama çalıştırılırken form alanlarını onunla eşitle (bridge.savedSearchApplied)
+    // Kayıtlı arama çalıştırılırken form alanlarını onunla eşitle (bridge.market.savedSearchApplied)
     function applySavedSearch(topic, filters) {
         topicInput.text = topic
         yearFromInput.text = filters.yearFrom || ""
@@ -103,8 +103,8 @@ Item {
 
     // Görünen liste (öneri modunda öneriler, aksi halde etkin sekme)
     function bridgeList() {
-        if (root.suggestMode) return bridge.marketSuggestions.items
-        return bridge.marketResults[root.activeKind]
+        if (root.suggestMode) return bridge.market.marketSuggestions.items
+        return bridge.market.marketResults[root.activeKind]
     }
 
     // Dışa aktarılacaklar: seçim varsa seçilenler, yoksa görünen tüm liste
@@ -113,7 +113,7 @@ Item {
     }
 
     function saveSelected() {
-        bridge.saveMarketResults(Object.values(root.selection))
+        bridge.market.saveMarketResults(Object.values(root.selection))
         root.clearSelection()
     }
 
@@ -122,7 +122,7 @@ Item {
         root.suggestMode = false
         root.hasSearched = true
         root.clearSelection()
-        bridge.searchArticles(topicInput.text.trim(), root.currentFilters())
+        bridge.market.searchArticles(topicInput.text.trim(), root.currentFilters())
     }
 
     function searchAuthor(id, name) {
@@ -139,13 +139,13 @@ Item {
             root.runSearch()
         } else {
             root.hasSearched = false
-            bridge.resetMarketResults()
+            bridge.market.resetMarketResults()
         }
     }
 
     function toggleSuggestions() {
         root.suggestMode = !root.suggestMode
-        if (root.suggestMode) bridge.loadLibrarySuggestions()
+        if (root.suggestMode) bridge.market.loadLibrarySuggestions()
     }
 
     // Filtre değişince, önceden arama yapılmışsa sonuçları yenile.
@@ -153,11 +153,11 @@ Item {
         if (root.hasSearched) root.runSearch()
     }
 
-    Component.onCompleted: bridge.checkSavedSearches()
-    onVisibleChanged: if (visible) bridge.checkSavedSearches()
+    Component.onCompleted: bridge.market.checkSavedSearches()
+    onVisibleChanged: if (visible) bridge.market.checkSavedSearches()
 
     Connections {
-        target: bridge
+        target: bridge.market
         function onSavedSearchApplied(topic, filters) { root.applySavedSearch(topic, filters) }
     }
 
@@ -249,7 +249,7 @@ Item {
                     text: "Kaydet"
                     variant: "primary"
                     onClicked: {
-                        bridge.saveSearch(topicInput.text.trim(), root.currentFilters(), tagInput.text.trim())
+                        bridge.market.saveSearch(topicInput.text.trim(), root.currentFilters(), tagInput.text.trim())
                         saveSearchPopup.close()
                     }
                 }
@@ -263,7 +263,7 @@ Item {
         fileMode: FileDialog.SaveFile
         nameFilters: ["BibTeX (*.bib)"]
         defaultSuffix: "bib"
-        onAccepted: bridge.exportMarketResults("bibtex", selectedFile, root.exportPapers())
+        onAccepted: bridge.market.exportMarketResults("bibtex", selectedFile, root.exportPapers())
     }
 
     FileDialog {
@@ -272,7 +272,7 @@ Item {
         fileMode: FileDialog.SaveFile
         nameFilters: ["CSV (*.csv)"]
         defaultSuffix: "csv"
-        onAccepted: bridge.exportMarketResults("csv", selectedFile, root.exportPapers())
+        onAccepted: bridge.market.exportMarketResults("csv", selectedFile, root.exportPapers())
     }
 
     Column {
@@ -332,7 +332,7 @@ Item {
                                 root.runSearch()
                             }
                             onActiveFocusChanged: {
-                                if (activeFocus && text.length === 0 && bridge.marketSearchHistory.length > 0)
+                                if (activeFocus && text.length === 0 && bridge.market.marketSearchHistory.length > 0)
                                     historyPopup.open()
                             }
                             onTextChanged: if (text.length > 0) historyPopup.close()
@@ -395,7 +395,7 @@ Item {
                                         anchors.fill: parent
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            bridge.clearMarketHistory()
+                                            bridge.market.clearMarketHistory()
                                             historyPopup.close()
                                         }
                                     }
@@ -403,7 +403,7 @@ Item {
                             }
 
                             Repeater {
-                                model: bridge.marketSearchHistory
+                                model: bridge.market.marketSearchHistory
 
                                 delegate: Rectangle {
                                     required property string modelData
@@ -447,14 +447,14 @@ Item {
                     text: "Ara"
                     iconName: "fa5s.search"
                     variant: "primary"
-                    enabledState: !bridge.marketSearchLoading
+                    enabledState: !bridge.market.marketSearchLoading
                     onClicked: root.runSearch()
                 }
 
                 BusyIndicator {
                     anchors.verticalCenter: parent.verticalCenter
-                    running: bridge.marketSearchLoading
-                    visible: bridge.marketSearchLoading
+                    running: bridge.market.marketSearchLoading
+                    visible: bridge.market.marketSearchLoading
                     width: 24
                     height: 24
                 }
@@ -691,7 +691,7 @@ Item {
             id: savedBar
             width: parent.width
             height: visible ? 44 : 0
-            visible: bridge.savedSearches.length > 0
+            visible: bridge.market.savedSearches.length > 0
 
             Text {
                 id: savedLabel
@@ -722,7 +722,7 @@ Item {
                     spacing: 8
 
                     Repeater {
-                        model: bridge.savedSearches
+                        model: bridge.market.savedSearches
 
                         delegate: Row {
                             required property var modelData
@@ -733,8 +733,8 @@ Item {
                                 text: modelData.label + (modelData.newCount > 0 ? "  ·  " + modelData.newCount + " yeni" : "")
                                 iconName: "fa5s.bookmark"
                                 dotColor: modelData.newCount > 0 ? Theme.statusInProgress : "transparent"
-                                isSelected: bridge.activeSavedSearchId === modelData.id
-                                onClicked: bridge.runSavedSearch(modelData.id)
+                                isSelected: bridge.market.activeSavedSearchId === modelData.id
+                                onClicked: bridge.market.runSavedSearch(modelData.id)
                             }
 
                             AppIconButton {
@@ -742,7 +742,7 @@ Item {
                                 iconName: "fa5s.times"
                                 iconSize: 10
                                 tooltip: "Kayıtlı aramayı sil"
-                                onClicked: bridge.deleteSavedSearch(modelData.id)
+                                onClicked: bridge.market.deleteSavedSearch(modelData.id)
                             }
                         }
                     }
@@ -762,7 +762,7 @@ Item {
             id: resultsToolbar
             width: parent.width
             height: visible ? 44 : 0
-            visible: bridge.marketSearchLoading === false && root.bridgeList().length > 0
+            visible: bridge.market.marketSearchLoading === false && root.bridgeList().length > 0
 
             Row {
                 anchors.left: parent.left
@@ -789,7 +789,7 @@ Item {
 
                 AppButton {
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: root.hasSearched && !root.suggestMode && bridge.activeSavedSearchId === 0
+                    visible: root.hasSearched && !root.suggestMode && bridge.market.activeSavedSearchId === 0
                     text: "Aramayı kaydet"
                     iconName: "fa5s.bookmark"
                     variant: "ghost"
@@ -809,8 +809,8 @@ Item {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.selectionCount > 0 ? root.selectionCount + " seçili"
-                          : bridge.marketMeta[root.activeKind].total > 0 && !root.suggestMode
-                            ? bridge.marketMeta[root.activeKind].total + " sonuç" : ""
+                          : bridge.market.marketMeta[root.activeKind].total > 0 && !root.suggestMode
+                            ? bridge.market.marketMeta[root.activeKind].total + " sonuç" : ""
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontXs
                     color: Theme.textMuted
@@ -866,10 +866,10 @@ Item {
             height: parent.height - 64 - filterBar.height - savedBar.height - resultsToolbar.height
 
             property var currentList: {
-                if (root.suggestMode) return bridge.marketSuggestions.items
-                if (root.activeTab === 0) return bridge.marketResults.recent
-                if (root.activeTab === 1) return bridge.marketResults.popular
-                return bridge.marketResults.cited
+                if (root.suggestMode) return bridge.market.marketSuggestions.items
+                if (root.activeTab === 0) return bridge.market.marketResults.recent
+                if (root.activeTab === 1) return bridge.market.marketResults.popular
+                return bridge.market.marketResults.cited
             }
 
             // Boş / hata durumları (z: sonradan tanımlanan, ekranı kaplayan ListView tıklamaları yutmasın)
@@ -877,10 +877,10 @@ Item {
                 anchors.centerIn: parent
                 spacing: 8
                 z: 1
-                visible: !bridge.marketSearchLoading && !bridge.marketSuggestions.loading
+                visible: !bridge.market.marketSearchLoading && !bridge.market.marketSuggestions.loading
                          && parent.currentList.length === 0
 
-                readonly property var suggestions: bridge.marketSuggestions
+                readonly property var suggestions: bridge.market.marketSuggestions
                 readonly property bool failed: root.suggestMode ? suggestions.error !== ""
                                                : (root.hasSearched && root.activeMeta.error !== "")
 
@@ -915,14 +915,14 @@ Item {
                     text: "Tekrar dene"
                     iconName: "fa5s.redo"
                     variant: "subtle"
-                    onClicked: root.suggestMode ? bridge.loadLibrarySuggestions() : root.runSearch()
+                    onClicked: root.suggestMode ? bridge.market.loadLibrarySuggestions() : root.runSearch()
                 }
             }
 
             BusyIndicator {
                 anchors.centerIn: parent
                 running: visible
-                visible: root.suggestMode && bridge.marketSuggestions.loading
+                visible: root.suggestMode && bridge.market.marketSuggestions.loading
             }
 
             ListView {
@@ -952,8 +952,8 @@ Item {
                     selectable: true
                     selected: root.selection[root.paperKey(modelData)] !== undefined
                     onSelectionToggled: root.toggleSelected(modelData)
-                    onSaveRequested: bridge.saveMarketResult(modelData)
-                    onSaveForLaterRequested: bridge.saveMarketResultForLater(modelData)
+                    onSaveRequested: bridge.market.saveMarketResult(modelData)
+                    onSaveForLaterRequested: bridge.market.saveMarketResultForLater(modelData)
                     onAuthorRequested: (id, name) => root.searchAuthor(id, name)
                 }
 
@@ -985,7 +985,7 @@ Item {
                             onClicked: {
                                 resultsList.restoreY = resultsList.contentY
                                 resultsList.restorePending = true
-                                bridge.loadMoreArticles(root.activeKind)
+                                bridge.market.loadMoreArticles(root.activeKind)
                             }
                         }
                     }

@@ -11,11 +11,11 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 
-from controllers.main_controller import MainController
 from core.logger import log
 from core.paths import pdf_storage_dir
 from services.pdf_storage_service import PdfStorageService
 from ui_qml.bridge import QmlBridge
+from ui_qml.context import Controllers
 from ui_qml.image_provider import IconImageProvider
 from utils.db_utils import get_session, init_db
 
@@ -65,10 +65,10 @@ def main() -> None:
 
     init_db()
     session = get_session()
-    controller = MainController(session)
+    controllers = Controllers.build(session)
     # Onceki oturumda Windows dosya kilidi yuzunden silinememis PDF'leri temizle.
-    PdfStorageService(pdf_storage_dir()).sweep_orphans(controller.load_resources_with_filters({}))
-    bridge = QmlBridge(controller=controller)
+    PdfStorageService(pdf_storage_dir()).sweep_orphans(controllers.resources.load_resources_with_filters({}))
+    bridge = QmlBridge(controllers=controllers)
     engine = _create_engine(bridge)
 
     # Yok etme sirasi onemli (motor -> bridge -> oturum), bu yuzden `del`ler burada, helper'da degil.

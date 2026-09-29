@@ -6,7 +6,7 @@ anchor, yanlis yazilmis/silinmis bridge slotu (bkz. 2026-09-29/30 QML hatalari).
 import re
 
 import pytest
-from PySide6.QtCore import QMetaMethod, QUrl
+from PySide6.QtCore import QMetaMethod, QObject, QUrl
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 from ui_qml.bridge import QmlBridge
@@ -59,42 +59,73 @@ def _members(obj) -> dict[str, str]:
     return members
 
 
-_BRIDGE_REF = re.compile(r"\bbridge\.(\w+)")
+_BRIDGE_REF = re.compile(r"\bbridge\.(\w+)(?:\.(\w+))?")
 _HANDLER = re.compile(r"function\s+on([A-Z]\w*)\s*\(")
+_TARGET = re.compile(r"target:\s*bridge(?:\.(\w+))?\b")
 
 
-def _connections_handlers(source: str) -> set[str]:
-    """`Connections { target: bridge ... function onXyz(...) }` bloklarindaki sinyal adlari (xyz)."""
-    signals: set[str] = set()
+def _connections_handlers(source: str) -> set[tuple[str, str]]:
+    """`Connections { target: bridge[.alt] ... function onXyz }` bloklari: {(alt-bridge adi ya da '', sinyal adi)}."""
+    signals: set[tuple[str, str]] = set()
     for match in re.finditer(r"Connections\s*\{", source):
         depth, i = 1, match.end()
         while i < len(source) and depth:
             depth += {"{": 1, "}": -1}.get(source[i], 0)
             i += 1
         block = source[match.start():i]
-        if re.search(r"target:\s*bridge\b", block):
-            signals |= {h[0].lower() + h[1:] for h in _HANDLER.findall(block)}
+        target = _TARGET.search(block)
+        if target:
+            owner = target.group(1) or ""
+            signals |= {(owner, h[0].lower() + h[1:]) for h in _HANDLER.findall(block)}
     return signals
 
 
-def _qml_bridge_usage() -> dict[str, set[str]]:
-    """{bridge uyesi: kullanan dosyalar}"""
-    usage: dict[str, set[str]] = {}
+def _qml_bridge_usage() -> dict[tuple[str, str], set[str]]:
+    """{(kok uye, alt uye ya da ''): kullanan dosyalar}; Connections isleyicileri de dahil."""
+    usage: dict[tuple[str, str], set[str]] = {}
     for qml_file in QML_DIR.rglob("*.qml"):
         source = strip_qml_comments(qml_file.read_text(encoding="utf-8"))
-        names = set(_BRIDGE_REF.findall(source)) | _connections_handlers(source)
-        for name in names:
-            usage.setdefault(name, set()).add(qml_file.name)
+        refs = {(first, second or "") for first, second in _BRIDGE_REF.findall(source)}
+        refs |= {(owner, signal) if owner else (signal, "") for owner, signal in _connections_handlers(source)}
+        for ref in refs:
+            usage.setdefault(ref, set()).add(qml_file.name)
     return usage
+
+
+def _unresolved(bridge, usage) -> dict[str, list[str]]:
+    """Kok bridge'de olmayan uyeler ile alt-bridge'de olmayan uyeler (yol: 'market.searchArticles')."""
+    root_members = _members(bridge)
+    missing: dict[str, list[str]] = {}
+    for first, second in usage:
+        if first not in root_members:
+            missing[first] = sorted(usage[(first, second)])
+            continue
+        child = getattr(bridge, first, None)
+        is_child_bridge = isinstance(child, QObject) and child is not bridge
+        if is_child_bridge and second and second not in _members(child):
+            missing[f"{first}.{second}"] = sorted(usage[(first, second)])
+    return missing
 
 
 def test_every_bridge_member_used_by_qml_exists(qapp, session):
     bridge = QmlBridge(session)
-    members = _members(bridge)
 
-    missing = {name: sorted(files) for name, files in _qml_bridge_usage().items() if name not in members}
+    missing = _unresolved(bridge, _qml_bridge_usage())
 
     assert missing == {}, f"QML'de kullanilan ama bridge'de olmayan uyeler: {missing}"
+
+
+def test_qml_only_reaches_business_members_through_sub_bridges(qapp, session):
+    """Is alani uyeleri (kaynak/okuyucu/market/ayarlar) yalnizca alt-bridge uzerinden kullanilmali;
+    kok bridge yalnizca kabuk uyelerini (tema, sayfa, sade mod, bildirim, alt-bridge'ler) sunar."""
+    bridge = QmlBridge(session)
+    root_used = {first for (first, second) in _qml_bridge_usage() if second == "" or not isinstance(getattr(bridge, first, None), QObject)}
+
+    shell = {"isDarkTheme", "currentView", "isSimpleMode", "toggleTheme", "setSimpleMode", "setCurrentView",
+             "notificationEmitted", "isDarkThemeChanged", "currentViewChanged", "isSimpleModeChanged"}
+    children = {"library", "reader", "market", "settings"}
+
+    assert root_used - shell - children == set()
 
 
 def test_qml_actually_uses_bridge(qapp):
@@ -102,10 +133,22 @@ def test_qml_actually_uses_bridge(qapp):
     usage = _qml_bridge_usage()
 
     assert len(usage) > 40
-    assert "searchArticles" in usage and "savedSearchApplied" in usage  # Connections yolu da yakalaniyor
+    assert ("market", "searchArticles") in usage
+    assert ("market", "savedSearchApplied") in usage  # Connections yolu da yakalaniyor
+    assert ("isDarkTheme", "") in usage
+
+
+def test_connections_resolve_targets_to_the_right_sub_bridge():
+    source = """
+    Connections { target: bridge; function onNotificationEmitted(a, b) { x() } }
+    Connections { target: bridge.library
+        function onUrlScraped(m) { if (m) { y() } } }
+    """
+
+    assert _connections_handlers(source) == {("", "notificationEmitted"), ("library", "urlScraped")}
 
 
 def test_comments_are_not_counted_as_usage():
-    source = "// bridge.eskiSlot()\n/* bridge.digerEski */\nbridge.gercek()"
+    source = "// bridge.eskiSlot()\n/* bridge.digerEski */\nbridge.market.gercek()"
 
-    assert set(_BRIDGE_REF.findall(strip_qml_comments(source))) == {"gercek"}
+    assert set(_BRIDGE_REF.findall(strip_qml_comments(source))) == {("market", "gercek")}

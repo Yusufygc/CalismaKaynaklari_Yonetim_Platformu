@@ -146,7 +146,7 @@ Rectangle {
                     isCollapsed: root.isCollapsed
                     iconName: "fa5s.th-large"
                     title: "Bağlantı Vitrini"
-                    badgeText: bridge.stats.total ? bridge.stats.total.toString() : "0"
+                    badgeText: bridge.library.stats.total ? bridge.library.stats.total.toString() : "0"
                     isActive: root.activeNav === "showcase" && root.activeStatusFilter === "ALL" && !root.isFavoriteFilter
                     onClicked: {
                         root.activeStatusFilter = "ALL"
@@ -163,7 +163,7 @@ Rectangle {
                     isCollapsed: root.isCollapsed
                     iconName: "fa5s.quote-right"
                     title: "Bilgi Havuzu"
-                    badgeText: (bridge.highlights.length + bridge.vocabulary.length).toString()
+                    badgeText: (bridge.reader.highlights.length + bridge.reader.vocabulary.length).toString()
                     isActive: root.activeNav === "knowledge"
                     onClicked: root.navSelected("knowledge")
                 }
@@ -216,7 +216,7 @@ Rectangle {
                     isCollapsed: root.isCollapsed
                     iconName: "fa5s.inbox"
                     title: "Gelen Kutusu"
-                    badgeText: bridge.stats.inbox ? bridge.stats.inbox.toString() : "0"
+                    badgeText: bridge.library.stats.inbox ? bridge.library.stats.inbox.toString() : "0"
                     dotColor: Theme.statusInbox
                     isActive: root.activeNav === "showcase" && root.activeStatusFilter === "INBOX"
                     onClicked: {
@@ -233,7 +233,7 @@ Rectangle {
                     isCollapsed: root.isCollapsed
                     iconName: "fa5s.calendar-alt"
                     title: "Planlananlar"
-                    badgeText: bridge.stats.planned ? bridge.stats.planned.toString() : "0"
+                    badgeText: bridge.library.stats.planned ? bridge.library.stats.planned.toString() : "0"
                     dotColor: Theme.statusPlanned
                     isActive: root.activeNav === "showcase" && root.activeStatusFilter === "PLANNED"
                     onClicked: {
@@ -250,7 +250,7 @@ Rectangle {
                     isCollapsed: root.isCollapsed
                     iconName: "fa5s.spinner"
                     title: "Devam Edenler"
-                    badgeText: bridge.stats.in_progress ? bridge.stats.in_progress.toString() : "0"
+                    badgeText: bridge.library.stats.in_progress ? bridge.library.stats.in_progress.toString() : "0"
                     dotColor: Theme.statusInProgress
                     isActive: root.activeNav === "showcase" && root.activeStatusFilter === "IN_PROGRESS"
                     onClicked: {
@@ -267,7 +267,7 @@ Rectangle {
                     isCollapsed: root.isCollapsed
                     iconName: "fa5s.check-circle"
                     title: "Tamamlananlar"
-                    badgeText: bridge.stats.completed ? bridge.stats.completed.toString() : "0"
+                    badgeText: bridge.library.stats.completed ? bridge.library.stats.completed.toString() : "0"
                     dotColor: Theme.statusCompleted
                     isActive: root.activeNav === "showcase" && root.activeStatusFilter === "COMPLETED"
                     onClicked: {
@@ -297,7 +297,7 @@ Rectangle {
                     isCollapsed: root.isCollapsed
                     iconName: "fa5s.heart"
                     title: "Favoriler"
-                    badgeText: bridge.stats.favorites ? bridge.stats.favorites.toString() : "0"
+                    badgeText: bridge.library.stats.favorites ? bridge.library.stats.favorites.toString() : "0"
                     dotColor: Theme.favorite
                     isActive: root.activeNav === "showcase" && root.isFavoriteFilter
                     onClicked: {
