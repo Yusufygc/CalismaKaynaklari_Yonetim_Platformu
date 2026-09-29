@@ -53,6 +53,8 @@ MARKET_SORTS: dict[str, str | None] = {
 }
 
 _AUTHOR_ID = re.compile(r"A\d+")
+_WORK_ID = re.compile(r"W\d+")
+_DOI = re.compile(r"10\.\d{4,9}/\S+")
 _WORK_TYPES = {"article", "review", "preprint", "book", "dissertation"}
 
 
@@ -115,6 +117,11 @@ class MarketPage:
     items: list[PaperResult] = field(default_factory=list)
     total: int = 0
     error: str = ""
+
+
+def _valid_work_ids(openalex_ids: list[str]) -> list[str]:
+    """Toplu `openalex:W1|W2` filtresine girecek gecerli kimlikler (en fazla `_MAX_BATCH`); gecersizler elenir."""
+    return [i for i in openalex_ids if _WORK_ID.fullmatch(i or "")][:_MAX_BATCH]
 
 
 def _short_openalex_id(work_id: str | None) -> str | None:
@@ -232,8 +239,9 @@ class PaperMarketService:
 
     def find_paper_strict(self, doi: str | None = None, title: str | None = None) -> PaperResult | None:
         """`find_paper` ile ayni ama ag/API hatalarini firlatir; bulunamazsa None doner."""
-        if doi:
-            work = self._get_json(f"{_API_URL}/https://doi.org/{_clean_doi(doi)}", {})
+        clean_doi = _clean_doi(doi)
+        if clean_doi and _DOI.fullmatch(clean_doi):  # Bicimsiz DOI URL yoluna girmez; basliga dusulur.
+            work = self._get_json(f"{_API_URL}/https://doi.org/{clean_doi}", {})
             return _to_paper_result(work) if work else None
         if title:
             works = self._get_results({"search": title, "per-page": 1})
@@ -256,6 +264,10 @@ class PaperMarketService:
         }
         if kind not in filters:
             raise ValueError(f"Gecersiz iliski turu: {kind}")
+        # Kimlik `filter=` ifadesine girdigi icin dogrulanir (`W1,type:x` gibi ek filtre enjekte edilemez).
+        expected = _AUTHOR_ID if kind == "author" else _WORK_ID
+        if not expected.fullmatch(openalex_id or ""):
+            raise ValueError(f"Gecersiz OpenAlex kimligi: {openalex_id!r}")
         works = self._get_results(
             {"filter": filters[kind], "sort": "cited_by_count:desc", "per-page": limit}
         )
@@ -265,7 +277,7 @@ class PaperMarketService:
         """Her makale icin atif yaptigi eserlerin (kisa) OpenAlex kimlikleri. Tek istekte en fazla
         `_MAX_BATCH` makale sorgulanir."""
         result: dict[str, list[str]] = {}
-        ids = openalex_ids[:_MAX_BATCH]
+        ids = _valid_work_ids(openalex_ids)
         if not ids:
             return result
         works = self._get_results(
@@ -281,7 +293,7 @@ class PaperMarketService:
 
     def works_by_ids(self, openalex_ids: list[str]) -> list[PaperResult]:
         """Verilen (kisa) OpenAlex kimliklerine ait eserler (en fazla `_MAX_BATCH`)."""
-        ids = openalex_ids[:_MAX_BATCH]
+        ids = _valid_work_ids(openalex_ids)
         if not ids:
             return []
         works = self._get_results({"filter": f"openalex:{'|'.join(ids)}", "per-page": _MAX_BATCH})

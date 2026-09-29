@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] FIX | OpenAlex kimlikleri doğrulanıyor (filtre enjeksiyonu)
+
+Denetim bulgusu 15. `PaperMarketService.related_papers` kimliği `f"cited_by:{id}"` gibi `filter=` ifadesine ham koyuyordu (`W1,type:x` ek filtre enjekte edebilirdi; yalnızca `author_id` doğrulanıyordu). Artık tür başına regex (`W\d+` / `A\d+`), geçersizde istek atılmadan `ValueError`; toplu sorgular (`referenced_work_ids`, `works_by_ids`) geçersizleri süzer; `find_paper_strict` biçimsiz DOI'yi URL yoluna koymaz. Canlı OpenAlex ile geçerli kimlik/DOI'ler doğrulandı (arXiv DOI'sinin bulunamaması eski davranışla aynı). 16 yeni test, 410 test geçti.
+
+---
+
 ## [2026-09-30] FIX | Bağımlılık kilidi gerçek kilit oldu, CI'a kapsam ve CVE taraması eklendi
 
 Denetim bulgusu 14. `requirements.lock` yalnızca 12 doğrudan paketi içeriyordu (geçişli bağımlılıklar pinsiz → tekrarlanabilir kurulum değildi) ve venv'den geride kalmıştı (ör. PySide6 6.11.1 vs kurulu 6.11.2, alembic 1.18.4 vs 1.20.0). Lock artık `requirements.txt`'in **geçişli** çözümü (44 paket, `importlib.metadata` ile üretildi; `pip check` temiz) — testler tam bu sürümlerle geçiyor. Kodda hiç import edilmeyen `fonttools` `requirements.txt`'ten kaldırıldı. Yeni `requirements-dev.txt` (pytest, pytest-cov, pip-audit; pinli). `.coveragerc` + CI: `pytest --cov --cov-fail-under=80` (ölçülen Python kapsamı %82; en zayıf: `utils/pdf_outline.py` %29 — gerçek PDF gerektiren test atlanıyor, `bridge.py` %77). CI'ya `pip-audit` adımı (uyarı modu, `continue-on-error`); yerelde `pip-audit -r requirements.lock`: bilinen zafiyet yok. Lock yenileme: venv'de `pip install -U -r requirements.txt` sonra `scripts/make_lock.py` (Windows/py3.10 için üretildi).

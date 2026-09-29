@@ -121,6 +121,8 @@ Konu bazlı akademik makale araması. [OpenAlex Works API](https://api.openalex.
 
 **Filtre/sayfalama (2026-09-30):** `search(topic, filters)` üç sekmenin ilk sayfasını, `search_page(topic, kind, filters, page)` tek sekmenin istenen sayfasını döndürür (`MarketPage`: `items`, `total`, `error`). `MarketFilters` yıl aralığı (`from/to_publication_date`), `is_oa`, `type`, `language` ifadesini üretir. Hata artık `MarketPage.error`'da taşınır (boş sonuçla karışmaz).
 
+**Kimlik doğrulama (2026-09-30):** OpenAlex kimlikleri `filter=` ifadesine girdiği için doğrulanır: `related_papers` (`references/citations/similar` → `^W\\d+$`, `author` → `^A\\d+$`; aksi halde istek atılmadan `ValueError`), toplu sorgular (`referenced_work_ids`, `works_by_ids`) geçersiz kimlikleri süzer, `find_paper_strict` biçimsiz DOI'yi URL yoluna koymaz (başlığa düşer). `W1,type:x` gibi değerler ek filtre enjekte edemez.
+
 **LibraryIndex — `services/library_index.py` (2026-09-30):** Kütüphane kaynaklarını DOI (`extra_metadata.doi` ya da `doi.org` URL'sinden, `utils/doi_utils.py`) ve `openalex_id` ile arar. `QmlBridge` Market/Kaynakça sonuçlarına `libraryResourceId` yazmak ve `saveMarketResult`'ta aynı makalenin ikinci kez eklenmesini engellemek için kullanır.
 
 **Keşif (2026-09-30):** `related_papers(id, kind)` türleri: `references`, `citations`, `similar` (`related_to:`), `author` (yazar kimliği, `author.id:`). `ReadingSuggestionService.suggest(library_openalex_ids)` — kütüphane makalelerinin ortak referanslarından kütüphanede olmayanları önerir (`Suggestion(paper, cited_by_library)`); `referenced_work_ids` + `works_by_ids` ile iki toplu istek (≤50 kimlik/istek).

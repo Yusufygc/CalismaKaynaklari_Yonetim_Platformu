@@ -135,11 +135,11 @@ class TestDiscovery:
             "references": "cited_by:W1",
             "citations": "cites:W1",
             "similar": "related_to:W1",
-            "author": "author.id:W1",
+            "author": "author.id:A1",
         }
         for kind, filter_expr in expected.items():
             with patch("services.paper_market_service.requests.get", return_value=_response([_work(1)])) as get:
-                papers = PaperMarketService().related_papers("W1", kind)
+                papers = PaperMarketService().related_papers("A1" if kind == "author" else "W1", kind)
 
             assert get.call_args.kwargs["params"]["filter"] == filter_expr
             assert len(papers) == 1
@@ -192,3 +192,51 @@ class TestDiscovery:
             assert PaperMarketService().referenced_work_ids([]) == {}
 
         get.assert_not_called()
+
+
+class TestOpenAlexIdValidation:
+    @pytest.mark.parametrize("bad_id", ["W1,type:x", "W1|W2", "1234", "", "w1", "A1", "W1 ", "../W1"])
+    def test_related_papers_rejects_malformed_work_ids(self, bad_id):
+        with patch("services.paper_market_service.requests.get") as get:
+            for kind in ("references", "citations", "similar"):
+                with pytest.raises(ValueError):
+                    PaperMarketService().related_papers(bad_id, kind)
+
+        get.assert_not_called()  # istek atilmadan reddedilir
+
+    @pytest.mark.parametrize("bad_id", ["A1,type:x", "W1", "", "a1"])
+    def test_author_kind_requires_author_id(self, bad_id):
+        with patch("services.paper_market_service.requests.get") as get:
+            with pytest.raises(ValueError):
+                PaperMarketService().related_papers(bad_id, "author")
+
+        get.assert_not_called()
+
+    def test_batch_lookups_drop_invalid_ids_and_keep_valid_ones(self):
+        body = [{"id": "https://openalex.org/W1", "referenced_works": []}]
+        with patch("services.paper_market_service.requests.get", return_value=_response(body)) as get:
+            PaperMarketService().referenced_work_ids(["W1", "W2,type:x", "junk", None])
+
+        assert get.call_args.kwargs["params"]["filter"] == "openalex:W1"
+
+    def test_batch_lookups_make_no_request_when_nothing_is_valid(self):
+        with patch("services.paper_market_service.requests.get") as get:
+            assert PaperMarketService().works_by_ids(["x", "W1|W2"]) == []
+            assert PaperMarketService().referenced_work_ids(["bad"]) == {}
+
+        get.assert_not_called()
+
+    def test_malformed_doi_falls_back_to_title_search(self):
+        with patch("services.paper_market_service.requests.get", return_value=_response([_work(1)])) as get:
+            paper = PaperMarketService().find_paper_strict(doi="../../etc/passwd", title="Attention")
+
+        assert "search" in get.call_args.kwargs["params"]  # DOI yolu kullanilmadi
+        assert paper is not None
+
+    def test_valid_doi_is_looked_up_by_path(self):
+        response = MagicMock(status_code=200)
+        response.json.return_value = _work(1)
+        with patch("services.paper_market_service.requests.get", return_value=response) as get:
+            PaperMarketService().find_paper_strict(doi="https://doi.org/10.5555/3295222.3295349")
+
+        assert get.call_args.args[0].endswith("/works/https://doi.org/10.5555/3295222.3295349")
