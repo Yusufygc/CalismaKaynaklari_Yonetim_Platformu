@@ -1,5 +1,4 @@
 import re
-import shutil
 import uuid
 from datetime import timedelta
 from pathlib import Path
@@ -36,6 +35,8 @@ from workers import (
     MarketSearchWorker as _MarketSearchWorker,
     PaperMetadataWorker as _PaperMetadataWorker,
     PdfDownloadWorker as _PdfDownloadWorker,
+    PdfImportWorker as _PdfImportWorker,
+    PdfOutlineWorker as _PdfOutlineWorker,
     ReadingSuggestionWorker as _ReadingSuggestionWorker,
     SavedSearchCheckWorker as _SavedSearchCheckWorker,
     RelatedPapersWorker as _RelatedPapersWorker,
@@ -47,7 +48,6 @@ from services.library_index import LibraryIndex
 from services.paper_export_service import PaperExportService
 from services.pdf_download_service import looks_like_remote_pdf
 from ui_qml.models.resource_list_model import ResourceListModel
-from utils.pdf_outline import read_outline
 from utils.text_utils import extract_sentence, sanitize_utf8
 from utils.date_utils import format_local_datetime
 from utils.doi_utils import doi_from_url
@@ -81,6 +81,8 @@ class QmlBridge(QObject):
     marketDiscoveryChanged = Signal()
     marketSuggestionsChanged = Signal()
     savedSearchesChanged = Signal()
+    pdfOutlinesChanged = Signal()
+    pdfImportFinished = Signal(bool)  # her importLocalPdf istegi tam bir kez yayar
     activeSavedSearchChanged = Signal()
     savedSearchApplied = Signal(str, "QVariantMap")  # konu, filtreler: QML form alanlarini doldurur
     isSimpleModeChanged = Signal(bool)
@@ -132,7 +134,13 @@ class QmlBridge(QObject):
         # ayni dosyayi tekrar tekrar diskten yuklemeyi (native nesne
         # olusturup yok etmeyi) onler.
         self._pdf_document_cache: dict[str, QPdfDocument] = {}
-        self._pdf_outline_cache: dict[str, list] = {}
+        # PDF anahatlari (dosya URL'si -> liste) arka planda okunur; yuklenirken anahtar yoktur.
+        self._pdf_outlines: dict[str, list] = {}
+        self._pdf_outlines_loading: set[str] = set()
+        # Kutuphane indeksi onbellegi: kaynak degisince (_reload_resources) gecersiz kilinir.
+        self._library_index_cache: LibraryIndex | None = None
+        # Toplu islemde kaynak olaylari tek tek yenileme yapmasin (islem sonunda bir kez yenilenir).
+        self._resource_events_suspended: bool = False
         # Web PDF'lerinin yerel indirme durumu (bkz. _start_pdf_download).
         self._pdf_downloads_in_progress: set[int] = set()
         self._pdf_download_failed: set[int] = set()
@@ -241,6 +249,11 @@ class QmlBridge(QObject):
     @Property(dict, notify=marketDiscoveryChanged)
     def marketDiscovery(self) -> dict:
         return self._market_discovery
+
+    @Property(dict, notify=pdfOutlinesChanged)
+    def pdfOutlines(self) -> dict:
+        """Yuklenmis PDF anahatlari: {dosya URL'si: [{title, level, page}]}; yuklenmemisse anahtar yoktur."""
+        return self._pdf_outlines
 
     @Property(list, notify=savedSearchesChanged)
     def savedSearches(self) -> list:
@@ -365,7 +378,8 @@ class QmlBridge(QObject):
         """Kaynak silinince ilgili QPdfDocument onbellek girdisini ve --
         sadece bizim kopyaladigimiz (pdf_storage_dir icindeki) dosyayi --
         diskten temizler. Kullanicinin kendi dosyalarina asla dokunmaz."""
-        self._pdf_outline_cache.pop(url, None)
+        if self._pdf_outlines.pop(url, None) is not None:
+            self.pdfOutlinesChanged.emit()
         cached_doc = self._pdf_document_cache.pop(url, None)
         if cached_doc is not None and hasattr(cached_doc, "close"):
             # Windows'ta QPdfDocument dosyayi kilitler (WinError 32): close() tek
@@ -733,18 +747,22 @@ class QmlBridge(QObject):
         blank = {"loading": False, "error": "", "loaded": False, "items": []}
         return {"openalexId": "", "references": dict(blank), "citations": dict(blank)}
 
-    @Slot(str, result="QVariantList")
-    def pdfOutline(self, file_url: str) -> list:
-        """PDF anahati (duz liste) -- bkz. utils/pdf_outline.py. QML binding'i her
-        highlight/not degisiminde yeniden degerlendirdigi icin dosya basina onbellekli."""
-        if not file_url:
-            return []
-        cached = self._pdf_outline_cache.get(file_url)
-        if cached is None:
-            path = Path(QUrl(file_url).toLocalFile() or file_url)
-            cached = read_outline(path) if path.is_file() else []
-            self._pdf_outline_cache[file_url] = cached
-        return cached
+    @Slot(str)
+    def loadPdfOutline(self, file_url: str) -> None:
+        """PDF anahatini arka planda okur (bkz. utils/pdf_outline.py); sonuc `pdfOutlines`'a yazilir.
+        Dosya basina bir kez okunur (QML binding'i her alinti/not degisiminde yeniden calisir)."""
+        if not file_url or file_url in self._pdf_outlines or file_url in self._pdf_outlines_loading:
+            return
+        self._pdf_outlines_loading.add(file_url)
+        path = Path(QUrl(file_url).toLocalFile() or file_url)
+        worker = _PdfOutlineWorker(file_url, path)
+        worker.signals.finished.connect(self._on_pdf_outline_loaded)
+        self._thread_pool.start(worker)
+
+    def _on_pdf_outline_loaded(self, file_url: str, outline: list) -> None:
+        self._pdf_outlines_loading.discard(file_url)
+        self._pdf_outlines[file_url] = outline
+        self.pdfOutlinesChanged.emit()
 
     @Slot(int, str, result=str)
     def citationText(self, resource_id: int, style: str) -> str:
@@ -1151,16 +1169,20 @@ class QmlBridge(QObject):
         index = self._library_index()
         saved, skipped = [], []
         tag_names = [*(tag_names or []), *self._collection_tag_names()]
-        for paper in papers:
-            doi, openalex_id = paper.get("doi"), paper.get("openalexId")
-            if index.find(doi, openalex_id):
-                skipped.append(paper)
-                continue
-            res = self._controller.add_resource(self._market_payload(paper, tag_names))
-            if res is None:
-                continue  # Hata bildirimi event_bus uzerinden zaten gitti.
-            index.add(res.id, doi, openalex_id)
-            saved.append(res)
+        self._resource_events_suspended = True  # Her kayit icin liste yenilemek yerine sonda bir kez.
+        try:
+            for paper in papers:
+                doi, openalex_id = paper.get("doi"), paper.get("openalexId")
+                if index.find(doi, openalex_id):
+                    skipped.append(paper)
+                    continue
+                res = self._controller.add_resource(self._market_payload(paper, tag_names))
+                if res is None:
+                    continue  # Hata bildirimi event_bus uzerinden zaten gitti.
+                index.add(res.id, doi, openalex_id)
+                saved.append(res)
+        finally:
+            self._resource_events_suspended = False
         if saved:
             self._reload_resources()
             for res in saved:
@@ -1203,30 +1225,36 @@ class QmlBridge(QObject):
     # Slots - Yerel PDF İçe Aktarma
     # ------------------------------------------------------------------ #
 
-    @Slot(str, result=bool)
-    def importLocalPdf(self, file_url: str) -> bool:
+    @Slot(str)
+    def importLocalPdf(self, file_url: str) -> None:
         """Surukle-birak ile gelen yerel bir PDF'i kopyalayip kaynak olarak ekler.
 
-        Orijinal dosyaya dokunulmaz (kopyalanir, tasinmaz/silinmez).
-        `resources.url` standart bir `file:///...` URI'si olarak yazilir --
-        boylece mevcut okuyucu/extraction altyapisi (ExtractWorker,
+        Orijinal dosyaya dokunulmaz (kopyalanir, tasinmaz/silinmez). Kopyalama arka planda
+        yapilir; kaynak tamamlaninca olusturulur. `resources.url` standart bir `file:///...`
+        URI'si olarak yazilir -- boylece mevcut okuyucu/extraction altyapisi (ExtractWorker,
         "Tarayicida Ac" butonu) hic degismeden calisir.
 
-        Basarili ise True doner (kaynak-ekle penceresi buna gore kapanir).
+        Her cagri sonunda tam bir kez `pdfImportFinished(bool)` yayilir (basari/basarisizlik);
+        kaynak-ekle penceresi buna gore kapanir.
         """
         local_path = Path(QUrl(file_url).toLocalFile() or file_url)
         if local_path.suffix.lower() != ".pdf" or not local_path.is_file():
             self.notificationEmitted.emit("error", AppStrings.NOTIFICATION_PDF_IMPORT_INVALID)
-            return False
+            self.pdfImportFinished.emit(False)
+            return
 
-        try:
-            safe_stem = _UNSAFE_FILENAME_CHARS.sub("_", local_path.stem)[:60]
-            dest_path = (pdf_storage_dir() / f"{uuid.uuid4().hex[:8]}_{safe_stem}.pdf").resolve()
-            shutil.copyfile(local_path, dest_path)
-        except OSError as exc:
-            log.warning("PDF kopyalanamadi: %s - %s", local_path, exc)
+        safe_stem = _UNSAFE_FILENAME_CHARS.sub("_", local_path.stem)[:60]
+        dest_path = (pdf_storage_dir() / f"{uuid.uuid4().hex[:8]}_{safe_stem}.pdf").resolve()
+        worker = _PdfImportWorker(local_path, dest_path)
+        worker.signals.finished.connect(self._on_pdf_import_copied)
+        self._thread_pool.start(worker)
+
+    def _on_pdf_import_copied(self, source: str, destination: str, error: str) -> None:
+        local_path, dest_path = Path(source), Path(destination)
+        if error:
             self.notificationEmitted.emit("error", AppStrings.NOTIFICATION_PDF_IMPORT_FAILED)
-            return False
+            self.pdfImportFinished.emit(False)
+            return
 
         payload = {
             "title": local_path.stem,
@@ -1243,13 +1271,14 @@ class QmlBridge(QObject):
             # Kaynak olusturma basarisiz oldu (hata zaten toast olarak
             # gosterildi) -- az once kopyalanan dosya oksuz kalmasin.
             dest_path.unlink(missing_ok=True)
-            return False
+            self.pdfImportFinished.emit(False)
+            return
         self._reload_resources()
         self._schedule_full_text_extract(res.id, res.url)
         self.notificationEmitted.emit(
             "info", AppStrings.NOTIFICATION_PDF_IMPORTED_FMT.format(title=res.title)
         )
-        return True
+        self.pdfImportFinished.emit(True)
 
     # ------------------------------------------------------------------ #
     # Slots - Filtreleme & Arama
@@ -1377,6 +1406,7 @@ class QmlBridge(QObject):
     # ------------------------------------------------------------------ #
 
     def _reload_resources(self) -> None:
+        self._library_index_cache = None
         resources = self._controller.load_resources_with_filters(self._current_filters)
         self._model.set_resources(resources)
         self._update_stats()
@@ -1583,7 +1613,10 @@ class QmlBridge(QObject):
         }
 
     def _library_index(self) -> LibraryIndex:
-        return LibraryIndex(self._controller.load_resources_with_filters({}))
+        """Kutuphane indeksi; kaynaklar degisene (`_reload_resources`) kadar onbellekte tutulur."""
+        if self._library_index_cache is None:
+            self._library_index_cache = LibraryIndex(self._controller.load_resources_with_filters({}))
+        return self._library_index_cache
 
     def _annotate_library(self, items: list[dict], index: LibraryIndex) -> bool:
         """Sonuclara kutuphanedeki karsiliginin id'sini (`libraryResourceId`, 0 = yok) yazar;
@@ -1712,6 +1745,8 @@ class QmlBridge(QObject):
                     self.readerArticleUpdated.emit(resource_id, full_text)
 
     def _on_resource_changed_event(self, resource_id: int) -> None:
+        if self._resource_events_suspended:
+            return
         self._reload_resources()
         self._update_selected_if_matches(resource_id)
 

@@ -69,12 +69,24 @@ Item {
         fileMode: FileDialog.OpenFiles
         nameFilters: ["PDF dosyaları (*.pdf)"]
         onAccepted: {
-            let imported = 0
-            for (const file of selectedFiles) {
-                if (bridge.importLocalPdf(file))
-                    imported++
-            }
-            if (imported > 0)
+            root.importsInFlight = selectedFiles.length
+            root.importsSucceeded = 0
+            for (const file of selectedFiles)
+                bridge.importLocalPdf(file)
+        }
+    }
+
+    // Kopyalama arka planda: her dosya için bridge.pdfImportFinished(ok) gelir; en az biri başarılıysa kapan.
+    property int importsInFlight: 0
+    property int importsSucceeded: 0
+
+    Connections {
+        target: bridge
+        function onPdfImportFinished(ok) {
+            if (root.importsInFlight === 0) return  // Sürükle-bırakla gelen içe aktarma: pencereyi etkilemez
+            root.importsInFlight--
+            if (ok) root.importsSucceeded++
+            if (root.importsInFlight === 0 && root.importsSucceeded > 0)
                 root.closeModal()
         }
     }

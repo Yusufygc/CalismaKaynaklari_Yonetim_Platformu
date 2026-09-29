@@ -385,8 +385,13 @@ def test_qml_bridge_import_local_pdf_copies_and_creates_resource(qapp, session, 
     original = tmp_path / "orijinal_makale.pdf"
     original.write_bytes(b"%PDF-1.4 fake bytes")
 
-    assert bridge.importLocalPdf(original.as_uri()) is True
+    monkeypatch.setattr(bridge, "_thread_pool", _SyncThreadPool())
+    results = []
+    bridge.pdfImportFinished.connect(results.append)
 
+    bridge.importLocalPdf(original.as_uri())
+
+    assert results == [True]
     assert bridge.resourcesModel.rowCount() == 1
     resource = bridge._controller.load_resources_with_filters({})[0]
     assert resource.title == "orijinal_makale"
@@ -419,6 +424,7 @@ def test_qml_bridge_delete_resource_removes_copied_local_pdf(qapp, session, monk
 
     original = tmp_path / "orijinal_makale.pdf"
     original.write_bytes(b"%PDF-1.4 fake bytes")
+    monkeypatch.setattr(bridge, "_thread_pool", _SyncThreadPool())
     bridge.importLocalPdf(original.as_uri())
 
     resource = bridge._controller.load_resources_with_filters({})[0]
@@ -700,8 +706,12 @@ def test_qml_bridge_import_local_pdf_rejects_non_pdf(qapp, session, monkeypatch,
     not_pdf = tmp_path / "not_a_pdf.txt"
     not_pdf.write_text("merhaba")
 
-    assert bridge.importLocalPdf(not_pdf.as_uri()) is False
+    results = []
+    bridge.pdfImportFinished.connect(results.append)
 
+    bridge.importLocalPdf(not_pdf.as_uri())
+
+    assert results == [False]
     assert bridge.resourcesModel.rowCount() == 0
     assert notifications and notifications[0][0] == "error"
 

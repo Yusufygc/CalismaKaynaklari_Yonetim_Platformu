@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] FIX | UI thread'inde bloklayan IO arka plana alındı
+
+`pdfOutline` (pypdf ile tüm PDF'i UI thread'inde parse ediyordu) → `PdfOutlineWorker` + `bridge.loadPdfOutline` / `pdfOutlines` property'si; `PdfSidePanel.qml` yüklenirken "Anahat yükleniyor...". `importLocalPdf` (büyük PDF'i UI thread'inde kopyalıyordu) → `PdfImportWorker`; artık `void` ve sonuç `pdfImportFinished(bool)` sinyaliyle gelir (`ResourceFormModal` sayaçla kapanır). `LibraryIndex` bridge'de önbelleklendi (`_reload_resources` geçersiz kılar; önceden her arama/kayıt/yenilemede tüm kaynaklar DB'den çekiliyordu); toplu Market kaydında kaynak olayları askıya alınıp tek yenileme yapılıyor (önceden kayıt başına tam yenileme). Gerçek thread havuzu ve gerçek QML ile doğrulandı (modal kapanıyor, anahat yükleniyor). Kapsam dışı: `QPdfDocument.load`. Denetim bulgusu 7. 360 test geçti.
+
+---
+
 ## [2026-09-30] FIX | Tam metin liste sorgularında yüklenmiyor, okuma süresi tek kaynaktan
 
 `Resource.full_text` artık `deferred=True` (PDF metinleri yüzlerce KB; vitrin/filtre sorguları hepsini belleğe çekiyordu, `data(ReadingMinutesRole)` her kart okunuşunda tam metni `split()` ediyordu). Yeni `resources.reading_minutes` sütunu (migration `e1f4a9c07b2d`, mevcut kayıtlar için geri dolumlu) + `utils/reading_time.py::estimate_reading_minutes` (tek kaynak, 200 kelime/dk); `ResourceService` `full_text`/`content` değişince yeniden hesaplar. `ResourceListModel`: kullanılmayan `FullTextRole` kaldırıldı, `ReadingMinutesRole` sütunu okur; `bridge._serialize_resource` aynı sütunu kullanır (eski tutarsızlık: liste 0, okuyucu 1 döndürüyordu; artık metin yoksa 0). Kullanılmayan `extra_metadata["reading_time"]` yolu kaldırıldı. Kullanıcı DB'sinin kopyasında doğrulandı (6 kaynak, migration + otomatik yedek). Denetim bulgusu 6. 350 test geçti.

@@ -28,8 +28,25 @@ Rectangle {
         if (bridge.relatedPapers.openalexId !== paperOpenAlexId)
             bridge.loadRelatedPapers(resource.id)
     }
-    onActiveTabChanged: ensureRelatedLoaded()
-    onResourceChanged: ensureRelatedLoaded()
+
+    // Anahat (içindekiler) arka planda okunur; yüklenene kadar anahtar yoktur.
+    readonly property string pdfUrl: (resource && resource.pdfFileUrl) ? resource.pdfFileUrl : ""
+    readonly property bool outlineLoaded: pdfUrl !== "" && bridge.pdfOutlines[pdfUrl] !== undefined
+    readonly property var outlineItems: outlineLoaded ? bridge.pdfOutlines[pdfUrl] : []
+
+    function ensureOutlineLoaded() {
+        if (activeTab === 1 && pdfUrl !== "")
+            bridge.loadPdfOutline(pdfUrl)
+    }
+
+    onActiveTabChanged: {
+        ensureRelatedLoaded()
+        ensureOutlineLoaded()
+    }
+    onResourceChanged: {
+        ensureRelatedLoaded()
+        ensureOutlineLoaded()
+    }
 
     Rectangle {
         anchors.right: parent.right
@@ -161,8 +178,7 @@ Rectangle {
                     id: outlineList
                     anchors.fill: parent
                     clip: true
-                    model: root.resource && root.resource.pdfFileUrl
-                           ? bridge.pdfOutline(root.resource.pdfFileUrl) : []
+                    model: root.outlineItems
                     ScrollBar.vertical: ScrollBar {}
 
                     delegate: Rectangle {
@@ -202,7 +218,7 @@ Rectangle {
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.Wrap
                     visible: outlineList.count === 0
-                    text: "Bu PDF'te anahat (içindekiler) bilgisi yok."
+                    text: root.outlineLoaded ? "Bu PDF'te anahat (içindekiler) bilgisi yok." : "Anahat yükleniyor..."
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSm
                     color: Theme.textMuted
