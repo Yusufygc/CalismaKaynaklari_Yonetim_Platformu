@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] FIX | Tarihler UTC yerine yerel saatle gösteriliyor
+
+`utils/date_utils.py::format_local_datetime` (naive UTC → yerel saat dilimi; testlerde sabit `tz`). `bridge.py` (alıntı/kelime/kaynak `createdAt`) ve `ResourceListModel.CreatedAtRole` artık bunu kullanıyor; eski `format_date` (ölü) kaldırıldı. Denetim bulgusu 3: yerel 01:03 iken kartta "29.09.2026 21:58" görünüyordu (−3 sa). DB hâlâ UTC saklar, yalnızca gösterim değişti. 5 yeni test, 319 test geçti.
+
+---
+
 ## [2026-09-30] FIX | Migration öncesi otomatik veritabanı yedeği
 
 `utils/db_utils.py::init_db`: bekleyen migration ya da legacy DB varsa upgrade/stamp öncesi `pkm_app.db.bak-<zaman>-<revision>` yedeği (SQLite backup API), son 3 yedek tutulur; yeni/güncel DB için yedek yok. Denetim bulgusu 2 (yarım kalan migration kullanıcının tek veri kopyasını bozabilirdi). 6 yeni test (`test_db_backup.py`). 314 test geçti.

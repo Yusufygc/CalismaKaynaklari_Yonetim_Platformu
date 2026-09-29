@@ -2,6 +2,7 @@ from datetime import datetime
 from PySide6.QtCore import Property, QAbstractListModel, QByteArray, QModelIndex, Qt, Signal
 
 from models import Resource, ResourceStatus, status_label
+from utils.date_utils import DATE_FORMAT, format_local_datetime
 from utils.url_utils import format_display_url
 
 
@@ -120,7 +121,7 @@ class ResourceListModel(QAbstractListModel):
             return [{"id": t.id, "name": t.name} for t in resource.tags]
         elif role == self.CreatedAtRole:
             if resource.created_at:
-                return resource.created_at.strftime("%d.%m.%Y")
+                return format_local_datetime(resource.created_at, DATE_FORMAT)
             return ""
         elif role == self.DurationLabelRole:
             duration = meta.get("duration_seconds")

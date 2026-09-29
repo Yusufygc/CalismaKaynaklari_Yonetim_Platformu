@@ -49,6 +49,7 @@ from services.pdf_download_service import looks_like_remote_pdf
 from ui_qml.models.resource_list_model import ResourceListModel
 from utils.pdf_outline import read_outline
 from utils.text_utils import extract_sentence, sanitize_utf8
+from utils.date_utils import format_local_datetime
 from utils.doi_utils import doi_from_url
 from utils.url_utils import format_display_url
 
@@ -1429,7 +1430,7 @@ class QmlBridge(QObject):
                 "label": label_for_color(h.color),
                 "comment": h.comment or "",
                 "page": h.page_number if h.page_number is not None else -1,
-                "created_at": h.created_at.strftime("%d.%m.%Y %H:%M") if h.created_at else "",
+                "created_at": format_local_datetime(h.created_at),
             }
             for h in highlights
         ]
@@ -1445,7 +1446,7 @@ class QmlBridge(QObject):
                 "word": v.word,
                 "translation": v.translation,
                 "context_sentence": v.context_sentence or "",
-                "created_at": v.created_at.strftime("%d.%m.%Y %H:%M") if v.created_at else "",
+                "created_at": format_local_datetime(v.created_at),
             }
             for v in vocabs
         ]
@@ -1575,7 +1576,7 @@ class QmlBridge(QObject):
                 "openalexId": meta.get("openalex_id") or "",
                 "citationCount": meta.get("citation_count") or 0,
             },
-            "createdAt": r.created_at.strftime("%d.%m.%Y %H:%M") if r.created_at else "",
+            "createdAt": format_local_datetime(r.created_at),
         }
 
     def _serialize_paper(self, paper: PaperResult) -> dict:
