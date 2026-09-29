@@ -18,7 +18,8 @@ def test_resource_list_model_roles_and_data(qapp):
         is_favorite=True,
         content="Notlar burada",
         full_text="<p>Makale metni</p>",
-        extra_metadata={"description": "Bir AI makalesi", "reading_time": 5},
+        reading_minutes=5,
+        extra_metadata={"description": "Bir AI makalesi"},
     )
     res.category = cat
     res.tags = [tag]

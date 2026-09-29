@@ -13,6 +13,7 @@ from models import Category, Resource, ResourceStatus, Tag
 from repositories.category_repo import CategoryRepository
 from repositories.resource_repo import ResourceRepository
 from repositories.tag_repo import TagRepository
+from utils.reading_time import estimate_reading_minutes
 from utils.url_utils import PLATFORM_NAMES, detect_category_name
 from .schemas import ResourceCreateSchema, ResourceUpdateSchema
 
@@ -187,6 +188,7 @@ class ResourceService:
             status=initial_status,
             priority=priority,
             content=payload.content,
+            reading_minutes=estimate_reading_minutes(payload.content),
             extra_metadata=payload.extra_metadata,
         )
 
@@ -230,6 +232,8 @@ class ResourceService:
                 resource.content = payload.content
             if "full_text" in fields:
                 resource.full_text = payload.full_text
+            if fields & {"content", "full_text"}:
+                resource.reading_minutes = estimate_reading_minutes(resource.full_text or resource.content)
             if "is_pinned" in fields:
                 resource.is_pinned = bool(payload.is_pinned)
 

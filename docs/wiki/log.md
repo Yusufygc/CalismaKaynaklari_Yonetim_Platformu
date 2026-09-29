@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] FIX | Tam metin liste sorgularında yüklenmiyor, okuma süresi tek kaynaktan
+
+`Resource.full_text` artık `deferred=True` (PDF metinleri yüzlerce KB; vitrin/filtre sorguları hepsini belleğe çekiyordu, `data(ReadingMinutesRole)` her kart okunuşunda tam metni `split()` ediyordu). Yeni `resources.reading_minutes` sütunu (migration `e1f4a9c07b2d`, mevcut kayıtlar için geri dolumlu) + `utils/reading_time.py::estimate_reading_minutes` (tek kaynak, 200 kelime/dk); `ResourceService` `full_text`/`content` değişince yeniden hesaplar. `ResourceListModel`: kullanılmayan `FullTextRole` kaldırıldı, `ReadingMinutesRole` sütunu okur; `bridge._serialize_resource` aynı sütunu kullanır (eski tutarsızlık: liste 0, okuyucu 1 döndürüyordu; artık metin yoksa 0). Kullanılmayan `extra_metadata["reading_time"]` yolu kaldırıldı. Kullanıcı DB'sinin kopyasında doğrulandı (6 kaynak, migration + otomatik yedek). Denetim bulgusu 6. 350 test geçti.
+
+---
+
 ## [2026-09-30] LINT | Ölü kod temizliği
 
 Kaldırıldı (önce py/qml/test/wiki grep ile doğrulandı): 8 kullanılmayan `event_bus` UI sinyali, `QmlBridge.toggleSimpleMode` / `searchByAuthor`, `MarketFilters.is_empty`, `ResourceService.backfill_auto_categories`, `TagService.get_or_create_tag`, `ResourceListModel.get_resource_by_id` ve yalnızca bunları sınayan testler; `event_bus.md` güncellendi. **Bilinçli bırakıldı:** `updateCategory` / `updateTag` (backend var, SettingsView'da düzenleme arayüzü yok — silmek yerine eksik özellik olarak not edildi), `MainController.load_resource_pdf_notes` (facade Adım 13'te kalkacak), `requestPixmap`/`formatException` (Qt/logging override, false positive). Denetim bulgusu 13. 344 test geçti.

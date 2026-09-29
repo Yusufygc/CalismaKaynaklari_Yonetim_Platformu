@@ -22,7 +22,6 @@ class ResourceListModel(QAbstractListModel):
     IsPinnedRole = Qt.ItemDataRole.UserRole + 11
     IsFavoriteRole = Qt.ItemDataRole.UserRole + 12
     ContentRole = Qt.ItemDataRole.UserRole + 13
-    FullTextRole = Qt.ItemDataRole.UserRole + 14
     ThumbnailUrlRole = Qt.ItemDataRole.UserRole + 15
     DescriptionRole = Qt.ItemDataRole.UserRole + 16
     ReadingMinutesRole = Qt.ItemDataRole.UserRole + 17
@@ -60,7 +59,6 @@ class ResourceListModel(QAbstractListModel):
             self.IsPinnedRole: b"isPinned",
             self.IsFavoriteRole: b"isFavorite",
             self.ContentRole: b"content",
-            self.FullTextRole: b"fullText",
             self.ThumbnailUrlRole: b"thumbnailUrl",
             self.DescriptionRole: b"description",
             self.ReadingMinutesRole: b"readingMinutes",
@@ -102,21 +100,13 @@ class ResourceListModel(QAbstractListModel):
             return bool(resource.is_favorite)
         elif role == self.ContentRole:
             return resource.content or ""
-        elif role == self.FullTextRole:
-            return resource.full_text or ""
         elif role == self.ThumbnailUrlRole:
             thumb = meta.get("image") or meta.get("og:image") or meta.get("thumbnail") or ""
             return str(thumb) if thumb else ""
         elif role == self.DescriptionRole:
             return meta.get("description") or ""
         elif role == self.ReadingMinutesRole:
-            if "reading_time" in meta and meta["reading_time"]:
-                try:
-                    return int(meta["reading_time"])
-                except Exception:
-                    pass
-            word_count = len((resource.full_text or resource.content or "").split())
-            return max(1, round(word_count / 200)) if word_count > 0 else 0
+            return resource.reading_minutes or 0
         elif role == self.TagsRole:
             return [{"id": t.id, "name": t.name} for t in resource.tags]
         elif role == self.CreatedAtRole:

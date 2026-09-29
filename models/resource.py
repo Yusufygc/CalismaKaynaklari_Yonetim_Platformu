@@ -73,7 +73,10 @@ class Resource(Base):
     is_pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
-    full_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Tam metin (PDF'ler yuzlerce KB): liste sorgularinda yuklenmez, yalnizca erisilince cekilir.
+    full_text: Mapped[str | None] = mapped_column(Text, nullable=True, deferred=True)
+    # Tahmini okuma suresi (dk); full_text/content degisince serviste yeniden hesaplanir.
+    reading_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     extra_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=func.now()

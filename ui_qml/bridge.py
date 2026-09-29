@@ -1488,10 +1488,6 @@ class QmlBridge(QObject):
 
     def _serialize_resource(self, r: Resource) -> dict:
         meta = r.extra_metadata or {}
-        # Tahmini okuma süresi
-        word_count = len((r.full_text or r.content or "").split())
-        reading_time = max(1, round(word_count / 200)) if word_count > 0 else 1
-
         # Alıntılar listesi -- yerel PDF ise, kalici highlight'lari yeniden
         # cizebilmesi icin geometri (poligon + bounding rect) onceden hesaplanir
         # (QML'den QPdfSelection donen metotlar cagrilamiyor, bkz. addPdfHighlight).
@@ -1551,7 +1547,7 @@ class QmlBridge(QObject):
             "fullText": r.full_text or "",
             "thumbnailUrl": str(meta.get("image") or meta.get("thumbnail") or ""),
             "description": str(meta.get("description") or ""),
-            "readingMinutes": reading_time,
+            "readingMinutes": r.reading_minutes or 0,
             "tags": [{"id": t.id, "name": t.name} for t in r.tags],
             "highlights": hl_list,
             "vocabulary": vocab_list,

@@ -35,7 +35,8 @@
 | is_pinned | Boolean | default False — listede üste sabitler, **indexed** (2026-07-03) |
 | is_favorite | Boolean | default False — "Favoriler" koleksiyonu, **indexed** (2026-07-03) |
 | content | Text | Markdown formatında notlar |
-| full_text | Text | Nullable — okuyucu sayfasında gösterilen ham kaynak metni: URL'den `trafilatura` ile çıkarılan makale gövdesi (2026-07-06, migration `73989d002a5c`). `content`'ten ayrı — biri kullanıcının kendi notu, diğeri kaynağın orijinal metni |
+| full_text | Text | Nullable — okuyucu sayfasında gösterilen ham kaynak metni: URL'den `trafilatura` ile çıkarılan makale gövdesi (2026-07-06, migration `73989d002a5c`). `content`'ten ayrı — biri kullanıcının kendi notu, diğeri kaynağın orijinal metni. **`deferred`** (2026-09-30): liste/filtre sorguları tam metni yüklemez, yalnızca özniteliğe erişilince (okuyucu, `_serialize_resource`) lazy yüklenir |
+| reading_minutes | Integer | Required, varsayılan 0 — tahmini okuma süresi (dk). `full_text` (yoksa `content`) değişince `ResourceService` `utils/reading_time.estimate_reading_minutes` ile yeniden hesaplar; migration `e1f4a9c07b2d` mevcut kayıtları geri doldurdu. Kartlar ve okuyucu bunu okur (2026-09-30) |
 | extra_metadata | JSON | **Esnek alan** — tip-özel veriler (süre, yıldız, yazar…) |
 | created_at | DateTime | default now |
 | updated_at | DateTime | default now, onupdate now |
