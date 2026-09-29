@@ -6,6 +6,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from models import Base
+from utils.db_utils import register_sqlite_functions
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -26,6 +27,7 @@ def session():
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
 
+    register_sqlite_functions(engine)
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine, autocommit=False, autoflush=False)
     db_session = Session()

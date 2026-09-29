@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] FIX | Türkçe büyük/küçük harf ve diyakritik duyarsız arama
+
+SQLite `ILIKE` yalnız ASCII katladığı için `İstanbul`/`ISPARTA`/`Şeker` aramada kaçıyordu (ölçüm: `LIKE` → 0). `utils/text_utils.fold_tr` + SQLite `fold_tr` fonksiyonu (`db_utils.register_sqlite_functions`) + `ResourceRepository._keyword_condition` (LIKE joker karakterleri literal). QML: `qml/js/text.js::foldTr`, `KnowledgePoolView` alıntı/kelime araması. Python↔JS eşitlik testi eklendi. Denetim bulgusu 4. 348 test geçti.
+
+---
+
 ## [2026-09-30] FIX | Tarihler UTC yerine yerel saatle gösteriliyor
 
 `utils/date_utils.py::format_local_datetime` (naive UTC → yerel saat dilimi; testlerde sabit `tz`). `bridge.py` (alıntı/kelime/kaynak `createdAt`) ve `ResourceListModel.CreatedAtRole` artık bunu kullanıyor; eski `format_date` (ölü) kaldırıldı. Denetim bulgusu 3: yerel 01:03 iken kartta "29.09.2026 21:58" görünüyordu (−3 sa). DB hâlâ UTC saklar, yalnızca gösterim değişti. 5 yeni test, 319 test geçti.

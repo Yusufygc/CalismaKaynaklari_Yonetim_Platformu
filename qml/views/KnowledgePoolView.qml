@@ -4,6 +4,7 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../components"
 import "../theme"
+import "../js/text.js" as TextUtils
 
 Item {
     id: root
@@ -210,7 +211,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: 280
                     placeholder: root.activeTab === 0 ? "Alıntılarda ara..." : "Kelimelerde ara..."
-                    onSearchChanged: function(q) { root.searchQuery = q.toLowerCase() }
+                    onSearchChanged: function(q) { root.searchQuery = TextUtils.foldTr(q) }
                     onSearchCleared: { root.searchQuery = "" }
                 }
             }
@@ -326,9 +327,9 @@ Item {
                     return all.filter(function(h) {
                         if (root.labelFilter !== "" && h.label !== root.labelFilter) return false
                         if (!root.searchQuery) return true
-                        return h.content.toLowerCase().indexOf(root.searchQuery) !== -1 ||
-                               h.resource_title.toLowerCase().indexOf(root.searchQuery) !== -1 ||
-                               (h.comment || "").toLowerCase().indexOf(root.searchQuery) !== -1
+                        return TextUtils.foldTr(h.content).indexOf(root.searchQuery) !== -1 ||
+                               TextUtils.foldTr(h.resource_title).indexOf(root.searchQuery) !== -1 ||
+                               TextUtils.foldTr(h.comment).indexOf(root.searchQuery) !== -1
                     })
                 }
 
@@ -519,8 +520,8 @@ Item {
                     var all = bridge.vocabulary
                     if (!root.searchQuery) return all
                     return all.filter(function(v) {
-                        return v.word.toLowerCase().indexOf(root.searchQuery) !== -1 ||
-                               v.translation.toLowerCase().indexOf(root.searchQuery) !== -1
+                        return TextUtils.foldTr(v.word).indexOf(root.searchQuery) !== -1 ||
+                               TextUtils.foldTr(v.translation).indexOf(root.searchQuery) !== -1
                     })
                 }
 

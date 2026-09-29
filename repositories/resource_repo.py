@@ -1,15 +1,28 @@
 from typing import Iterable
 
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from models import Resource, ResourceStatus, resource_tags_link
+from utils.text_utils import fold_tr
 from .base_repository import BaseRepository
 
 
 def _default_order(query):
     """Pinli kayitlar her zaman ustte, sonra olusturma tarihine gore yeniden eski."""
     return query.order_by(Resource.is_pinned.desc(), Resource.created_at.desc())
+
+
+def _keyword_condition(keyword: str):
+    """Baslik/URL/icerikte Turkce-duyarsiz alt metin aramasi (`fold_tr` SQL fonksiyonu gerekir,
+    bkz. utils/db_utils.register_sqlite_functions). `%`, `_` ve `\\` kullanici metninde literaldir."""
+    folded = fold_tr(keyword.strip()).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    pattern = f"%{folded}%"
+    return or_(
+        func.fold_tr(Resource.title).like(pattern, escape="\\"),
+        func.fold_tr(Resource.url).like(pattern, escape="\\"),
+        func.fold_tr(Resource.content).like(pattern, escape="\\"),
+    )
 
 
 class ResourceRepository(BaseRepository[Resource]):
@@ -31,14 +44,7 @@ class ResourceRepository(BaseRepository[Resource]):
         return list(_default_order(q).all())
 
     def search_by_keyword(self, keyword: str) -> list[Resource]:
-        pattern = f"%{keyword}%"
-        q = self._base_query().filter(
-            or_(
-                Resource.title.ilike(pattern),
-                Resource.url.ilike(pattern),
-                Resource.content.ilike(pattern),
-            )
-        )
+        q = self._base_query().filter(_keyword_condition(keyword))
         return list(_default_order(q).all())
 
     def get_by_category(self, category_id: int) -> list[Resource]:
@@ -92,14 +98,7 @@ class ResourceRepository(BaseRepository[Resource]):
             q = q.filter(Resource.url.isnot(None), Resource.url != "")
 
         if keyword:
-            pattern = f"%{keyword.strip()}%"
-            q = q.filter(
-                or_(
-                    Resource.title.ilike(pattern),
-                    Resource.url.ilike(pattern),
-                    Resource.content.ilike(pattern),
-                )
-            )
+            q = q.filter(_keyword_condition(keyword))
 
         tag_ids_list = list(tag_ids) if tag_ids else []
         if tag_ids_list:

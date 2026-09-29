@@ -52,3 +52,25 @@ def extract_sentence(text: str, start: int, length: int, max_len: int = 400) -> 
     if len(sentence) > max_len:
         sentence = sentence[:max_len].rstrip() + "…"
     return sentence
+
+
+# Turkce arama katlamasi: buyuk/kucuk harf VE diyakritik duyarsiz ("Istanbul", "ISTANBUL",
+# "İstanbul", "istanbul" hepsi ayni). `str.lower()`/SQLite `LIKE` Turkce I/İ/ı'yi dogru
+# katlamaz ('İ'.lower() = 'i̇', 'I'.lower() = 'i' ama Turkcede 'ı').
+_TR_FOLD = str.maketrans(
+    {
+        "İ": "i", "I": "i", "ı": "i",
+        "Ş": "s", "ş": "s",
+        "Ğ": "g", "ğ": "g",
+        "Ü": "u", "ü": "u",
+        "Ö": "o", "ö": "o",
+        "Ç": "c", "ç": "c",
+    }
+)
+
+
+def fold_tr(text: str | None) -> str:
+    """Arama karsilastirmasi icin Turkce-duyarsiz normal form (i/ı/İ/I -> i, ş->s, ğ->g, ü->u, ö->o, ç->c)."""
+    if not text:
+        return ""
+    return text.translate(_TR_FOLD).casefold()

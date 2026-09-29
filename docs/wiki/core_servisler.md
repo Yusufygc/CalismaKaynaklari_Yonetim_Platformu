@@ -141,6 +141,9 @@ Makale Market kayıtlı aramaları: `create(topic, filters, tag_name, seen_ids)`
 
 **Toplu alıntı silme (2026-09-30):** `HighlightService.delete_highlights(ids)` tek commit'le siler (olmayan/yinelenen kimlikler atlanır, hata olursa hiçbiri silinmez); `HighlightController.delete_highlights` hata olursa `None` döner ve `highlight_deleted` sinyalini tek kez yayar. `QmlBridge.deleteHighlights(list)` tek yenileme + tek toast ("N alıntı silindi.") yapar, açık okuyucuyu tazeler.
 
+### Türkçe Duyarsız Arama — `utils/text_utils.py::fold_tr` (2026-09-30)
+Kaynak araması (`ResourceRepository.search_by_keyword` / `query_filtered(keyword=...)`) artık SQLite `ILIKE` (yalnız ASCII) yerine `fold_tr` SQL fonksiyonunu kullanır: büyük/küçük harf **ve** diyakritik duyarsız (`İ I ı → i`, `Ş → s`, `Ğ → g`, `Ü → u`, `Ö → o`, `Ç → c`, sonra `casefold`). Böylece "istanbul", "ISTANBUL", "İstanbul" aynı sonucu verir; "seker" → "Şeker". Fonksiyon her SQLite bağlantısına `utils/db_utils.py::register_sqlite_functions` ile eklenir (test motorları `tests/conftest.py`'de aynısını çağırır). Kullanıcı metnindeki `%`, `_`, `\\` LIKE joker karakteri değil literaldir. QML tarafı (`KnowledgePoolView` alıntı/kelime araması) aynı kuralı `qml/js/text.js::foldTr` ile uygular; iki uygulamanın eşitliği `tests/test_utils/test_fold_tr.py` ile doğrulanır. Etiket adı normalizasyonu (`name.lower()`) bilinçli olarak dokunulmadı (kimlik alanı).
+
 ### PdfNoteService — `services/pdf_note_service.py` (2026-09-29)
 Native PDF okuyucudaki nokta-bazlı margin notları (`create_note`, `update_note`, `get_by_resource`, `delete_note`) — `HighlightService`'in üçlü katman deseninin (repo/service/controller) birebir kopyası, yeni `models.PdfNote` için. `Highlight`'tan farkı: metin aralığı değil `(page, x, y)` tek nokta + serbest metin tutar. `ui_qml/bridge.py::addPdfNote`/`updatePdfNote`/`deletePdfNote` üzerinden QML'e bağlanır — bkz. [[qml_arayuz]].
 

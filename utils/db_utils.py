@@ -17,6 +17,7 @@ import models.resource  # noqa: F401
 from core.config import settings
 from core.logger import log
 from core.paths import resource_path
+from utils.text_utils import fold_tr
 
 engine = create_engine(
     settings.DATABASE_URL,
@@ -36,6 +37,19 @@ def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record) -> None:
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.close()
+
+def register_sqlite_functions(target: Engine) -> None:
+    """Her yeni SQLite baglantisina `fold_tr` SQL fonksiyonunu ekler (Turkce-duyarsiz arama).
+    Test motorlari da bunu cagirir (bkz. tests/conftest.py)."""
+    if target.url.get_backend_name() != "sqlite":
+        return
+
+    @event.listens_for(target, "connect")
+    def _register(dbapi_connection, _connection_record) -> None:
+        dbapi_connection.create_function("fold_tr", 1, fold_tr, deterministic=True)
+
+
+register_sqlite_functions(engine)
 
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
