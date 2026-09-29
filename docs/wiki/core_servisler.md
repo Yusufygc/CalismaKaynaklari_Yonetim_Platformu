@@ -76,7 +76,6 @@ Aynı şekil: `get_by_resource(resource_id)`, `get_all_with_resource()`.
 
 | Metod | Açıklama |
 |-------|----------|
-| `get_or_create_tag(name)` | Varsa getir, yoksa yarat + commit. Kaynak ekleme akışında kullanılır. |
 | `create_tag(name)` | Kullanıcı niyetli — zaten varsa `DuplicateRecordError`. |
 | `update_tag(id, new_name)` | Normalize, boşluk+duplicate kontrol, commit. |
 | `delete_tag(id)` | Bulunamazsa `ResourceNotFoundError`. |

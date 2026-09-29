@@ -145,9 +145,3 @@ class ResourceListModel(QAbstractListModel):
         self.endResetModel()
         self.countChanged.emit()
 
-    def get_resource_by_id(self, resource_id: int) -> Resource | None:
-        for r in self._resources:
-            if r.id == resource_id:
-                return r
-        return None
-

@@ -341,31 +341,6 @@ class ResourceService:
             log.exception("Kaynak silinirken hata olustu.")
             raise
 
-    def backfill_auto_categories(self) -> int:
-        """Kategorisiz ve URL'si olan mevcut kaynaklara otomatik kategori atar.
-
-        Otomatik kategori tespiti sadece yeni kaynak eklerken calisir
-        (bkz. `add_new_resource`); bu metot ozellik eklenmeden once
-        olusturulmus kaynaklari geriye donuk doldurmak icindir.
-        Etkilenen kaynak sayisini dondurur.
-        """
-        updated = 0
-        try:
-            for resource in self._resource_repo.get_all():
-                if resource.category_id is not None or not resource.url:
-                    continue
-                category_id = self._auto_category_id(resource.url)
-                if category_id is not None:
-                    resource.category_id = category_id
-                    updated += 1
-            self._session.commit()
-            log.info("Otomatik kategori geri dolumu: %d kaynak guncellendi.", updated)
-        except Exception:
-            self._session.rollback()
-            log.exception("Otomatik kategori geri dolumu basarisiz.")
-            raise
-        return updated
-
     def _get_or_create_tags(self, tag_names: list[str]) -> list[Tag]:
         tags: list[Tag] = []
         for normalized in _normalize_tag_names(tag_names):

@@ -29,7 +29,7 @@ def _response(works: list[dict], count: int | None = None, status: int = 200) ->
 class TestMarketFilters:
     def test_empty_filters_produce_no_expression(self):
         assert MarketFilters().to_openalex() == ""
-        assert MarketFilters().is_empty()
+        assert MarketFilters().to_openalex() == ""
 
     def test_all_filters_are_combined(self):
         expr = MarketFilters(
@@ -46,7 +46,7 @@ class TestMarketFilters:
             {"yearFrom": "abc", "yearTo": "99999", "workType": "; drop", "language": "turkish"}
         )
 
-        assert filters.is_empty()
+        assert filters.to_openalex() == ""
 
     def test_from_dict_parses_qml_map(self):
         filters = MarketFilters.from_dict(
@@ -56,7 +56,7 @@ class TestMarketFilters:
         assert filters == MarketFilters(year_from=2019, open_access=True, work_type="article", language="en")
 
     def test_from_dict_accepts_none(self):
-        assert MarketFilters.from_dict(None).is_empty()
+        assert MarketFilters.from_dict(None).to_openalex() == ""
 
 
 class TestSearchPage:

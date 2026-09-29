@@ -4,21 +4,6 @@ from core.exceptions import DuplicateRecordError, ResourceNotFoundError, Validat
 from services.tag_service import TagService
 
 
-def test_get_or_create_tag_creates_when_missing(session):
-    tag = TagService(session).get_or_create_tag("Python")
-
-    assert tag.id is not None
-    assert tag.name == "python"
-
-
-def test_get_or_create_tag_returns_existing(session):
-    service = TagService(session)
-    first = service.get_or_create_tag("Python")
-    second = service.get_or_create_tag(" python ")
-
-    assert second.id == first.id
-
-
 def test_create_tag_rejects_duplicate(session):
     service = TagService(session)
     service.create_tag("Python")

@@ -12,23 +12,6 @@ class TagService:
         self._session = session
         self._repo = TagRepository(session)
 
-    def get_or_create_tag(self, name: str) -> Tag:
-        """Kaynak ekleme akisinda kullanilir: varsa getir, yoksa olustur."""
-        normalized = name.lower().strip()
-        existing = self._repo.get_by_name(normalized)
-        if existing:
-            return existing
-        try:
-            tag = Tag(name=normalized)
-            self._repo.create(tag)
-            self._session.commit()
-            log.info("Yeni etiket olusturuldu: %r", normalized)
-            return tag
-        except Exception:
-            self._session.rollback()
-            log.exception("Etiket olusturulurken hata olustu.")
-            raise
-
     def create_tag(self, name: str) -> Tag:
         """Kullanici niyetli olusturma — zaten varsa DuplicateRecordError."""
         normalized = name.lower().strip()

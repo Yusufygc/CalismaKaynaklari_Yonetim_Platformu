@@ -107,9 +107,6 @@ class MarketFilters:
             parts.append(f"author.id:{self.author_id}")
         return ",".join(parts)
 
-    def is_empty(self) -> bool:
-        return not self.to_openalex()
-
 
 @dataclass
 class MarketPage:

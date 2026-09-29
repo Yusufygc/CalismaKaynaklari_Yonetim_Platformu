@@ -40,18 +40,6 @@ class _EventBus(QObject):
     # --- Kayitli arama (Makale Market) sinyali ---
     saved_search_changed = Signal()
 
-    # --- UI etkilesim sinyalleri ---
-    resource_selected = Signal(int)       # karta tiklandı → sag panel ac
-    search_query_changed = Signal(str)    # arama cubugu metni degisti
-    sidebar_filter_changed = Signal(str)  # sol menü secimi degisti (kategori adi veya sabit filtre)
-    resource_pin_toggle_requested = Signal(int)      # karttaki pin ikonu tiklandı
-    resource_favorite_toggle_requested = Signal(int) # karttaki yildiz ikonu tiklandı
-    filters_changed = Signal(dict)        # FilterBar → ContentWorkspace
-
-    # --- Tema sinyali ---
-    theme_changed = Signal(dict)          # aktif tema renk sözlügü
-    simple_mode_toggled = Signal(bool)    # sidebar'daki "Sade Mod" toggle'i degisti
-
     # --- Hata sinyali ---
     error_occurred = Signal(str)          # kullanici arayüzüne iletilecek hata mesaji
 

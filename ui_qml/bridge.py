@@ -271,11 +271,6 @@ class QmlBridge(QObject):
         self._is_dark_theme = not self._is_dark_theme
         self.isDarkThemeChanged.emit(self._is_dark_theme)
 
-    @Slot()
-    def toggleSimpleMode(self) -> None:
-        self._is_simple_mode = not self._is_simple_mode
-        self.isSimpleModeChanged.emit(self._is_simple_mode)
-
     @Slot(bool)
     def setSimpleMode(self, enabled: bool) -> None:
         if self._is_simple_mode != enabled:
@@ -968,11 +963,6 @@ class QmlBridge(QObject):
             "items": items,
         }
         self.marketDiscoveryChanged.emit()
-
-    @Slot(str)
-    def searchByAuthor(self, author_id: str) -> None:
-        """Bir yazarin eserlerini (uc sekmede) listeler; konu bos, yalnizca yazar filtresi."""
-        self.searchArticles("", {"authorId": author_id})
 
     @Slot()
     def loadLibrarySuggestions(self) -> None:

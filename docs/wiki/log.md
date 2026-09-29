@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] LINT | Ölü kod temizliği
+
+Kaldırıldı (önce py/qml/test/wiki grep ile doğrulandı): 8 kullanılmayan `event_bus` UI sinyali, `QmlBridge.toggleSimpleMode` / `searchByAuthor`, `MarketFilters.is_empty`, `ResourceService.backfill_auto_categories`, `TagService.get_or_create_tag`, `ResourceListModel.get_resource_by_id` ve yalnızca bunları sınayan testler; `event_bus.md` güncellendi. **Bilinçli bırakıldı:** `updateCategory` / `updateTag` (backend var, SettingsView'da düzenleme arayüzü yok — silmek yerine eksik özellik olarak not edildi), `MainController.load_resource_pdf_notes` (facade Adım 13'te kalkacak), `requestPixmap`/`formatException` (Qt/logging override, false positive). Denetim bulgusu 13. 344 test geçti.
+
+---
+
 ## [2026-09-30] FIX | Türkçe büyük/küçük harf ve diyakritik duyarsız arama
 
 SQLite `ILIKE` yalnız ASCII katladığı için `İstanbul`/`ISPARTA`/`Şeker` aramada kaçıyordu (ölçüm: `LIKE` → 0). `utils/text_utils.fold_tr` + SQLite `fold_tr` fonksiyonu (`db_utils.register_sqlite_functions`) + `ResourceRepository._keyword_condition` (LIKE joker karakterleri literal). QML: `qml/js/text.js::foldTr`, `KnowledgePoolView` alıntı/kelime araması. Python↔JS eşitlik testi eklendi. Denetim bulgusu 4. 348 test geçti.

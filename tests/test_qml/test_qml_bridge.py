@@ -49,7 +49,7 @@ def test_qml_bridge_theme_and_view_toggle(qapp, session):
     bridge.isSimpleModeChanged.connect(lambda val: simple_changes.append(val))
     assert bridge.isSimpleMode is False
 
-    bridge.toggleSimpleMode()
+    bridge.setSimpleMode(True)
     assert bridge.isSimpleMode is True
     assert simple_changes == [True]
 
@@ -886,24 +886,6 @@ def test_qml_bridge_load_discovery_reports_error(qapp, session, monkeypatch):
 
     state = bridge.marketDiscovery["references:W1"]
     assert state["loaded"] is False and state["error"] and state["items"] == []
-
-
-def test_qml_bridge_search_by_author_runs_without_topic(qapp, session, monkeypatch):
-    bridge = QmlBridge(session)
-    monkeypatch.setattr(bridge, "_thread_pool", _SyncThreadPool())
-    seen = []
-
-    def fake_search(self, topic, filters=None):
-        seen.append((topic, filters))
-        return {"recent": MarketPage(items=[_paper("a")], total=1), "popular": MarketPage(), "cited": MarketPage()}
-
-    monkeypatch.setattr("workers.market_search_worker.PaperMarketService.search", fake_search)
-
-    bridge.searchByAuthor("A5103024730")
-
-    assert seen[0][0] == "" and seen[0][1].author_id == "A5103024730"
-    assert bridge.marketSearchHistory == []  # Konu olmadigi icin gecmise yazilmaz
-    assert len(bridge.marketResults["recent"]) == 1
 
 
 def test_qml_bridge_search_without_topic_or_author_is_ignored(qapp, session, monkeypatch):

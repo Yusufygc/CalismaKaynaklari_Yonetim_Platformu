@@ -38,13 +38,6 @@ def test_resource_list_model_roles_and_data(qapp):
     assert model.data(idx, ResourceListModel.ReadingMinutesRole) == 5
     assert len(model.data(idx, ResourceListModel.TagsRole)) == 1
 
-    # Resource lookup helper test
-    r = model.get_resource_by_id(100)
-    assert r is not None
-    assert r.title == "Yapay Zeka Makalesi"
-
-    assert model.get_resource_by_id(999) is None
-
 
 def test_count_property_notifies_on_reset(qapp):
     """QML rowCount() cagrisi degisimi bildirmez; count property'si bildirim vermeli
