@@ -112,7 +112,17 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   │   ├── AppFilterChip.qml
 │   │   ├── PaperListItem.qml   # Kompakt makale satırı (Kaynakça sekmesi, keşif listeleri)
 │   │   ├── PaperCard.qml       # Makale Market sonuç kartı (rozetler, açılır özet, Kaydet/Kütüphanede)
-│   │   └── PdfPageArea.qml     # Native PDF render + highlight/not overlay (Qt PdfMultiPageView temelli)
+│   │   ├── PdfPageArea.qml     # Native PDF render, kaydırma/zoom/arama (Qt PdfMultiPageView temelli)
+│   │   ├── PdfSelectionOverlay.qml # Sayfada metin seçilince: renkli alıntı araç çubuğu + kelime çevirisi popover'ı
+│   │   ├── PdfHighlightHits.qml    # Kalıcı alıntılara tıklama alanı + renk/yorum/sil düzenleme popover'ı
+│   │   ├── PdfNoteLayer.qml        # Sayfa notu işaretleri + yeni/düzenle not popover'ları
+│   │   ├── HighlightsTab.qml       # Bilgi Havuzu > Alıntılar (etiket filtresi, toplu seçim/silme)
+│   │   ├── VocabularyTab.qml       # Bilgi Havuzu > Kelimeler
+│   │   ├── MarketSearchBar.qml     # Market: konu arama + son aramalar + sekmeler
+│   │   ├── MarketFilterBar.qml     # Market: yıl/tür/dil/açık erişim/yazar çipi/öneri düğmesi
+│   │   ├── SavedSearchBar.qml      # Market: kayıtlı aramalar çubuğu
+│   │   ├── MarketResultsToolbar.qml # Market: toplu seçim, dışa aktar, toplu kaydet
+│   │   └── SaveSearchPopup.qml     # Market: aramayı kaydet (koleksiyon etiketi)
 │   └── views/                  # Sayfa görünümleri
 │       ├── ShowcaseView.qml    # Bağlantı vitrini
 │       ├── ReaderView.qml      # Dikkat dağıtmayan okuyucu (HTML makaleler)

@@ -11,12 +11,14 @@ from services.paper_market_service import MarketPage, PaperResult
 from tests.test_qml.qml_harness import (
     SyncThreadPool,
     click,
+    drag,
     find_item,
     find_text,
     focus,
     open_window,
     pump,
     type_text,
+    white_page_box,
 )
 from ui_qml.bridge import QmlBridge
 
@@ -179,37 +181,6 @@ def test_knowledge_pool_search_is_turkish_insensitive(qapp, bridge):
     del engine
 
 
-def _white_page_box(window) -> tuple[int, int, int]:
-    """Goruntude beyaz PDF sayfasinin (sol x, sag x, ust y) piksel konumu."""
-    from PySide6.QtGui import QImage
-
-    image = window.grabWindow().convertToFormat(QImage.Format.Format_RGB32)
-
-    def white(x, y):
-        c = image.pixelColor(x, y)
-        return c.red() > 250 and c.green() > 250 and c.blue() > 250
-
-    xs = [x for x in range(240, image.width(), 2) if white(x, 450)]
-    x_left, x_right = xs[0], xs[-1]
-    ys = [y for y in range(60, image.height(), 2) if white((x_left + x_right) // 2, y)]
-    return x_left, x_right, ys[0]
-
-
-def _drag(app, window, x0: int, x1: int, y: int) -> None:
-    from PySide6.QtCore import QPoint
-
-    start, end = QPoint(x0, y), QPoint(x1, y)
-    QTest.mouseMove(window, start)
-    QTest.qWait(30)
-    QTest.mousePress(window, Qt.LeftButton, Qt.NoModifier, start)
-    QTest.qWait(30)
-    for i in range(1, 11):
-        QTest.mouseMove(window, QPoint(x0 + (x1 - x0) * i // 10, y))
-        QTest.qWait(30)
-    QTest.mouseRelease(window, Qt.LeftButton, Qt.NoModifier, end)
-    QTest.qWait(100)
-
-
 def test_pdf_reader_drag_selection_highlights_exactly_the_selected_word(qapp, bridge, monkeypatch, tmp_path):
     """Gercek fare surukleme: secilen kelime kaydedilir, konumu (sayfa + karakter indeksi) dogrudur.
     Onceki hatalar: highlight rastgele yere oturuyordu (piksel/pt karisikligi), 2.-3. highlight cokuyordu."""
@@ -235,7 +206,7 @@ def test_pdf_reader_drag_selection_highlights_exactly_the_selected_word(qapp, br
 
     doc = bridge.ctx.pdf_files.load_document(bridge.reader.currentReaderResource["pdfFileUrl"])
     page_w = doc.pagePointSize(0).width()
-    x_left, x_right, y_top = _white_page_box(window)
+    x_left, x_right, y_top = white_page_box(window)
     scale = (x_right - x_left) / page_w
     assert scale > 1.2, f"zoom uygulanmadi (olcek {scale:.2f})"
     page_text = doc.getSelectionAtIndex(0, 0, 100000).text()
@@ -244,7 +215,7 @@ def test_pdf_reader_drag_selection_highlights_exactly_the_selected_word(qapp, br
         start = page_text.index(word)
         rect = doc.getSelectionAtIndex(0, start, len(word)).boundingRectangle()
         y = int(y_top + (rect.y() + rect.height() / 2) * scale)
-        _drag(qapp, window, int(x_left + (rect.x() + 1) * scale), int(x_left + (rect.x() + rect.width() + 1) * scale), y)
+        drag(qapp, window, int(x_left + (rect.x() + 1) * scale), int(x_left + (rect.x() + rect.width() + 1) * scale), y)
 
         toolbar = next(i for i in walk(window.contentItem()) if i.objectName() == "newHighlightToolbar" and i.isVisible())
         from PySide6.QtCore import QPoint, QPointF

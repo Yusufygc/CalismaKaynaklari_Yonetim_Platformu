@@ -78,8 +78,14 @@ def type_text(app, window, text: str) -> None:
         pump(app, 2)
 
 
+def find_named(window, object_name: str):
+    """objectName'e gore oge (gorunur agac uzerinden: TableView delegate'leri QObject agacinda degil,
+    `findChild` bunlara ulasamaz)."""
+    return next((i for i in walk(window.contentItem()) if i.objectName() == object_name), None)
+
+
 def focus(app, window, object_name: str) -> QObject:
-    item = window.findChild(QObject, object_name)
+    item = find_named(window, object_name) or window.findChild(QObject, object_name)
     item.forceActiveFocus()
     pump(app, 5)
     return item
@@ -93,3 +99,34 @@ def strip_qml_comments(source: str) -> str:
     """Yorumlardaki `bridge.x` gecisleri sozlesme testini yaniltmasin. (Metin icindeki `//`
     -- ornegin URL -- yorum sanilabilir; bridge.<uye> kaliplarini etkilemez.)"""
     return _LINE_COMMENT.sub("", _BLOCK_COMMENT.sub("", source))
+
+
+def white_page_box(window) -> tuple[int, int, int]:
+    """Goruntude beyaz PDF sayfasinin (sol x, sag x, ust y) piksel konumu."""
+    from PySide6.QtGui import QImage
+
+    image = window.grabWindow().convertToFormat(QImage.Format.Format_RGB32)
+
+    def white(x, y):
+        c = image.pixelColor(x, y)
+        return c.red() > 250 and c.green() > 250 and c.blue() > 250
+
+    xs = [x for x in range(240, image.width(), 2) if white(x, 450)]
+    x_left, x_right = xs[0], xs[-1]
+    ys = [y for y in range(60, image.height(), 2) if white((x_left + x_right) // 2, y)]
+    return x_left, x_right, ys[0]
+
+
+def drag(app, window, x0: int, x1: int, y: int) -> None:
+    from PySide6.QtCore import QPoint
+
+    start, end = QPoint(x0, y), QPoint(x1, y)
+    QTest.mouseMove(window, start)
+    QTest.qWait(30)
+    QTest.mousePress(window, Qt.LeftButton, Qt.NoModifier, start)
+    QTest.qWait(30)
+    for i in range(1, 11):
+        QTest.mouseMove(window, QPoint(x0 + (x1 - x0) * i // 10, y))
+        QTest.qWait(30)
+    QTest.mouseRelease(window, Qt.LeftButton, Qt.NoModifier, end)
+    QTest.qWait(100)
