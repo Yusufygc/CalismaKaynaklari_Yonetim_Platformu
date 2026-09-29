@@ -229,3 +229,29 @@ def test_extract_full_text_returns_none_when_local_pdf_missing(tmp_path):
     result = ArticleExtractionService().extract_full_text(missing_path.as_uri())
 
     assert result is None
+
+
+def test_extract_full_text_sanitizes_lone_surrogates_from_broken_pdf_fonts(monkeypatch):
+    """Bozuk CMap'li subset fontlar (akademik PDF'lerdeki matematik semboller)
+    pypdf'te tek-basina UTF-16 surrogate kod noktasi uretebiliyor -- bu SQLite'a
+    yazilirken UnicodeEncodeError ile cokuyordu (bkz. utils/text_utils.py)."""
+
+    class _FakePage:
+        def extract_text(self) -> str:
+            return "bozuk font " + chr(0xD835) + " sembolu"
+
+    class _FakeReader:
+        def __init__(self, _stream) -> None:
+            self.pages = [_FakePage()]
+
+    monkeypatch.setattr("services.article_extraction_service.PdfReader", _FakeReader)
+    monkeypatch.setattr(
+        "services.article_extraction_service.requests.get",
+        lambda *args, **kwargs: _Response(content=b"%PDF-1.4 fake pdf bytes"),
+    )
+
+    result = ArticleExtractionService().extract_full_text("https://example.com/paper.pdf")
+
+    assert result is not None
+    result.encode("utf-8")  # UnicodeEncodeError firlatirsa test kirmizi olur
+    assert chr(0xD835) not in result

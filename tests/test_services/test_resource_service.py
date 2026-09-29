@@ -25,6 +25,44 @@ def test_deleting_category_keeps_resource_and_clears_category(session):
     assert persisted.category_id is None
 
 
+def test_add_resource_auto_assigns_category_from_url(session):
+    resource = ResourceService(session).add_new_resource(
+        ResourceCreateSchema(title="Video", url="https://youtu.be/abc123")
+    )
+
+    assert resource.category is not None
+    assert resource.category.name == "YouTube"
+    assert resource.category.color_hex == "#EF4444"
+
+
+def test_add_resource_respects_explicit_category_over_auto_detect(session):
+    category = CategoryService(session).create_category("Ozel", "#000000")
+    resource = ResourceService(session).add_new_resource(
+        ResourceCreateSchema(
+            title="Video", url="https://youtu.be/abc123", category_id=category.id
+        )
+    )
+
+    assert resource.category_id == category.id
+
+
+def test_backfill_auto_categories_updates_existing_uncategorized_resources(session):
+    service = ResourceService(session)
+    resource = service.add_new_resource(
+        ResourceCreateSchema(title="Docs", url="https://doi.org/10.1000/xyz")
+    )
+    # Ozellik eklenmeden once kaydedilmis gibi kategoriyi elle bosalt.
+    resource.category_id = None
+    session.commit()
+
+    updated_count = service.backfill_auto_categories()
+    session.expire_all()
+
+    persisted = session.get(Resource, resource.id)
+    assert updated_count == 1
+    assert persisted.category.name == "Makale"
+
+
 def test_add_resource_deduplicates_tag_names(session):
     resource = ResourceService(session).add_new_resource(
         ResourceCreateSchema(

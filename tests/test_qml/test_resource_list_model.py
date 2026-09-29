@@ -44,3 +44,17 @@ def test_resource_list_model_roles_and_data(qapp):
     assert r.title == "Yapay Zeka Makalesi"
 
     assert model.get_resource_by_id(999) is None
+
+
+def test_count_property_notifies_on_reset(qapp):
+    """QML rowCount() cagrisi degisimi bildirmez; count property'si bildirim vermeli
+    (bos DB ile acilip sonradan kaynak eklenince kartlarin gorunmemesi hatasi)."""
+    model = ResourceListModel()
+    notified = []
+    model.countChanged.connect(lambda: notified.append(model.count))
+
+    model.set_resources([Resource(title="A"), Resource(title="B")])
+    model.set_resources([])
+
+    assert notified == [2, 0]
+

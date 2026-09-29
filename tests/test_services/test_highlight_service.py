@@ -46,6 +46,32 @@ def test_update_highlight_color_changes_color(session):
     assert session.get(Highlight, highlight.id).color == "#22C55E"
 
 
+def test_update_highlight_comment_sets_and_clears(session):
+    resource = _make_resource(session)
+    service = HighlightService(session)
+    highlight = service.create_highlight(resource.id, "alinti", color="#EAB308")
+
+    updated = service.update_highlight_comment(highlight.id, "  yontem kismi, tekrar bak  ")
+    assert updated.comment == "yontem kismi, tekrar bak"
+
+    cleared = service.update_highlight_comment(highlight.id, "   ")
+    assert cleared.comment is None
+
+
+def test_update_highlight_comment_not_found(session):
+    with pytest.raises(ResourceNotFoundError):
+        HighlightService(session).update_highlight_comment(999, "x")
+
+
+def test_label_for_color_maps_palette_and_falls_back():
+    from core.constants.highlight_labels import label_for_color
+
+    assert label_for_color("#22c55e") == "Bulgu / Sonuç"
+    assert label_for_color("#EAB308") == "Önemli"
+    assert label_for_color("#123456") == "Genel"
+    assert label_for_color(None) == "Genel"
+
+
 def test_update_highlight_color_not_found(session):
     with pytest.raises(ResourceNotFoundError):
         HighlightService(session).update_highlight_color(999, "#22C55E")
