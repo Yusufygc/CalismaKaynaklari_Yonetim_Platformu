@@ -1,9 +1,43 @@
-from datetime import datetime
-from PySide6.QtCore import Property, QAbstractListModel, QByteArray, QModelIndex, Qt, Signal
+from typing import Any, Callable
 
-from models import Resource, ResourceStatus, status_label
+from PySide6.QtCore import Property, QAbstractListModel, QModelIndex, Qt, Signal
+
+from models import Resource, status_label
 from utils.date_utils import DATE_FORMAT, format_local_datetime
 from utils.url_utils import format_display_url
+
+DEFAULT_CATEGORY_COLOR = "#64748B"
+
+
+def _meta(resource: Resource) -> dict:
+    return resource.extra_metadata or {}
+
+
+def _thumbnail_url(resource: Resource) -> str:
+    meta = _meta(resource)
+    return str(meta.get("image") or meta.get("og:image") or meta.get("thumbnail") or "")
+
+
+def _duration_label(resource: Resource) -> str:
+    """Video suresi ("1:02:03" / "4:05"); yoksa ya da sayi degilse bos."""
+    try:
+        total_seconds = int(_meta(resource).get("duration_seconds") or 0)
+    except (TypeError, ValueError):
+        return ""
+    if not total_seconds:
+        return ""
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours}:{minutes:02d}:{seconds:02d}" if hours else f"{minutes}:{seconds:02d}"
+
+
+def _category_color(resource: Resource) -> str:
+    category = resource.category
+    return category.color_hex if category and category.color_hex else DEFAULT_CATEGORY_COLOR
+
+
+def _status_value(resource: Resource) -> str:
+    return resource.status.value if hasattr(resource.status, "value") else str(resource.status)
 
 
 class ResourceListModel(QAbstractListModel):
@@ -44,90 +78,38 @@ class ResourceListModel(QAbstractListModel):
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         return len(self._resources)
 
-    def roleNames(self) -> dict[int, QByteArray]:
-        return {
-            self.IdRole: b"id",
-            self.TitleRole: b"title",
-            self.UrlRole: b"url",
-            self.DomainRole: b"domain",
-            self.CategoryIdRole: b"categoryId",
-            self.CategoryNameRole: b"categoryName",
-            self.CategoryColorRole: b"categoryColor",
-            self.StatusRole: b"status",
-            self.StatusLabelRole: b"statusLabel",
-            self.PriorityRole: b"priority",
-            self.IsPinnedRole: b"isPinned",
-            self.IsFavoriteRole: b"isFavorite",
-            self.ContentRole: b"content",
-            self.ThumbnailUrlRole: b"thumbnailUrl",
-            self.DescriptionRole: b"description",
-            self.ReadingMinutesRole: b"readingMinutes",
-            self.TagsRole: b"tags",
-            self.CreatedAtRole: b"createdAt",
-            self.DurationLabelRole: b"durationLabel",
-        }
+    # Rol -> (QML'deki ad, kaynaktan deger ureten fonksiyon). Yeni kart alani eklemek tek satir:
+    # rol sabitini tanimlayip buraya bir girdi eklemek yeterli (data()/roleNames() degismez).
+    _ROLES: dict[int, tuple[bytes, Callable[[Resource], Any]]] = {
+        IdRole: (b"id", lambda r: r.id),
+        TitleRole: (b"title", lambda r: r.title or "İsimsiz Kaynak"),
+        UrlRole: (b"url", lambda r: r.url or ""),
+        DomainRole: (b"domain", lambda r: format_display_url(r.url) if r.url else ""),
+        CategoryIdRole: (b"categoryId", lambda r: r.category_id or 0),
+        CategoryNameRole: (b"categoryName", lambda r: r.category.name if r.category else ""),
+        CategoryColorRole: (b"categoryColor", _category_color),
+        StatusRole: (b"status", _status_value),
+        StatusLabelRole: (b"statusLabel", lambda r: status_label(r.status)),
+        PriorityRole: (b"priority", lambda r: r.priority),
+        IsPinnedRole: (b"isPinned", lambda r: bool(r.is_pinned)),
+        IsFavoriteRole: (b"isFavorite", lambda r: bool(r.is_favorite)),
+        ContentRole: (b"content", lambda r: r.content or ""),
+        ThumbnailUrlRole: (b"thumbnailUrl", _thumbnail_url),
+        DescriptionRole: (b"description", lambda r: _meta(r).get("description") or ""),
+        ReadingMinutesRole: (b"readingMinutes", lambda r: r.reading_minutes or 0),
+        TagsRole: (b"tags", lambda r: [{"id": t.id, "name": t.name} for t in r.tags]),
+        CreatedAtRole: (b"createdAt", lambda r: format_local_datetime(r.created_at, DATE_FORMAT)),
+        DurationLabelRole: (b"durationLabel", _duration_label),
+    }
+
+    def roleNames(self) -> dict[int, bytes]:
+        return {role: name for role, (name, _getter) in self._ROLES.items()}
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
         if not index.isValid() or not (0 <= index.row() < len(self._resources)):
             return None
-
-        resource = self._resources[index.row()]
-        meta = resource.extra_metadata or {}
-
-        if role == self.IdRole:
-            return resource.id
-        elif role == self.TitleRole:
-            return resource.title or "İsimsiz Kaynak"
-        elif role == self.UrlRole:
-            return resource.url or ""
-        elif role == self.DomainRole:
-            return format_display_url(resource.url) if resource.url else ""
-        elif role == self.CategoryIdRole:
-            return resource.category_id or 0
-        elif role == self.CategoryNameRole:
-            return resource.category.name if resource.category else ""
-        elif role == self.CategoryColorRole:
-            return resource.category.color_hex if resource.category and resource.category.color_hex else "#64748B"
-        elif role == self.StatusRole:
-            return resource.status.value if hasattr(resource.status, "value") else str(resource.status)
-        elif role == self.StatusLabelRole:
-            return status_label(resource.status)
-        elif role == self.PriorityRole:
-            return resource.priority
-        elif role == self.IsPinnedRole:
-            return bool(resource.is_pinned)
-        elif role == self.IsFavoriteRole:
-            return bool(resource.is_favorite)
-        elif role == self.ContentRole:
-            return resource.content or ""
-        elif role == self.ThumbnailUrlRole:
-            thumb = meta.get("image") or meta.get("og:image") or meta.get("thumbnail") or ""
-            return str(thumb) if thumb else ""
-        elif role == self.DescriptionRole:
-            return meta.get("description") or ""
-        elif role == self.ReadingMinutesRole:
-            return resource.reading_minutes or 0
-        elif role == self.TagsRole:
-            return [{"id": t.id, "name": t.name} for t in resource.tags]
-        elif role == self.CreatedAtRole:
-            if resource.created_at:
-                return format_local_datetime(resource.created_at, DATE_FORMAT)
-            return ""
-        elif role == self.DurationLabelRole:
-            duration = meta.get("duration_seconds")
-            if not duration:
-                return ""
-            try:
-                total_seconds = int(duration)
-            except (TypeError, ValueError):
-                return ""
-            hours, remainder = divmod(total_seconds, 3600)
-            minutes, seconds = divmod(remainder, 60)
-            if hours:
-                return f"{hours}:{minutes:02d}:{seconds:02d}"
-            return f"{minutes}:{seconds:02d}"
-
-        return None
+        spec = self._ROLES.get(role)
+        return spec[1](self._resources[index.row()]) if spec else None
 
     def set_resources(self, resources: list[Resource]) -> None:
         self.beginResetModel()
