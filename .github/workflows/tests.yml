@@ -18,10 +18,15 @@ jobs:
       - name: Bagimliliklari kur
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.lock
-          pip install pytest
+          pip install -r requirements.lock -r requirements-dev.txt
 
-      - name: Testleri calistir
+      - name: Bagimlilik guvenlik taramasi (pip-audit)
+        # Ilk asamada uyari modu: bilinen CVE bulunursa raporlar ama build'i kirmaz.
+        continue-on-error: true
+        run: pip-audit -r requirements.lock --no-deps --disable-pip
+
+      - name: Testleri calistir (kapsam esigi ile)
         env:
           QT_QPA_PLATFORM: offscreen
-        run: pytest tests/
+        # Olculen taban %82 (2026-09-30); esik 2 puan altinda tutulur.
+        run: pytest tests/ --cov --cov-report=term --cov-fail-under=80

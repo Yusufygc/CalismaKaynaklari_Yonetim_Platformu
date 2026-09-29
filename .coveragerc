@@ -1,0 +1,17 @@
+[run]
+source = .
+branch = True
+omit =
+    tests/*
+    migrations/*
+    scratch/*
+    .venv/*
+    md/*
+    docs/*
+
+[report]
+skip_empty = True
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    raise NotImplementedError

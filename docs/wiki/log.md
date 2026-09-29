@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] FIX | Bağımlılık kilidi gerçek kilit oldu, CI'a kapsam ve CVE taraması eklendi
+
+Denetim bulgusu 14. `requirements.lock` yalnızca 12 doğrudan paketi içeriyordu (geçişli bağımlılıklar pinsiz → tekrarlanabilir kurulum değildi) ve venv'den geride kalmıştı (ör. PySide6 6.11.1 vs kurulu 6.11.2, alembic 1.18.4 vs 1.20.0). Lock artık `requirements.txt`'in **geçişli** çözümü (44 paket, `importlib.metadata` ile üretildi; `pip check` temiz) — testler tam bu sürümlerle geçiyor. Kodda hiç import edilmeyen `fonttools` `requirements.txt`'ten kaldırıldı. Yeni `requirements-dev.txt` (pytest, pytest-cov, pip-audit; pinli). `.coveragerc` + CI: `pytest --cov --cov-fail-under=80` (ölçülen Python kapsamı %82; en zayıf: `utils/pdf_outline.py` %29 — gerçek PDF gerektiren test atlanıyor, `bridge.py` %77). CI'ya `pip-audit` adımı (uyarı modu, `continue-on-error`); yerelde `pip-audit -r requirements.lock`: bilinen zafiyet yok. Lock yenileme: venv'de `pip install -U -r requirements.txt` sonra `scripts/make_lock.py` (Windows/py3.10 için üretildi).
+
+---
+
 ## [2026-09-30] LINT | Wiki sağlığı: kırık linkler, rules.md konumu, log tipleri, .env.example
 
 Denetim bulguları 11, 12, 18. Wiki lint: kırık link 7 → 0, öksüz sayfa 0. `[[tema_yonetimi]]`, `[[ui_layout]]`, `[[url_vitrin]]` hiç oluşturulmamış eski widget dönemi sayfalarıydı (ham kaynaklar git dışı `md/` altında, QSS/ThemeManager tasarımı — mevcut QML mimarisiyle çelişiyor); canlı sayfalarda `[[qml_arayuz]]`'a yönlendirildi, tarihsel `log.md` girdilerinde ham kaynak yolu olarak yazıldı. Kök `rules.md` → `docs/wiki/rules.md` (metodoloji §1.2; `index.md`'ye eklendi, eski conda yolu `.venv` ile değiştirildi). Log işlem tipi kuralı: yeni girdilerde `FEAT/FIX/REFACTOR/REVIEW/LINT/INGEST` (eski girdiler dokunulmadı) — `rules.md` ve `CLAUDE.md`'ye yazıldı. `CLAUDE.md` ortam bölümü `.venv` + `requirements.lock` + `.env.example`. Yeni `.env.example` (`APP_ENV`, `LOG_LEVEL`, `DATABASE_URL`, `LOG_FILE`, `DEFAULT_THEME`).

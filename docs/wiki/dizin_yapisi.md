@@ -111,6 +111,7 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │       ├── SettingsView.qml    # Kategori ve etiket yönetimi
 │       └── ArticleMarketView.qml # Makale Market (OpenAlex konu araması)
 │
+├── scripts/                    # Bakım betikleri (make_lock.py: geçişli requirements.lock üretimi)
 ├── migrations/                 # Alembic veritabanı migrasyonları
 └── tests/                      # Pytest test paketi
     ├── test_controllers/

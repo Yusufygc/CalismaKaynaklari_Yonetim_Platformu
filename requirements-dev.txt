@@ -1,0 +1,4 @@
+# Gelistirme/CI araclari (uygulama calismasi icin gerekmez). Kurulum: pip install -r requirements.lock -r requirements-dev.txt
+pytest==9.1.1
+pytest-cov==7.1.0
+pip-audit==2.10.1
