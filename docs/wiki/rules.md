@@ -2,7 +2,7 @@
 
 Bu doküman, projenin geliştirilmesi sırasında uyulması gereken KESİN mimari ve kodlama standartlarını içerir. Tüm kod üretimleri bu kurallara tabi olmalıdır.
 
-proje ortamı:C:\Users\ysfygc\anaconda3\envs\KaynakYonetim
+Proje ortamı: proje kökündeki `.venv` (Python 3.10; `python -m venv .venv`, `pip install -r requirements.lock`). Çalıştırma: `.venv\Scripts\python.exe main.py`; test: `.venv\Scripts\python.exe -m pytest tests`.
 
 ## 1. Yazılım Prensipleri (Software Principles)
 - **SOLID:** Tüm sınıflar Tek Sorumluluk (Single Responsibility) ilkesine uymalıdır. Sınıflar genişlemeye açık, değişime kapalı (Open/Closed) olmalıdır. Bağımlılıkların tersine çevrilmesi (Dependency Inversion) için arayüzler/soyut sınıflar (ABC) kullanılacaktır.
@@ -33,7 +33,13 @@ Tüm UI bileşenleri hard-coded değerler yerine aşağıdaki merkezi dosyalarda
 - **Loglama:** Sadece konsola print atmak yasaktır. `core/logger.py` üzerinden yapılandırılmış, hem dosyaya (app.log) hem konsola yazan standart `logging` modülü kullanılmalıdır.
 
 ## 6. Wiki dosyaları güncellemesi
-her işlemden sonra ilgili wiki dosyası güncellecek.
+Her işlemden sonra ilgili wiki dosyası güncellenir ve `docs/wiki/log.md`'nin **en üstüne** `## [YYYY-AA-GG] İŞLEM_TİPİ | Kısa açıklama` girdisi eklenir.
+
+**İzinli işlem tipleri:** `FEAT` (yeni özellik), `FIX` (hata düzeltme), `REFACTOR` (davranış değiştirmeyen yeniden düzenleme), `REVIEW` (kod/mimari inceleme), `LINT` (bakım, ölü kod, wiki sağlığı), `INGEST` (dış kaynak/doküman alma). Eski girdilerdeki tipler (BUILD, UI, PERF, ...) olduğu gibi bırakılır; yeni girdiler bu altı tipten birini kullanır.
 
 ## 7.Commit
 yapılan işlmeler uygun ve detaylı açıklamalarla commit edilecek. Türkçe harflere dikkat et. ve claude code referansı verme.
+
+---
+
+**İlgili sayfalar:** [[mimari_kurallari]] · [[index]] · [[log]]

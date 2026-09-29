@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Environment
 
-- **Conda env:** `C:\Users\ysfygc\anaconda3\envs\KaynakYonetim`
-- **Activate:** `conda activate KaynakYonetim`
-- **Run app:** `python main.py`
-- **Install deps:** `pip install -r requirements.txt`
-- **Run tests:** `pytest tests/`
+- **Virtualenv:** `.venv` in the project root (Python 3.10). Create: `python -m venv .venv`
+- **Run app:** `.venv\Scripts\python.exe main.py`
+- **Install deps:** `pip install -r requirements.lock` (pinned; `requirements.txt` lists direct dependencies)
+- **Run tests:** `.venv\Scripts\python.exe -m pytest tests/`
+- **Config:** copy `.env.example` to `.env` to override defaults (`.env` is git-ignored)
 - **Single test:** `pytest tests/test_services/test_resource_service.py::TestClassName::test_method`
 
 ## Wiki (Read First)
@@ -61,7 +61,7 @@ QML UI (qml/ views, components, theme)
 
 Her kod değişikliği, yeni modül, kütüphane ekleme veya mimari karar sonrasında:
 1. İlgili `docs/wiki/*.md` sayfasını güncelle.
-2. `docs/wiki/log.md` dosyasının **en üstüne** giriş ekle: `## [YYYY-AA-GG] [İŞLEM_TİPİ] | Kısa açıklama`
+2. `docs/wiki/log.md` dosyasının **en üstüne** giriş ekle: `## [YYYY-AA-GG] İŞLEM_TİPİ | Kısa açıklama` — tip: `FEAT`, `FIX`, `REFACTOR`, `REVIEW`, `LINT` veya `INGEST` (bkz. `docs/wiki/rules.md`)
 3. Yeni sayfa açıldıysa `docs/wiki/index.md`'ye de ekle.
 
 ## Commit Kuralları

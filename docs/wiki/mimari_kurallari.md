@@ -1,6 +1,6 @@
 # Mimari ve Kodlama Kuralları
 
-**Kaynak (Raw Source):** `rules.md` (kök dizin)
+**Kaynak:** [[rules]] (`docs/wiki/rules.md`)
 
 ## Yazılım Prensipleri
 - **SOLID:** Tek sorumluluk, genişlemeye açık/değişime kapalı, Dependency Inversion için ABC kullan.
@@ -46,4 +46,4 @@
 - PyInstaller build örneği: `pyinstaller --onefile --windowed --add-data "assets;assets" main.py`.
 
 ## İlgili Sayfalar
-[[dizin_yapisi]] · [[core_servisler]] · [[event_bus]] · [[tema_yonetimi]]
+[[dizin_yapisi]] · [[core_servisler]] · [[event_bus]] · [[qml_arayuz]]

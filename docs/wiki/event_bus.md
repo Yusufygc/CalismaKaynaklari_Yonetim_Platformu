@@ -69,6 +69,6 @@ event_bus.error_occurred.emit("Kaynak bulunamadı.")
 ```
 
 ## İlgili Sayfalar
-[[tema_yonetimi]] · [[core_servisler]] · [[ui_layout]] · [[mimari_kurallari]]
+[[qml_arayuz]] · [[core_servisler]] · [[mimari_kurallari]]
 
 > 2026-09-30: UI'ya dair kullanılmayan 8 sinyal (`resource_selected`, `sidebar_filter_changed`, `search_query_changed`, `resource_pin_toggle_requested`, `resource_favorite_toggle_requested`, `filters_changed`, `theme_changed`, `simple_mode_toggled`) ölü kod olarak kaldırıldı; bu işler artık QML → `bridge` slotlarıyla yürütülür.

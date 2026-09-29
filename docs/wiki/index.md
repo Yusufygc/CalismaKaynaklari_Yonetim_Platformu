@@ -1,7 +1,7 @@
 # Wiki İçerik Haritası — PKM / Kaynak Yönetim Platformu
 
 **Stack:** PySide6 QML · SQLAlchemy 2.0 · SQLite · Alembic  
-**Ortam:** `C:\Users\ysfygc\anaconda3\envs\KaynakYonetim`
+**Ortam:** proje kökündeki `.venv` (Python 3.10)
 
 ---
 
@@ -9,6 +9,7 @@
 
 | Sayfa | Özet |
 |-------|------|
+| [[rules]] | Projenin anayasası: yazılım prensipleri, katman/DI kuralları, wiki ve commit disiplini, izinli log işlem tipleri |
 | [[mimari_kurallari]] | SOLID, Clean Code, DRY, merkezi varlık yönetimi, katman kuralları |
 | [[dizin_yapisi]] | Proje kök dizini, her modülün sorumluluğu, katman tablosu |
 
