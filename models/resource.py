@@ -118,6 +118,8 @@ class Highlight(Base):
     # HTML-makale highlight'larinda hep null kalir.
     start_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
     length: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Kullanicinin alintiya ekledigi serbest yorum/not (2026-09-29).
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=func.now()
     )

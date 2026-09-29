@@ -37,6 +37,9 @@ class _EventBus(QObject):
     pdf_note_updated = Signal(int)
     pdf_note_deleted = Signal(int)
 
+    # --- Kayitli arama (Makale Market) sinyali ---
+    saved_search_changed = Signal()
+
     # --- UI etkilesim sinyalleri ---
     resource_selected = Signal(int)       # karta tiklandı → sag panel ac
     search_query_changed = Signal(str)    # arama cubugu metni degisti

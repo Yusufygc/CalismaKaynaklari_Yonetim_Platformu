@@ -1,6 +1,7 @@
 from .base import Base
 from .category import Category
 from .tag import Tag
+from .saved_search import SavedSearch
 from .resource import (
     Highlight,
     PdfNote,
@@ -20,6 +21,7 @@ __all__ = [
     "Highlight",
     "PdfNote",
     "Vocabulary",
+    "SavedSearch",
     "resource_tags_link",
     "status_label",
 ]
