@@ -196,4 +196,4 @@ def test_events_are_active_again_after_batch(bridge, monkeypatch):
     bridge.controllers.resources.add_resource({"title": "B", "url": "https://x.org/b", "category_id": None, "priority": 2})
 
     assert reloads  # olay tabanli yenileme yeniden calisiyor
-    assert bridge.library._events_suspended is False
+    assert bridge.library.events_suspended is False

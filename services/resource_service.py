@@ -9,7 +9,7 @@ from core.exceptions import (
     ValidationError,
 )
 from core.logger import log
-from models import Category, Resource, ResourceStatus, Tag
+from models import Category, Resource, Tag
 from repositories.category_repo import CategoryRepository
 from repositories.resource_repo import ResourceFilter, ResourceRepository
 from repositories.tag_repo import TagRepository

@@ -87,7 +87,8 @@ class QmlBridge(QObject):
         return self._ctx
 
     def refresh_all(self) -> None:
-        for child in (self._library, self._settings, self._reader, self._market):
+        self._library.reload()
+        for child in (self._settings, self._reader, self._market):
             child.refresh()
 
     # ------------------------------------------------------------------ #

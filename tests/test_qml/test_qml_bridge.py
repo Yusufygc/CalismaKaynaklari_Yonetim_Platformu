@@ -65,7 +65,7 @@ def test_qml_bridge_theme_and_view_toggle(qapp, session):
 
 def test_qml_bridge_resource_crud_and_drawer(qapp, session, monkeypatch):
     bridge = QmlBridge(session)
-    monkeypatch.setattr(bridge.library, "_schedule_scrape", lambda *args: None)
+    monkeypatch.setattr(bridge.library._scraper, "schedule", lambda *args: None)
 
     # 1. Yeni kaynak ekleme
     bridge.library.saveResource({
@@ -130,7 +130,7 @@ def test_qml_bridge_categories_and_tags(qapp, session):
 
 def test_qml_bridge_highlights_and_vocabulary(qapp, session, monkeypatch):
     bridge = QmlBridge(session)
-    monkeypatch.setattr(bridge.library, "_schedule_scrape", lambda *args: None)
+    monkeypatch.setattr(bridge.library._scraper, "schedule", lambda *args: None)
 
     bridge.library.saveResource({"title": "Okuma Makalesi", "url": "https://example.com/article"})
     res_id = bridge.library.selectedResource["id"]
@@ -177,7 +177,7 @@ def test_qml_bridge_add_highlight_with_pdf_position(qapp, session, monkeypatch):
 
 def test_qml_bridge_update_highlight_color(qapp, session, monkeypatch):
     bridge = QmlBridge(session)
-    monkeypatch.setattr(bridge.library, "_schedule_scrape", lambda *args: None)
+    monkeypatch.setattr(bridge.library._scraper, "schedule", lambda *args: None)
 
     bridge.library.saveResource({"title": "Renk Testi", "url": "https://example.com/renk"})
     res_id = bridge.library.selectedResource["id"]
@@ -517,7 +517,7 @@ def test_qml_bridge_scrape_metadata_merges_instead_of_overwriting(qapp, session)
          "extra_metadata": {"authors": ["A. Yazar"], "local_pdf": "x"}}
     )
 
-    bridge.library._on_scrape_finished(res.id, {"thumbnail": "https://img/x.jpg"})
+    bridge.library._scraper._on_scrape_finished(res.id, {"thumbnail": "https://img/x.jpg"})
 
     meta = bridge.controllers.resources.get_resource(res.id).extra_metadata
     assert meta["authors"] == ["A. Yazar"]
@@ -692,7 +692,7 @@ def test_qml_bridge_import_local_pdf_rejects_non_pdf(qapp, session, monkeypatch,
 
 def test_qml_bridge_apply_filter_status_and_favorites(qapp, session, monkeypatch):
     bridge = QmlBridge(session)
-    monkeypatch.setattr(bridge.library, "_schedule_scrape", lambda *args: None)
+    monkeypatch.setattr(bridge.library._scraper, "schedule", lambda *args: None)
 
     # 1. Farklı durumlarda ve favoride kaynaklar ekle
     bridge.library.saveResource({
@@ -767,7 +767,7 @@ def test_qml_bridge_pdf_note_crud(qapp, session, monkeypatch):
 
 def test_qml_bridge_add_pdf_note_ignores_blank_text(qapp, session, monkeypatch):
     bridge = QmlBridge(session)
-    monkeypatch.setattr(bridge.library, "_schedule_scrape", lambda *args: None)
+    monkeypatch.setattr(bridge.library._scraper, "schedule", lambda *args: None)
 
     bridge.library.saveResource({"title": "Bos Not Testi", "url": "https://example.com/y.pdf"})
     res_id = bridge.library.selectedResource["id"]

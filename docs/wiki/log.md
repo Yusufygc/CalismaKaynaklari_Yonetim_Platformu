@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] REFACTOR | LibraryBridge 34 → 19 metot: form, içe aktarma ve olay yönlendirme ayrı sınıflara taşındı
+
+QML API yolu değişmedi (`bridge.library.*`). Yeni sınıflar: `ui_qml/resource_form.py::ResourceFormHandler` (form → controller yükü, düzenleme öncesi/sonrası yerel PDF temizliği), `ui_qml/importers.py::MetadataScraper` (form önizleme + kayıt sonrası arka plan metadata) ve `PdfImporter` (yerel PDF kopyalama + kaynak oluşturma; `finished(bool)`), `ui_qml/library_events.py::LibraryEventRouter` (event_bus aboneliği, `LibraryBridge`'in QObject çocuğu). `refresh_selected` → `update_selected_if_matches(None)`; `_update_stats` → `_library_stats` (modül düzeyi); `_current_filters`/`_events_suspended` → açık `filters`/`events_suspended` alanları. Kaynak listesi/çekmece tazeleme artık yalnız `resource_*` olaylarıyla (importer/scraper `LibraryBridge`'i çağırmaz).
+
+---
+
 ## [2026-09-30] REFACTOR | InspectorDrawer.qml bölündü (510 → 252 satır)
 
 `StatusPill` (inline bileşen → dosya), `InspectorTopBar` (harici bağlantı, sabitle, favori, kapat; kapatma `closeRequested` ile üst bileşene bildirilir → onay durumu sıfırlanır), `InspectorNotes` (Markdown not alanı + "Notu Kaydet") ve `InspectorHighlights` (alıntı özeti) çıkarıldı; alt bileşenler `resource` property'sini alır, genişliği kullanım yerinde verilir. Doğrulama: kaynak+etiket+alıntılı çekmece ekran görüntüsü bölmeden önce/sonra piksel piksel aynı; yeni `tests/test_qml/test_inspector_drawer_flow.py` gerçek fareyle pin/favori, durum, not kaydı, alıntı özeti ve onaylı silme (+ kapatınca onay sıfırlanması) akışlarını sınar. Artık hiçbir QML dosyası 500 satırı aşmaz (en büyüğü `PdfPageArea` 500).
