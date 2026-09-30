@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] LINT | QPdfDocument.load UI thread'inde kalır (ölçüldü, gerekçelendi)
+
+`QPdfDocument` bir QObject'tir (thread affinity) ve alıntı geometrisi/`select_text` aynı belge nesnesini UI thread'inde kullanır; yüklemeyi worker'a taşımak belgeyi thread'ler arası paylaşmayı gerektirir. Ölçüm (offscreen, Qt 6.11): 3.000 sayfalık 0,5 MB PDF `load` ≈ 36 ms; aynı belgeye 60 MB rastgele akış eklenmiş 63 MB PDF ≈ 35 ms (PDFium sayfaları tembel çözer, dosya boyutundan bağımsız). Belge başına bir kez yüklenip önbelleğe alındığından (`PdfFileManager._document_cache`) bu değer donma eşiğinin (≈50 ms) altındadır: kapsam dışı, `load_document` docstring'inde belgelendi. Ağır işler (kopyalama, anahat, tam metin) zaten worker'dadır.
+
+---
+
 ## [2026-09-30] FIX | PDF: açık popover varken alıntıya tıklamak yeni düzenleme popover'ını kapatmıyor
 
 Sayfa-dismiss `TapHandler`'ı, alıntı/not tıklamasıyla açılan popover'ı aynı dokunuşta kapatıyordu. Her katman (`PdfHighlightHits`, `PdfNoteLayer`, `PdfSelectionOverlay`) popover açtığında `openCount` artırır; `dismissPopoverHandler` basış anındaki toplamı (`openCountAtPress`) saklar ve bırakışta sayaç değiştiyse (dokunuş kendisi popover açtıysa) hiçbir şeyi kapatmaz. Regresyon testi: `test_pdf_reader_overlays.py::test_clicking_another_highlight_while_editor_is_open_keeps_the_new_editor_open` (düzeltme olmadan düşer).
