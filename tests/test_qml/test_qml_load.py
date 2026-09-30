@@ -123,7 +123,7 @@ def test_qml_only_reaches_business_members_through_sub_bridges(qapp, session):
 
     shell = {"isDarkTheme", "currentView", "isSimpleMode", "toggleTheme", "setSimpleMode", "setCurrentView",
              "notificationEmitted", "isDarkThemeChanged", "currentViewChanged", "isSimpleModeChanged"}
-    children = {"library", "reader", "market", "settings"}
+    children = {"library", "reader", "annotations", "citations", "market", "discovery", "searches", "settings"}
 
     assert root_used - shell - children == set()
 
@@ -134,7 +134,7 @@ def test_qml_actually_uses_bridge(qapp):
 
     assert len(usage) > 40
     assert ("market", "searchArticles") in usage
-    assert ("market", "savedSearchApplied") in usage  # Connections yolu da yakalaniyor
+    assert ("searches", "savedSearchApplied") in usage  # Connections yolu da yakalaniyor
     assert ("isDarkTheme", "") in usage
 
 

@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] REFACTOR | MarketBridge 42 → 19 metot: kesif ve kayıtlı aramalar ayrı alt-bridge'lere bölündü
+
+Yeni QML yolları: `bridge.discovery.*` (`marketDiscovery`, `marketSuggestions`, `loadDiscovery`, `loadLibrarySuggestions` + değişim sinyalleri; `DiscoveryBridge`) ve `bridge.searches.*` (`savedSearches`, `activeSavedSearchId`, `saveSearch`, `deleteSavedSearch`, `runSavedSearch`, `checkSavedSearches`, `savedSearchApplied` + sinyaller; `SearchesBridge`). `bridge.market.*` arama/sayfalama/geçmiş/kaydet/dışa aktar olarak kaldı. Çalışan kayıtlı arama durumu `ui_qml/saved_search_state.py::SavedSearchState` ile paylaşılır (market ↔ searches doğrudan birbirini çağırmaz; `SearchesBridge` `MarketBridge.start_search/recent_paper_ids` kullanır); kaydetme mantığı `ui_qml/market_saver.py::MarketSaver`. QML ve testler eşleme betiğiyle güncellendi; sözleşme testi (`children` kümesi) yeni yolları kapsar.
+
+---
+
 ## [2026-09-30] REFACTOR | LibraryBridge 34 → 19 metot: form, içe aktarma ve olay yönlendirme ayrı sınıflara taşındı
 
 QML API yolu değişmedi (`bridge.library.*`). Yeni sınıflar: `ui_qml/resource_form.py::ResourceFormHandler` (form → controller yükü, düzenleme öncesi/sonrası yerel PDF temizliği), `ui_qml/importers.py::MetadataScraper` (form önizleme + kayıt sonrası arka plan metadata) ve `PdfImporter` (yerel PDF kopyalama + kaynak oluşturma; `finished(bool)`), `ui_qml/library_events.py::LibraryEventRouter` (event_bus aboneliği, `LibraryBridge`'in QObject çocuğu). `refresh_selected` → `update_selected_if_matches(None)`; `_update_stats` → `_library_stats` (modül düzeyi); `_current_filters`/`_events_suspended` → açık `filters`/`events_suspended` alanları. Kaynak listesi/çekmece tazeleme artık yalnız `resource_*` olaylarıyla (importer/scraper `LibraryBridge`'i çağırmaz).

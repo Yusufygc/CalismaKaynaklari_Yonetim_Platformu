@@ -848,10 +848,10 @@ def test_qml_bridge_load_discovery_populates_and_caches(qapp, session, monkeypat
 
     monkeypatch.setattr("workers.related_papers_worker.PaperMarketService.related_papers", fake_related)
 
-    bridge.market.loadDiscovery("similar", "W1")
-    bridge.market.loadDiscovery("similar", "W1")  # onbellekten: ikinci istek yok
+    bridge.discovery.loadDiscovery("similar", "W1")
+    bridge.discovery.loadDiscovery("similar", "W1")  # onbellekten: ikinci istek yok
 
-    state = bridge.market.marketDiscovery["similar:W1"]
+    state = bridge.discovery.marketDiscovery["similar:W1"]
     assert state["loaded"] is True and state["loading"] is False
     assert [i["title"] for i in state["items"]] == ["r1"]
     assert calls == [("similar", "W1")]
@@ -866,9 +866,9 @@ def test_qml_bridge_load_discovery_reports_error(qapp, session, monkeypatch):
 
     monkeypatch.setattr("workers.related_papers_worker.PaperMarketService.related_papers", boom)
 
-    bridge.market.loadDiscovery("references", "W1")
+    bridge.discovery.loadDiscovery("references", "W1")
 
-    state = bridge.market.marketDiscovery["references:W1"]
+    state = bridge.discovery.marketDiscovery["references:W1"]
     assert state["loaded"] is False and state["error"] and state["items"] == []
 
 
@@ -907,9 +907,9 @@ def test_qml_bridge_library_suggestions_use_openalex_ids_of_library(qapp, sessio
 
     monkeypatch.setattr("workers.reading_suggestion_worker.ReadingSuggestionService.suggest", fake_suggest)
 
-    bridge.market.loadLibrarySuggestions()
+    bridge.discovery.loadLibrarySuggestions()
 
-    state = bridge.market.marketSuggestions
+    state = bridge.discovery.marketSuggestions
     assert received == [["W1"]]
     assert state["loaded"] is True and state["sourceCount"] == 1
     assert state["items"][0]["citedByLibrary"] == 2
@@ -919,9 +919,9 @@ def test_qml_bridge_library_suggestions_without_openalex_sources_skips_network(q
     bridge = QmlBridge(session)
     bridge.ctx.thread_pool = _SyncThreadPool()
 
-    bridge.market.loadLibrarySuggestions()
+    bridge.discovery.loadLibrarySuggestions()
 
-    state = bridge.market.marketSuggestions
+    state = bridge.discovery.marketSuggestions
     assert state["sourceCount"] == 0 and state["loading"] is False and state["items"] == []
 
 

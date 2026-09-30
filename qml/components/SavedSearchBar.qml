@@ -2,11 +2,11 @@ import QtQuick
 import QtQuick.Controls
 import "../theme"
 
-// Kayıtlı aramalar çubuğu (yeni yayın rozetiyle). Yalnızca bridge.market ile konuşur.
+// Kayıtlı aramalar çubuğu (yeni yayın rozetiyle). Yalnızca bridge.searches ve bridge.market ile konuşur.
 Item {
     width: parent ? parent.width : 0
     height: visible ? 44 : 0
-    visible: bridge.market.savedSearches.length > 0
+    visible: bridge.searches.savedSearches.length > 0
 
 
     Text {
@@ -38,7 +38,7 @@ Item {
             spacing: 8
 
             Repeater {
-                model: bridge.market.savedSearches
+                model: bridge.searches.savedSearches
 
                 delegate: Row {
                     required property var modelData
@@ -49,8 +49,8 @@ Item {
                         text: modelData.label + (modelData.newCount > 0 ? "  ·  " + modelData.newCount + " yeni" : "")
                         iconName: "fa5s.bookmark"
                         dotColor: modelData.newCount > 0 ? Theme.statusInProgress : "transparent"
-                        isSelected: bridge.market.activeSavedSearchId === modelData.id
-                        onClicked: bridge.market.runSavedSearch(modelData.id)
+                        isSelected: bridge.searches.activeSavedSearchId === modelData.id
+                        onClicked: bridge.searches.runSavedSearch(modelData.id)
                     }
 
                     AppIconButton {
@@ -58,7 +58,7 @@ Item {
                         iconName: "fa5s.times"
                         iconSize: 10
                         tooltip: "Kayıtlı aramayı sil"
-                        onClicked: bridge.market.deleteSavedSearch(modelData.id)
+                        onClicked: bridge.searches.deleteSavedSearch(modelData.id)
                     }
                 }
             }

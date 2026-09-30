@@ -115,11 +115,11 @@ def test_saved_search_flow_save_badge_run_and_delete(qapp, bridge, monkeypatch):
     QTest.keyClick(window, Qt.Key_Return)  # popup onAccepted -> Kaydet
     pump(qapp, 30)
 
-    assert [(s["label"], s["tag"]) for s in bridge.market.savedSearches] == [("gan", "tez")]
-    assert bridge.market.activeSavedSearchId == bridge.market.savedSearches[0]["id"]
+    assert [(s["label"], s["tag"]) for s in bridge.searches.savedSearches] == [("gan", "tez")]
+    assert bridge.searches.activeSavedSearchId == bridge.searches.savedSearches[0]["id"]
     assert find_text(window, "Aramayı kaydet") is None  # zaten kayitli: buton gizlendi
 
-    bridge.controllers.saved_searches.record_saved_search_check(bridge.market.savedSearches[0]["id"], 2)  # yeni yayin var
+    bridge.controllers.saved_searches.record_saved_search_check(bridge.searches.savedSearches[0]["id"], 2)  # yeni yayin var
     pump(qapp, 10)
     chip = find_item(window, lambda i: i.property("text") == "gan  ·  2 yeni")
     assert chip is not None, "yeni yayin rozeti cipte gorunmeli"
@@ -127,7 +127,7 @@ def test_saved_search_flow_save_badge_run_and_delete(qapp, bridge, monkeypatch):
     delete_button = find_item(window, lambda i: i.property("tooltip") == "Kayıtlı aramayı sil")
     click(qapp, window, delete_button)
 
-    assert bridge.market.savedSearches == [] and bridge.market.activeSavedSearchId == 0
+    assert bridge.searches.savedSearches == [] and bridge.searches.activeSavedSearchId == 0
     del engine
 
 

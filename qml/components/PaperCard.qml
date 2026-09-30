@@ -23,7 +23,7 @@ Rectangle {
     function toggleDiscovery(kind) {
         root.discoveryKind = root.discoveryKind === kind ? "" : kind
         if (root.discoveryKind !== "")
-            bridge.market.loadDiscovery(kind, root.paper.openalexId)
+            bridge.discovery.loadDiscovery(kind, root.paper.openalexId)
     }
 
     implicitHeight: content.implicitHeight + 24
@@ -285,7 +285,7 @@ Rectangle {
             visible: root.discoveryKind !== ""
 
             readonly property var panel: root.discoveryKind !== ""
-                ? bridge.market.marketDiscovery[root.discoveryKind + ":" + root.paper.openalexId] : undefined
+                ? bridge.discovery.marketDiscovery[root.discoveryKind + ":" + root.paper.openalexId] : undefined
 
             Text {
                 width: parent.width

@@ -48,45 +48,45 @@ def test_save_search_marks_current_results_as_seen(bridge, monkeypatch):
     notes = _collect_notes(bridge)
     bridge.market.searchArticles("gan")
 
-    bridge.market.saveSearch("gan", {"yearFrom": "2020", "authorName": ""}, "tez")
+    bridge.searches.saveSearch("gan", {"yearFrom": "2020", "authorName": ""}, "tez")
 
-    saved = bridge.market.savedSearches
+    saved = bridge.searches.savedSearches
     assert len(saved) == 1
     assert saved[0]["label"] == "gan" and saved[0]["tag"] == "tez" and saved[0]["newCount"] == 0
     assert saved[0]["filters"] == {"yearFrom": "2020"}
     assert bridge.controllers.saved_searches.load_saved_searches()[0].seen_ids == ["a", "b"]
     assert notes[-1] == ("info", "Arama kaydedildi: gan")
-    assert bridge.market.activeSavedSearchId == saved[0]["id"]
+    assert bridge.searches.activeSavedSearchId == saved[0]["id"]
 
 
 def test_save_search_duplicate_shows_error(bridge, monkeypatch):
     _stub_search(monkeypatch)
     bridge.market.searchArticles("gan")
-    bridge.market.saveSearch("gan", {}, "")
+    bridge.searches.saveSearch("gan", {}, "")
     notes = _collect_notes(bridge)
 
-    bridge.market.saveSearch("GAN", {}, "")
+    bridge.searches.saveSearch("GAN", {}, "")
 
-    assert len(bridge.market.savedSearches) == 1
+    assert len(bridge.searches.savedSearches) == 1
     assert notes[-1] == ("error", "Bu arama zaten kayitli.")
 
 
 def test_run_saved_search_applies_form_marks_seen_and_tags_saves(bridge, monkeypatch):
     _stub_search(monkeypatch, ("a",))
     bridge.market.searchArticles("gan")
-    bridge.market.saveSearch("gan", {"openAccess": True}, "tez")
-    search_id = bridge.market.savedSearches[0]["id"]
+    bridge.searches.saveSearch("gan", {"openAccess": True}, "tez")
+    search_id = bridge.searches.savedSearches[0]["id"]
     bridge.controllers.saved_searches.record_saved_search_check(search_id, 3)
-    assert bridge.market.savedSearches[0]["newCount"] == 3
+    assert bridge.searches.savedSearches[0]["newCount"] == 3
     _stub_search(monkeypatch, ("a", "b", "c"))
     applied = []
-    bridge.market.savedSearchApplied.connect(lambda topic, filters: applied.append((topic, dict(filters))))
+    bridge.searches.savedSearchApplied.connect(lambda topic, filters: applied.append((topic, dict(filters))))
 
-    bridge.market.runSavedSearch(search_id)
+    bridge.searches.runSavedSearch(search_id)
 
     assert applied == [("gan", {"openAccess": True})]
-    assert bridge.market.activeSavedSearchId == search_id
-    assert bridge.market.savedSearches[0]["newCount"] == 0
+    assert bridge.searches.activeSavedSearchId == search_id
+    assert bridge.searches.savedSearches[0]["newCount"] == 0
     assert bridge.controllers.saved_searches.load_saved_searches()[0].seen_ids == ["a", "b", "c"]
 
     bridge.market.saveMarketResult({"title": "Kayit", "url": "https://x.org/k"})
@@ -94,7 +94,7 @@ def test_run_saved_search_applies_form_marks_seen_and_tags_saves(bridge, monkeyp
     assert "tez" in [t.name for t in saved.tags]
 
     bridge.market.searchArticles("baska")  # elle yeni arama: kayitli arama baglami birakilir
-    assert bridge.market.activeSavedSearchId == 0
+    assert bridge.searches.activeSavedSearchId == 0
     bridge.market.saveMarketResult({"title": "Kayit2", "url": "https://y.org/k"})
     other = next(r for r in bridge.controllers.resources.load_resources_with_filters({}) if r.title == "Kayit2")
     assert "tez" not in [t.name for t in other.tags]
@@ -103,25 +103,25 @@ def test_run_saved_search_applies_form_marks_seen_and_tags_saves(bridge, monkeyp
 def test_delete_saved_search_clears_active(bridge, monkeypatch):
     _stub_search(monkeypatch)
     bridge.market.searchArticles("gan")
-    bridge.market.saveSearch("gan", {}, "")
-    search_id = bridge.market.savedSearches[0]["id"]
-    bridge.market.runSavedSearch(search_id)
-    assert bridge.market.activeSavedSearchId == search_id
+    bridge.searches.saveSearch("gan", {}, "")
+    search_id = bridge.searches.savedSearches[0]["id"]
+    bridge.searches.runSavedSearch(search_id)
+    assert bridge.searches.activeSavedSearchId == search_id
 
-    bridge.market.deleteSavedSearch(search_id)
+    bridge.searches.deleteSavedSearch(search_id)
 
-    assert bridge.market.savedSearches == [] and bridge.market.activeSavedSearchId == 0
+    assert bridge.searches.savedSearches == [] and bridge.searches.activeSavedSearchId == 0
 
 
 def test_reset_market_results_clears_active_saved_search(bridge, monkeypatch):
     _stub_search(monkeypatch)
     bridge.market.searchArticles("gan")
-    bridge.market.saveSearch("gan", {}, "")
-    bridge.market.runSavedSearch(bridge.market.savedSearches[0]["id"])
+    bridge.searches.saveSearch("gan", {}, "")
+    bridge.searches.runSavedSearch(bridge.searches.savedSearches[0]["id"])
 
     bridge.market.resetMarketResults()
 
-    assert bridge.market.activeSavedSearchId == 0
+    assert bridge.searches.activeSavedSearchId == 0
 
 
 def test_check_saved_searches_records_new_counts_and_retries_failures(bridge, session, monkeypatch):
@@ -139,15 +139,15 @@ def test_check_saved_searches_records_new_counts_and_retries_failures(bridge, se
         lambda self, topic, kind, filters=None, page=1: pages[topic],
     )
 
-    bridge.market.checkSavedSearches()
+    bridge.searches.checkSavedSearches()
 
-    by_topic = {s["topic"]: s for s in bridge.market.savedSearches}
+    by_topic = {s["topic"]: s for s in bridge.searches.savedSearches}
     assert by_topic["ok"]["newCount"] == 2
     assert by_topic["bad"]["newCount"] == 0
     # Basarisiz kontrol "son kontrol"u guncellemez: bir sonraki acilista yeniden denenir.
     due_topics = {s.topic for s in bridge.controllers.saved_searches.load_due_saved_searches(timedelta(hours=1))}
     assert due_topics == {"bad"}
-    assert bridge.market._saved_searches_checking is False
+    assert bridge.searches._checking is False
 
 
 def test_check_saved_searches_skips_when_none_due(bridge, monkeypatch):
@@ -158,7 +158,7 @@ def test_check_saved_searches_skips_when_none_due(bridge, monkeypatch):
         lambda *args, **kwargs: called.append(1),
     )
 
-    bridge.market.checkSavedSearches()
+    bridge.searches.checkSavedSearches()
 
     assert called == []
 
@@ -168,8 +168,8 @@ def test_check_saved_searches_skips_the_active_one(bridge, session, monkeypatch)
     search = bridge.controllers.saved_searches.create_saved_search("gan", {}, None, [])
     search.last_checked_at = None
     session.commit()
-    bridge.market.reload_saved_searches()
-    bridge.market.runSavedSearch(search.id)
+    bridge.searches.reload_saved_searches()
+    bridge.searches.runSavedSearch(search.id)
     called = []
     monkeypatch.setattr(
         "workers.saved_search_worker.PaperMarketService.search_page",
@@ -178,6 +178,6 @@ def test_check_saved_searches_skips_the_active_one(bridge, session, monkeypatch)
     search.last_checked_at = None
     session.commit()
 
-    bridge.market.checkSavedSearches()
+    bridge.searches.checkSavedSearches()
 
     assert called == []

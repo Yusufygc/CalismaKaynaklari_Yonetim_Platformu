@@ -2,11 +2,14 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from sqlalchemy.orm import Session
 
 from core.events import event_bus
+from ui_qml.bridges.discovery_bridge import DiscoveryBridge
 from ui_qml.bridges.library_bridge import LibraryBridge
 from ui_qml.bridges.market_bridge import MarketBridge
 from ui_qml.bridges.reader_bridge import ReaderBridge
+from ui_qml.bridges.searches_bridge import SearchesBridge
 from ui_qml.bridges.settings_bridge import SettingsBridge
 from ui_qml.context import BridgeContext, Controllers
+from ui_qml.saved_search_state import SavedSearchState
 
 
 class QmlBridge(QObject):
@@ -17,7 +20,9 @@ class QmlBridge(QObject):
 
     - `bridge.library`  -- kaynak listesi/filtre, detay cekmecesi, kaynak ekle-duzenle-sil, PDF iceri aktarma
     - `bridge.reader`   -- okuyucu, alinti/kelime/not, PDF anahati, atif ve OpenAlex bilgisi
-    - `bridge.market`   -- Makale Market, kesif/oneri, kayitli aramalar
+    - `bridge.market`   -- Makale Market aramasi, sayfalama, gecmis, kaydetme/disa aktarma
+    - `bridge.discovery` -- Market kart kesfi (referans/atif/benzer/yazar) ve kutuphaneden oneriler
+    - `bridge.searches` -- kayitli aramalar ve yeni yayin takibi
     - `bridge.settings` -- kategori ve etiket yonetimi
 
     Alt-bridge'ler birbirini dogrudan cagirmaz; kaynak/kategori/etiket degisiklikleri `core.events.event_bus`
@@ -54,7 +59,10 @@ class QmlBridge(QObject):
         self._settings = SettingsBridge(self._ctx, self)
         self._library = LibraryBridge(self._ctx, self)
         self._reader = ReaderBridge(self._ctx, self._library, self.setCurrentView, self)
-        self._market = MarketBridge(self._ctx, self._library, self)
+        search_state = SavedSearchState(self)
+        self._market = MarketBridge(self._ctx, self._library, search_state, self)
+        self._discovery = DiscoveryBridge(self._ctx, self._library, self)
+        self._searches = SearchesBridge(self._ctx, self._market, search_state, self)
 
         self.refresh_all()  # Ilk veri yuklemesi
 
@@ -75,6 +83,14 @@ class QmlBridge(QObject):
         return self._market
 
     @Property(QObject, constant=True)
+    def discovery(self) -> QObject:
+        return self._discovery
+
+    @Property(QObject, constant=True)
+    def searches(self) -> QObject:
+        return self._searches
+
+    @Property(QObject, constant=True)
     def settings(self) -> QObject:
         return self._settings
 
@@ -88,7 +104,7 @@ class QmlBridge(QObject):
 
     def refresh_all(self) -> None:
         self._library.reload()
-        for child in (self._settings, self._reader, self._market):
+        for child in (self._settings, self._reader, self._searches):
             child.refresh()
 
     # ------------------------------------------------------------------ #

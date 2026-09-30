@@ -23,9 +23,9 @@ Item {
     property var selection: ({})
     // Çalışan kayıtlı arama (varsa): koleksiyon etiketi ipucu için
     readonly property var activeSaved: {
-        const list = bridge.market.savedSearches
+        const list = bridge.searches.savedSearches
         for (let i = 0; i < list.length; i++)
-            if (list[i].id === bridge.market.activeSavedSearchId) return list[i]
+            if (list[i].id === bridge.searches.activeSavedSearchId) return list[i]
         return null
     }
     readonly property int selectionCount: Object.keys(selection).length
@@ -41,7 +41,7 @@ Item {
         })
     }
 
-    // Kayıtlı arama çalıştırılırken form alanlarını onunla eşitle (bridge.market.savedSearchApplied)
+    // Kayıtlı arama çalıştırılırken form alanlarını onunla eşitle (bridge.searches.savedSearchApplied)
     function applySavedSearch(topic, filters) {
         searchBar.text = topic
         filterBar.apply(filters)
@@ -80,7 +80,7 @@ Item {
 
     // Görünen liste (öneri modunda öneriler, aksi halde etkin sekme)
     function bridgeList() {
-        if (root.suggestMode) return bridge.market.marketSuggestions.items
+        if (root.suggestMode) return bridge.discovery.marketSuggestions.items
         return bridge.market.marketResults[root.activeKind]
     }
 
@@ -122,7 +122,7 @@ Item {
 
     function toggleSuggestions() {
         root.suggestMode = !root.suggestMode
-        if (root.suggestMode) bridge.market.loadLibrarySuggestions()
+        if (root.suggestMode) bridge.discovery.loadLibrarySuggestions()
     }
 
     // Filtre değişince, önceden arama yapılmışsa sonuçları yenile.
@@ -130,11 +130,11 @@ Item {
         if (root.hasSearched) root.runSearch()
     }
 
-    Component.onCompleted: bridge.market.checkSavedSearches()
-    onVisibleChanged: if (visible) bridge.market.checkSavedSearches()
+    Component.onCompleted: bridge.searches.checkSavedSearches()
+    onVisibleChanged: if (visible) bridge.searches.checkSavedSearches()
 
     Connections {
-        target: bridge.market
+        target: bridge.searches
         function onSavedSearchApplied(topic, filters) { root.applySavedSearch(topic, filters) }
     }
 
@@ -142,7 +142,7 @@ Item {
     SaveSearchPopup {
         id: saveSearchPopup
         anchors.centerIn: Overlay.overlay
-        onSaveRequested: (tag) => bridge.market.saveSearch(searchBar.text.trim(), root.currentFilters(), tag)
+        onSaveRequested: (tag) => bridge.searches.saveSearch(searchBar.text.trim(), root.currentFilters(), tag)
     }
 
     FileDialog {
@@ -198,7 +198,7 @@ Item {
             id: resultsToolbar
             visible: bridge.market.marketSearchLoading === false && root.bridgeList().length > 0
             selectionCount: root.selectionCount
-            canSaveSearch: root.hasSearched && !root.suggestMode && bridge.market.activeSavedSearchId === 0
+            canSaveSearch: root.hasSearched && !root.suggestMode && bridge.searches.activeSavedSearchId === 0
             collectionTag: root.activeSaved ? root.activeSaved.tag : ""
             countLabel: root.selectionCount > 0 ? root.selectionCount + " seçili"
                         : (bridge.market.marketMeta[root.activeKind].total > 0 && !root.suggestMode
@@ -217,7 +217,7 @@ Item {
                 height: parent.height - searchBar.height - filterBar.height - savedBar.height - resultsToolbar.height
 
                 property var currentList: {
-                    if (root.suggestMode) return bridge.market.marketSuggestions.items
+                    if (root.suggestMode) return bridge.discovery.marketSuggestions.items
                     if (root.activeTab === 0) return bridge.market.marketResults.recent
                     if (root.activeTab === 1) return bridge.market.marketResults.popular
                     return bridge.market.marketResults.cited
@@ -228,10 +228,10 @@ Item {
                     anchors.centerIn: parent
                     spacing: 8
                     z: 1
-                    visible: !bridge.market.marketSearchLoading && !bridge.market.marketSuggestions.loading
+                    visible: !bridge.market.marketSearchLoading && !bridge.discovery.marketSuggestions.loading
                              && parent.currentList.length === 0
 
-                    readonly property var suggestions: bridge.market.marketSuggestions
+                    readonly property var suggestions: bridge.discovery.marketSuggestions
                     readonly property bool failed: root.suggestMode ? suggestions.error !== ""
                                                    : (root.hasSearched && root.activeMeta.error !== "")
 
@@ -266,14 +266,14 @@ Item {
                         text: "Tekrar dene"
                         iconName: "fa5s.redo"
                         variant: "subtle"
-                        onClicked: root.suggestMode ? bridge.market.loadLibrarySuggestions() : root.runSearch()
+                        onClicked: root.suggestMode ? bridge.discovery.loadLibrarySuggestions() : root.runSearch()
                     }
                 }
 
                 BusyIndicator {
                     anchors.centerIn: parent
                     running: visible
-                    visible: root.suggestMode && bridge.market.marketSuggestions.loading
+                    visible: root.suggestMode && bridge.discovery.marketSuggestions.loading
                 }
 
                 ListView {
