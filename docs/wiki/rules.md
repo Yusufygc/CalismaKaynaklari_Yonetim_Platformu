@@ -60,6 +60,8 @@ Aşağıdaki maddeler gerçekten yaşanmış hatalardan çıkarıldı; kod yazar
 - Genel `Shortcut { sequence: "Esc" }` metin alanındaki `Keys.onEscapePressed`'ı yutar: düzenleme alanlarına `Keys.onShortcutOverride: (event) => event.accepted = (event.key === Qt.Key_Escape)` ekle.
 - Aynı dokunuşta birden fazla `TapHandler` çalışır: "dışarı tıkla kapat" işleyicisi, aynı dokunuşta açılan popover'ı kapatmamalı (popover açılış sayacı `openCount` deseni).
 - 500 satırı aşan QML'i bileşenlere böl; alt bileşen durumu `property` ile alır, eylemi sinyalle döner, kök `id`'ye dokunmaz. Yıkıcı işlemler için ortak `ConfirmDialog`, renk seçimi için `ColorPalette` kullan (tekrar yazma).
+- `Column`/`Row` `padding` kullanıyorsan çocuk genişliğinden padding'i düş (`parent.width - parent.leftPadding - parent.rightPadding`); yoksa metin sağdan taşıp kırpılır (Vitrin kartı hatası).
+- Yeniden atanan listelerde (`model:` yeniden bağlanınca ListView başa sarar) konumu koru; yalnız yeni aramada başa dön (Market kaydetme hatası).
 - Test edilecek öğelere `objectName` ver; TableView delegate'leri QObject ağacında değildir, `findChild` yerine görsel ağaç (`qml_harness.walk/find_named`) kullan.
 
 **Veri, arama ve tarih**

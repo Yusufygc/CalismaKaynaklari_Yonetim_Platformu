@@ -301,3 +301,17 @@ def test_market_save_keeps_scroll_position(qapp, bridge, monkeypatch):
 
     assert len(bridge.controllers.resources.load_resources_with_filters({})) == 1
     assert abs(results.property("contentY") - y_before) < 5, "kayitta liste basa sarmamali"
+
+
+def test_showcase_card_title_stays_inside_the_card(qapp, bridge):
+    """Regresyon: Column padding'i baslik genisligine yansimadigi icin uzun basliklar karttan tasip kirpiliyordu."""
+    title = "Makine Ogrenmesi Teknikleri Ile Hisse Senedi Fiyat Tahmini Uzun Baslik Deneme Metni"
+    bridge.market.saveMarketResult({"title": title, "url": "https://x.org/a"})
+    engine, window = open_window(qapp, bridge, "showcase")
+
+    card = find_item(window, lambda i: i.property("cardWidth") is not None)
+    title_item = find_item(window, lambda i: i.property("text") == title)
+    card_right = card.mapToScene(card.boundingRect().topRight()).x()
+    title_right = title_item.mapToScene(title_item.boundingRect().topRight()).x()
+
+    assert title_right <= card_right - 8, "baslik karta sigmali (sag bosluk birakmali)"

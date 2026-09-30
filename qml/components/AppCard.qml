@@ -340,7 +340,8 @@ Item {
 
                 // Başlık
                 Text {
-                    width: parent.width
+                    // Column'un padding'i çocukları kaydırır: genişlikten düşülmezse metin sağdan taşıp kırpılır.
+                    width: parent.width - parent.leftPadding - parent.rightPadding
                     text: root.title
                     font.family: Theme.fontFamily
                     font.pixelSize: root.isSimple ? Theme.fontBase : (Theme.fontBase + 1)
@@ -354,7 +355,7 @@ Item {
 
                 // Kısa Açıklama
                 Text {
-                    width: parent.width
+                    width: parent.width - parent.leftPadding - parent.rightPadding
                     visible: root.description !== ""
                     text: root.description
                     font.family: Theme.fontFamily

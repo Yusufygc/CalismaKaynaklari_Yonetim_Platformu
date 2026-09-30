@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] FIX | Vitrin kartı: uzun başlıklar karttan taşıp kırpılıyordu
+
+`AppCard.qml` içerik `Column`'u `padding` kullanıyor, çocuklar ise `width: parent.width` alıyordu; padding çocukları kaydırdığı için başlık/açıklama sağ kenardan taşıp kırpılıyordu. Genişlik `parent.width - leftPadding - rightPadding` yapıldı (metin artık `elide` ile "..." bitiyor). Regresyon testi: `test_qml_flows.py::test_showcase_card_title_stays_inside_the_card` (düzeltme olmadan düşer). Ders: `Column`/`Row` `padding` kullanırken çocuk genişliğinden padding düşülür.
+
+---
+
 ## [2026-09-30] FIX | Makale Market: makale kaydedince liste başa sarmıyor
 
 Kaydetme "Kütüphanede" bayrağını yenileyip `marketResults`'ı yeniden yayınlıyor, QML `ListView` modeli yeniden atanınca en başa dönüyordu. `ArticleMarketView.qml`: `resultsList.keepPositionForSave()` (kaydet / sonra oku / toplu kaydet öncesi konumu saklar) + `onModelChanged` ile geri yükleme; bekleyen işaret hemen bırakılır ki yeni aramada eski konum geri yüklenmesin. "Daha fazla yükle" yolu aynı `restorePosition` işlevini kullanır. Regresyon testi: `test_qml_flows.py::test_market_save_keeps_scroll_position` (düzeltme olmadan düşer). Ders: yenilenen listelerde konum korunmalı, yalnız yeni aramada başa dönülmeli.
