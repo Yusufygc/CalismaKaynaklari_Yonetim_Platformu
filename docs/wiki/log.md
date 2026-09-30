@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] LINT | rules.md: denetimde çözülen sorunların tekrarlanmaması için kontrol listesi eklendi
+
+`docs/wiki/rules.md` yeni bölüm 7 ("Tekrarlanmaması Gereken Hatalar"): boyut/karmaşıklık eşikleri, katman ve bağımlılık, QML tuzakları (z-sırası, Esc kısayolu, popover yarışı, id çakışması), veri/arama/tarih, UI thread IO, test ve süreç kuralları. Commit bölümü 8 oldu.
+
+---
+
 ## [2026-09-30] LINT | "Bilinçli kalanlar" kapandı: hepsi çözüldü ya da ölçümle gerekçelendi
 
 Ayarlar düzenleme arayüzü eklendi; `add_new_resource` ve CC 11-14 fonksiyonlar parçalandı (CC>10 = 0); tüm sınıflar ≤20 metot (sekiz alt-bridge); `InspectorDrawer.qml` 510 → 252; PDF popover yarışı düzeltildi; OpenAlex arXiv DOI'leri başlıkla aranır; `QPdfDocument.load` ölçüldü (≈35 ms, 3.000 sayfa/63 MB) ve UI thread'inde bırakıldı (gerekçeli). 496 test geçer, kapsam %87,6 (CI eşiği 84).
