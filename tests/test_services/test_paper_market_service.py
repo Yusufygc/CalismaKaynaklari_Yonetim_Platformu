@@ -240,3 +240,29 @@ class TestOpenAlexIdValidation:
             PaperMarketService().find_paper_strict(doi="https://doi.org/10.5555/3295222.3295349")
 
         assert get.call_args.args[0].endswith("/works/https://doi.org/10.5555/3295222.3295349")
+
+    def test_missing_doi_falls_back_to_exact_title_match(self):
+        """arXiv DOI'leri (10.48550/arXiv.*) `works/<doi>` ile 404 doner: baslik aramasi yedegi."""
+        not_found = MagicMock(status_code=404)
+        search = _response([_work(2), _work(1)])  # ilk sonuc baska makale; baslik esitligi aranir
+        with patch("services.paper_market_service.requests.get", side_effect=[not_found, search]) as get:
+            paper = PaperMarketService().find_paper_strict(doi="10.48550/arXiv.1706.03762", title="paper 1")
+
+        assert paper is not None and paper.openalex_id == "W1"
+        assert get.call_args_list[0].args[0].endswith("/works/https://doi.org/10.48550/arXiv.1706.03762")
+        assert get.call_args_list[1].kwargs["params"]["search"] == "paper 1"
+
+    def test_missing_doi_with_different_title_returns_none(self):
+        not_found = MagicMock(status_code=404)
+        with patch("services.paper_market_service.requests.get",
+                   side_effect=[not_found, _response([_work(2)])]):
+            paper = PaperMarketService().find_paper_strict(doi="10.48550/arXiv.1706.03762", title="Baska Baslik")
+
+        assert paper is None
+
+    def test_missing_doi_without_title_makes_no_search(self):
+        not_found = MagicMock(status_code=404)
+        with patch("services.paper_market_service.requests.get", side_effect=[not_found]) as get:
+            assert PaperMarketService().find_paper_strict(doi="10.48550/arXiv.1706.03762") is None
+
+        assert get.call_count == 1

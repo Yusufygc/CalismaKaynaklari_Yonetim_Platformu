@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] FIX | OpenAlex: DOI ile bulunamayan makale (arXiv DOI'leri) başlıkla aranır
+
+`find_paper_strict`: geçerli DOI `works/<doi>` ile 404 dönerse (OpenAlex arXiv DOI'lerini `10.48550/arXiv.*` ile bulamıyor; `landing_page_url`/`doi` filtreleriyle de bulunamadığı canlı sorguyla doğrulandı) ve başlık verilmişse başlık aramasına düşülür. Yanlış makale dönmesin diye yalnız başlığı harf/rakam bazında (`_title_key`) aynı olan sonuç kabul edilir; başlık yoksa sonuç None. Başlık-yalnız yol (`_find_by_title`) eskisi gibi ilk sonucu döndürür. Testler: `tests/test_services/test_paper_market_service.py` (yedek arama, farklı başlık reddi, başlıksız istek atılmaması).
+
+---
+
 ## [2026-09-30] REFACTOR | Karmaşık fonksiyonlar parçalandı (CC>10 ve >50 satır sıfırlandı), ölü okuma metotları kaldırıldı
 
 `ResourceService.add_new_resource` (52 sat.) → `_build_resource` + `_resolve_new_category_id`; `update_resource` → `_apply_content/_apply_tags/_apply_metadata`; kullanılmayan `get_all/get_by_status/search/get_by_category/get_urls_only/get_favorites` sarmalayıcıları silindi (sorgu yolu `query_resources`; repo metotları duruyor) — sınıf 22 → 16 metot. `paper_market_service`: `_to_paper_result` → `_authors_and_ids`; `MarketFilters.from_dict` → `_parse_year/_parse_author_id/_parse_work_type/_parse_language`. `ExportService._highlights_section` → `_highlights_by_label`. `SavedSearchService.create` → `_validated`. `detect_category_name` → `_web_category_name`. `serialize_resource` → `_core_fields/_relation_fields`. `ReaderBridge._on_pdf_download_finished` → `_on_pdf_downloaded/_on_pdf_download_failed`. Davranış değişmedi (483 test geçer); `audit_metrics.py`: CC>10 = 0, fonksiyon>50 satır = 0.

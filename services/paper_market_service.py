@@ -149,6 +149,11 @@ def _clean_doi(doi: str | None) -> str | None:
     return doi.replace("https://doi.org/", "").replace("http://doi.org/", "")
 
 
+def _title_key(title: str | None) -> str:
+    """Basliklari kiyaslamak icin: kucuk harf, yalnizca harf/rakam."""
+    return "".join(ch for ch in (title or "").casefold() if ch.isalnum())
+
+
 def _reconstruct_abstract(inverted_index: dict | None) -> str | None:
     """OpenAlex ozeti kelime->pozisyon ters-indeksi olarak doner; duz metne cevirir."""
     if not inverted_index:
@@ -254,11 +259,22 @@ class PaperMarketService:
         clean_doi = _clean_doi(doi)
         if clean_doi and _DOI.fullmatch(clean_doi):  # Bicimsiz DOI URL yoluna girmez; basliga dusulur.
             work = self._get_json(f"{_API_URL}/https://doi.org/{clean_doi}", {})
-            return _to_paper_result(work) if work else None
-        if title:
-            works = self._get_results({"search": title, "per-page": 1})
-            return _to_paper_result(works[0]) if works else None
-        return None
+            if work:
+                return _to_paper_result(work)
+            # OpenAlex bazi DOI'leri (arXiv 10.48550/arXiv.*, yeni DOI'ler) `works/<doi>` ile bulamaz:
+            # baslik varsa baslik aramasina dusulur, ama yanlis makale donmesin diye baslik esitligi sarttir.
+            return self._find_by_title(title, exact=True)
+        return self._find_by_title(title)
+
+    def _find_by_title(self, title: str | None, exact: bool = False) -> PaperResult | None:
+        """Baslik aramasinin ilk sonucu; `exact` ise yalniz basligi (harf/rakam bazinda) ayni olan sonuc."""
+        if not title:
+            return None
+        works = self._get_results({"search": title, "per-page": 5 if exact else 1})
+        if exact:
+            wanted = _title_key(title)
+            works = [w for w in works if _title_key(w.get("title") or w.get("display_name")) == wanted]
+        return _to_paper_result(works[0]) if works else None
 
     def related_papers(self, openalex_id: str, kind: str, limit: int = 25) -> list[PaperResult]:
         """`kind='references'`: bu makalenin atif yaptigi eserler; `kind='citations'`: ona atif yapanlar;

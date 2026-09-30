@@ -119,6 +119,8 @@ Konu bazlı akademik makale araması. [OpenAlex Works API](https://api.openalex.
 
 **Kimlik doğrulama (2026-09-30):** OpenAlex kimlikleri `filter=` ifadesine girdiği için doğrulanır: `related_papers` (`references/citations/similar` → `^W\\d+$`, `author` → `^A\\d+$`; aksi halde istek atılmadan `ValueError`), toplu sorgular (`referenced_work_ids`, `works_by_ids`) geçersiz kimlikleri süzer, `find_paper_strict` biçimsiz DOI'yi URL yoluna koymaz (başlığa düşer). `W1,type:x` gibi değerler ek filtre enjekte edemez.
 
+**DOI yedeği (2026-09-30):** `find_paper_strict` geçerli DOI'yi `works/<doi>` ile arar; 404 dönerse (arXiv `10.48550/arXiv.*` DOI'leri OpenAlex'te bu yolla bulunmaz) ve başlık varsa `_find_by_title(exact=True)`: yalnız başlığı harf/rakam bazında aynı olan sonuç kabul edilir (yanlış makale dönmesin diye). Başlık yoksa None.
+
 **LibraryIndex — `services/library_index.py` (2026-09-30):** Kütüphane kaynaklarını DOI (`extra_metadata.doi` ya da `doi.org` URL'sinden, `utils/doi_utils.py`) ve `openalex_id` ile arar. `QmlBridge` Market/Kaynakça sonuçlarına `libraryResourceId` yazmak ve `saveMarketResult`'ta aynı makalenin ikinci kez eklenmesini engellemek için kullanır.
 
 **Keşif (2026-09-30):** `related_papers(id, kind)` türleri: `references`, `citations`, `similar` (`related_to:`), `author` (yazar kimliği, `author.id:`). `ReadingSuggestionService.suggest(library_openalex_ids)` — kütüphane makalelerinin ortak referanslarından kütüphanede olmayanları önerir (`Suggestion(paper, cited_by_library)`); `referenced_work_ids` + `works_by_ids` ile iki toplu istek (≤50 kimlik/istek).
