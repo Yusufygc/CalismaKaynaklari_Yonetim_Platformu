@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] FIX | PDF: açık popover varken alıntıya tıklamak yeni düzenleme popover'ını kapatmıyor
+
+Sayfa-dismiss `TapHandler`'ı, alıntı/not tıklamasıyla açılan popover'ı aynı dokunuşta kapatıyordu. Her katman (`PdfHighlightHits`, `PdfNoteLayer`, `PdfSelectionOverlay`) popover açtığında `openCount` artırır; `dismissPopoverHandler` basış anındaki toplamı (`openCountAtPress`) saklar ve bırakışta sayaç değiştiyse (dokunuş kendisi popover açtıysa) hiçbir şeyi kapatmaz. Regresyon testi: `test_pdf_reader_overlays.py::test_clicking_another_highlight_while_editor_is_open_keeps_the_new_editor_open` (düzeltme olmadan düşer).
+
+---
+
 ## [2026-09-30] FIX | OpenAlex: DOI ile bulunamayan makale (arXiv DOI'leri) başlıkla aranır
 
 `find_paper_strict`: geçerli DOI `works/<doi>` ile 404 dönerse (OpenAlex arXiv DOI'lerini `10.48550/arXiv.*` ile bulamıyor; `landing_page_url`/`doi` filtreleriyle de bulunamadığı canlı sorguyla doğrulandı) ve başlık verilmişse başlık aramasına düşülür. Yanlış makale dönmesin diye yalnız başlığı harf/rakam bazında (`_title_key`) aynı olan sonuç kabul edilir; başlık yoksa sonuç None. Başlık-yalnız yol (`_find_by_title`) eskisi gibi ilk sonucu döndürür. Testler: `tests/test_services/test_paper_market_service.py` (yedek arama, farklı başlık reddi, başlıksız istek atılmaması).

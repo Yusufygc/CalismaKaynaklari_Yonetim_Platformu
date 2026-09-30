@@ -145,3 +145,22 @@ def test_tapping_the_page_dismisses_open_popovers(reader):
     pump(view.app, 20)
 
     assert view.visible("newVocabPopover") is None
+
+
+def test_clicking_another_highlight_while_editor_is_open_keeps_the_new_editor_open(reader):
+    """Regresyon: sayfa-dismiss TapHandler'i, alintiya tiklamayla acilan duzenleme popover'ini hemen kapatiyordu."""
+    view, resource = reader
+    for word in ("kopegin", "tilki"):
+        view.select(word)
+        view.click_first_swatch()
+    ids = {h.id for h in view.bridge.controllers.highlights.load_resource_highlights(resource.id)}
+    hit_areas = [i for i in walk(view.window.contentItem()) if i.objectName() == "highlightHitArea" and i.isVisible()]
+    assert len(hit_areas) == 2
+
+    click(view.app, view.window, hit_areas[0])
+    first = view.visible("editHighlightPopover").property("highlightId")
+    click(view.app, view.window, hit_areas[1])  # editor acikken baska alintiya tikla
+
+    popover = view.visible("editHighlightPopover")
+    assert popover is not None, "yeni alintinin duzenleme popover'i acik kalmali"
+    assert popover.property("highlightId") in ids and popover.property("highlightId") != first

@@ -17,6 +17,9 @@ Item {
     readonly property bool popoverVisible: newVocabPopover.visible
     function closeVocabulary() { newVocabPopover.visible = false }
 
+    // Her popover açılışında artar (bkz. PdfHighlightHits.openCount).
+    property int openCount: 0
+
     anchors.fill: parent
     z: 20
 
@@ -126,6 +129,7 @@ Item {
                     newVocabPopover.word = newHighlightToolbar.capturedText.trim()
                     newVocabPopover.translationText = ""
                     newVocabPopover.visible = true
+                    root.openCount++
                 }
             }
         }

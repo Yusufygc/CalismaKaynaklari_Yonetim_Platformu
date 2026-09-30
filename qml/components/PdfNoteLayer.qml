@@ -16,6 +16,9 @@ Item {
     })
 
     readonly property bool popoverVisible: newNotePopover.visible || editNotePopover.visible
+    // Her popover açılışında artar (bkz. PdfHighlightHits.openCount).
+    property int openCount: 0
+
     function closeAll() {
         newNotePopover.visible = false
         editNotePopover.visible = false
@@ -30,6 +33,7 @@ Item {
         newNotePopover.y = Math.max(0, Math.min(pos.y, root.paper.height - newNotePopover.height))
         newNotePopover.noteText = ""
         newNotePopover.visible = true
+        root.openCount++
     }
 
     anchors.fill: parent
@@ -68,6 +72,7 @@ Item {
                     editNotePopover.y = Math.max(0, Math.min(
                         parent.y + parent.height + 4, root.paper.height - editNotePopover.height))
                     editNotePopover.visible = true
+                    root.openCount++
                 }
             }
         }

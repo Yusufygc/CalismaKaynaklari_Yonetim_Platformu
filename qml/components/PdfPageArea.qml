@@ -402,7 +402,14 @@ Item {
                 TapHandler {
                     id: dismissPopoverHandler
                     acceptedDevices: PointerDevice.Mouse | PointerDevice.Stylus
+                    // Dokunuş bir popover açtıysa (alıntıya/nota tıklama) yeni açılanı kapatma: sayaç basış anından
+                    // farklıysa bu dokunuş zaten bir popover açmıştır.
+                    readonly property int openCount: hitLayer.openCount + noteLayer.openCount + selectionOverlay.openCount
+                    property int openCountAtPress: 0
+                    onPressedChanged: if (pressed) openCountAtPress = openCount
                     onTapped: {
+                        if (openCount !== openCountAtPress)
+                            return
                         hitLayer.closeAll()
                         noteLayer.closeAll()
                         selectionOverlay.closeVocabulary()

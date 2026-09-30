@@ -20,6 +20,9 @@ Item {
     readonly property bool popoverVisible: editHighlightPopover.visible
     function closeAll() { editHighlightPopover.visible = false }
 
+    // Her popover açılışında artar; sayfa-dismiss işleyicisi tıklamayla yeni açılanı kapatmasın diye kullanır.
+    property int openCount: 0
+
     anchors.fill: parent
     z: 30
 
@@ -74,6 +77,7 @@ Item {
                         highlightHitArea.y + highlightHitArea.height + 4,
                         root.paper.height - editHighlightPopover.implicitHeight))
                     editHighlightPopover.visible = true
+                    root.openCount++
                 }
             }
         }
