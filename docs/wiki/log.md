@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] REFACTOR | InspectorDrawer.qml bölündü (510 → 252 satır)
+
+`StatusPill` (inline bileşen → dosya), `InspectorTopBar` (harici bağlantı, sabitle, favori, kapat; kapatma `closeRequested` ile üst bileşene bildirilir → onay durumu sıfırlanır), `InspectorNotes` (Markdown not alanı + "Notu Kaydet") ve `InspectorHighlights` (alıntı özeti) çıkarıldı; alt bileşenler `resource` property'sini alır, genişliği kullanım yerinde verilir. Doğrulama: kaynak+etiket+alıntılı çekmece ekran görüntüsü bölmeden önce/sonra piksel piksel aynı; yeni `tests/test_qml/test_inspector_drawer_flow.py` gerçek fareyle pin/favori, durum, not kaydı, alıntı özeti ve onaylı silme (+ kapatınca onay sıfırlanması) akışlarını sınar. Artık hiçbir QML dosyası 500 satırı aşmaz (en büyüğü `PdfPageArea` 500).
+
+---
+
 ## [2026-09-30] LINT | QPdfDocument.load UI thread'inde kalır (ölçüldü, gerekçelendi)
 
 `QPdfDocument` bir QObject'tir (thread affinity) ve alıntı geometrisi/`select_text` aynı belge nesnesini UI thread'inde kullanır; yüklemeyi worker'a taşımak belgeyi thread'ler arası paylaşmayı gerektirir. Ölçüm (offscreen, Qt 6.11): 3.000 sayfalık 0,5 MB PDF `load` ≈ 36 ms; aynı belgeye 60 MB rastgele akış eklenmiş 63 MB PDF ≈ 35 ms (PDFium sayfaları tembel çözer, dosya boyutundan bağımsız). Belge başına bir kez yüklenip önbelleğe alındığından (`PdfFileManager._document_cache`) bu değer donma eşiğinin (≈50 ms) altındadır: kapsam dışı, `load_document` docstring'inde belgelendi. Ağır işler (kopyalama, anahat, tam metin) zaten worker'dadır.
