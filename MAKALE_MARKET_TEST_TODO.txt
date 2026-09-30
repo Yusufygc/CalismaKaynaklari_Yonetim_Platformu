@@ -78,3 +78,5 @@ Bir sey bozuk cikarsa: ekran goruntusu + "python -X faulthandler main.py" ciktis
 [ ] "Seçilenleri Sil" tikla. Onay penceresi cikiyor mu? "Vazgec" hicbir sey silmiyor mu?
 [ ] Onayla. Alintilar gidiyor, tek toast ("N alinti silindi.") cikiyor mu?
 [ ] Silinen alintilar ilgili PDF/makale okuyucusunda da kayboluyor mu?
+
+[ ] Sonuc listesinde asagi kaydir, bir makaleyi Kaydet / Sonra oku ile kaydet: liste basa sarmamali, ayni noktada kalmali. (Toplu kaydette de.)

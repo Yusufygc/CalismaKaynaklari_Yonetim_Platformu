@@ -272,3 +272,32 @@ def test_every_page_renders_with_data_and_no_qml_warnings(qapp, bridge, tmp_path
     assert bridge.currentView == "pdfReader"
     assert engine.captured_warnings == [], engine.captured_warnings
     del engine
+
+
+def test_market_save_keeps_scroll_position(qapp, bridge, monkeypatch):
+    """Regresyon: makale kaydedince kutuphane bayragi listeyi yeniden atip basa sariyordu."""
+    monkeypatch.setattr(
+        "workers.market_search_worker.PaperMarketService.search",
+        lambda self, topic, filters=None: {
+            "recent": MarketPage([_paper(i) for i in range(1, 31)], 30), "popular": MarketPage(), "cited": MarketPage(),
+        },
+    )
+    engine, window = open_window(qapp, bridge, "articleMarket")
+    _search_and_enter(qapp, window, "gan")
+    results = find_item(window, lambda i: i.objectName() == "resultsList")
+    results.setProperty("contentY", 900)
+    pump(qapp, 20)
+    y_before = results.property("contentY")
+    assert y_before > 500
+
+    def on_screen_save_button(item):  # kaydirilan listede ekranda gorunen kart
+        if item.property("text") != "Kaydet":
+            return False
+        y = item.mapToScene(item.boundingRect().center()).y()
+        return 250 < y < 850
+
+    save_button = find_item(window, on_screen_save_button)
+    click(qapp, window, save_button)
+
+    assert len(bridge.controllers.resources.load_resources_with_filters({})) == 1
+    assert abs(results.property("contentY") - y_before) < 5, "kayitta liste basa sarmamali"

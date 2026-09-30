@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] FIX | Makale Market: makale kaydedince liste başa sarmıyor
+
+Kaydetme "Kütüphanede" bayrağını yenileyip `marketResults`'ı yeniden yayınlıyor, QML `ListView` modeli yeniden atanınca en başa dönüyordu. `ArticleMarketView.qml`: `resultsList.keepPositionForSave()` (kaydet / sonra oku / toplu kaydet öncesi konumu saklar) + `onModelChanged` ile geri yükleme; bekleyen işaret hemen bırakılır ki yeni aramada eski konum geri yüklenmesin. "Daha fazla yükle" yolu aynı `restorePosition` işlevini kullanır. Regresyon testi: `test_qml_flows.py::test_market_save_keeps_scroll_position` (düzeltme olmadan düşer). Ders: yenilenen listelerde konum korunmalı, yalnız yeni aramada başa dönülmeli.
+
+---
+
 ## [2026-09-30] LINT | rules.md: denetimde çözülen sorunların tekrarlanmaması için kontrol listesi eklendi
 
 `docs/wiki/rules.md` yeni bölüm 7 ("Tekrarlanmaması Gereken Hatalar"): boyut/karmaşıklık eşikleri, katman ve bağımlılık, QML tuzakları (z-sırası, Esc kısayolu, popover yarışı, id çakışması), veri/arama/tarih, UI thread IO, test ve süreç kuralları. Commit bölümü 8 oldu.

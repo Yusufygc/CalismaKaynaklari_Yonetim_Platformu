@@ -90,6 +90,7 @@ Item {
     }
 
     function saveSelected() {
+        resultsList.keepPositionForSave()
         bridge.market.saveMarketResults(Object.values(root.selection))
         root.clearSelection()
     }
@@ -278,6 +279,7 @@ Item {
 
                 ListView {
                     id: resultsList
+                    objectName: "resultsList"
                     anchors.fill: parent
                     anchors.margins: 24
                     spacing: 12
@@ -287,13 +289,22 @@ Item {
                     // "Daha fazla yükle" listeyi yeniden atar (ListView başa sarar) — konumu koru.
                     property real restoreY: 0
                     property bool restorePending: false
-                    onCountChanged: {
+                    function restorePosition() {
                         if (!restorePending) return
-                        restorePending = false
                         Qt.callLater(function() {
                             resultsList.contentY = Math.min(resultsList.restoreY,
                                                             Math.max(0, resultsList.contentHeight - resultsList.height))
                         })
+                    }
+                    onCountChanged: { restorePosition(); restorePending = false }
+                    onModelChanged: restorePosition()
+
+                    // Kaydetme "Kütüphanede" bayrağını yenileyip listeyi yeniden atar: senkron tamamlanır,
+                    // bu yüzden bekleyen işaret hemen bırakılır (yeni aramada eski konum geri yüklenmesin).
+                    function keepPositionForSave() {
+                        restoreY = contentY
+                        restorePending = true
+                        Qt.callLater(function() { resultsList.restorePending = false })
                     }
 
                     delegate: PaperCard {
@@ -303,8 +314,8 @@ Item {
                         selectable: true
                         selected: root.selection[root.paperKey(modelData)] !== undefined
                         onSelectionToggled: root.toggleSelected(modelData)
-                        onSaveRequested: bridge.market.saveMarketResult(modelData)
-                        onSaveForLaterRequested: bridge.market.saveMarketResultForLater(modelData)
+                        onSaveRequested: { resultsList.keepPositionForSave(); bridge.market.saveMarketResult(modelData) }
+                        onSaveForLaterRequested: { resultsList.keepPositionForSave(); bridge.market.saveMarketResultForLater(modelData) }
                         onAuthorRequested: (id, name) => root.searchAuthor(id, name)
                     }
 
