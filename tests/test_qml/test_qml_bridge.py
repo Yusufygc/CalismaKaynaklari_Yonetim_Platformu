@@ -26,8 +26,8 @@ def test_qml_bridge_initial_state(qapp, session):
     assert bridge.library.resourcesModel is not None
     assert isinstance(bridge.settings.categories, list)
     assert isinstance(bridge.settings.tags, list)
-    assert isinstance(bridge.reader.highlights, list)
-    assert isinstance(bridge.reader.vocabulary, list)
+    assert isinstance(bridge.annotations.highlights, list)
+    assert isinstance(bridge.annotations.vocabulary, list)
     assert "total" in bridge.library.stats
 
 
@@ -136,18 +136,18 @@ def test_qml_bridge_highlights_and_vocabulary(qapp, session, monkeypatch):
     res_id = bridge.library.selectedResource["id"]
 
     # Alıntı ekleme
-    bridge.reader.addHighlight(res_id, "Onemli bir cumle", "#EAB308")
-    assert len(bridge.reader.highlights) == 1
-    assert bridge.reader.highlights[0]["content"] == "Onemli bir cumle"
+    bridge.annotations.addHighlight(res_id, "Onemli bir cumle", "#EAB308")
+    assert len(bridge.annotations.highlights) == 1
+    assert bridge.annotations.highlights[0]["content"] == "Onemli bir cumle"
 
     # Kelime ekleme
-    bridge.reader.addVocabulary(res_id, "ubiquitous", "her yerde bulunan", "It is ubiquitous.")
-    assert len(bridge.reader.vocabulary) == 1
-    assert bridge.reader.vocabulary[0]["word"] == "ubiquitous"
+    bridge.annotations.addVocabulary(res_id, "ubiquitous", "her yerde bulunan", "It is ubiquitous.")
+    assert len(bridge.annotations.vocabulary) == 1
+    assert bridge.annotations.vocabulary[0]["word"] == "ubiquitous"
 
     # Silme
-    bridge.reader.deleteHighlight(bridge.reader.highlights[0]["id"])
-    assert len(bridge.reader.highlights) == 0
+    bridge.annotations.deleteHighlight(bridge.annotations.highlights[0]["id"])
+    assert len(bridge.annotations.highlights) == 0
 
 
 def test_qml_bridge_add_highlight_with_pdf_position(qapp, session, monkeypatch):
@@ -160,7 +160,7 @@ def test_qml_bridge_add_highlight_with_pdf_position(qapp, session, monkeypatch):
     })
     res_id = bridge.controllers.resources.load_resources_with_filters({})[0].id
 
-    bridge.reader.addHighlight(res_id, "sayfa alintisi", "#EAB308", {"page": 2, "startIndex": 100, "length": 30})
+    bridge.annotations.addHighlight(res_id, "sayfa alintisi", "#EAB308", {"page": 2, "startIndex": 100, "length": 30})
 
     hl = bridge.controllers.highlights.load_resource_highlights(res_id)[0]
     assert hl.page_number == 2
@@ -181,12 +181,12 @@ def test_qml_bridge_update_highlight_color(qapp, session, monkeypatch):
 
     bridge.library.saveResource({"title": "Renk Testi", "url": "https://example.com/renk"})
     res_id = bridge.library.selectedResource["id"]
-    bridge.reader.addHighlight(res_id, "renk degisecek", "#EAB308")
-    highlight_id = bridge.reader.highlights[0]["id"]
+    bridge.annotations.addHighlight(res_id, "renk degisecek", "#EAB308")
+    highlight_id = bridge.annotations.highlights[0]["id"]
 
-    bridge.reader.updateHighlightColor(highlight_id, "#22C55E")
+    bridge.annotations.updateHighlightColor(highlight_id, "#22C55E")
 
-    assert bridge.reader.highlights[0]["color"] == "#22C55E"
+    assert bridge.annotations.highlights[0]["color"] == "#22C55E"
 
 
 class _SyncThreadPool:
@@ -551,12 +551,12 @@ def test_qml_bridge_citation_text_and_copy(qapp, session):
     notifications = []
     bridge.notificationEmitted.connect(lambda t, m: notifications.append((t, m)))
 
-    apa = bridge.reader.citationText(res.id, "apa")
+    apa = bridge.citations.citationText(res.id, "apa")
     assert apa.startswith("Vaswani, A., & Shazeer, N. (2017). Attention Is All You Need.")
-    assert bridge.reader.citationText(res.id, "bogus") == ""
-    assert bridge.reader.citationText(9999, "apa") == ""
+    assert bridge.citations.citationText(res.id, "bogus") == ""
+    assert bridge.citations.citationText(9999, "apa") == ""
 
-    bridge.reader.copyCitation(res.id, "bibtex")
+    bridge.citations.copyCitation(res.id, "bibtex")
     assert QGuiApplication.clipboard().text().startswith("@article{vaswani2017attention,")
     assert notifications[-1] == ("info", "Atıf panoya kopyalandı (BIBTEX).")
 
@@ -572,7 +572,7 @@ def test_qml_bridge_paper_metadata_merges_into_extra_metadata(qapp, session):
     paper = PaperResult(title="Makale", authors=["A. Yazar"], year=2020, citation_count=5, url=None,
                         abstract=None, doi="10.1/abc", openalex_id="W1", venue="Dergi")
 
-    bridge.reader._on_paper_metadata_finished(res.id, paper, "")
+    bridge.citations._on_paper_metadata_finished(res.id, paper, "")
 
     meta = bridge.controllers.resources.get_resource(res.id).extra_metadata
     assert meta["local_pdf"] == "x"
@@ -585,8 +585,8 @@ def test_qml_bridge_paper_metadata_errors_surface_as_toasts(qapp, session):
     notifications = []
     bridge.notificationEmitted.connect(lambda t, m: notifications.append((t, m)))
 
-    bridge.reader._on_paper_metadata_finished(res.id, None, "timeout")
-    bridge.reader._on_paper_metadata_finished(res.id, None, "")
+    bridge.citations._on_paper_metadata_finished(res.id, None, "timeout")
+    bridge.citations._on_paper_metadata_finished(res.id, None, "")
 
     assert notifications[0][0] == "error"
     assert notifications[1][0] == "info" and "bulunamadı" in notifications[1][1]
@@ -600,22 +600,22 @@ def test_qml_bridge_related_papers_loading_and_stale_result_ignored(qapp, sessio
     monkeypatch.setattr(bridge.ctx.thread_pool, "start", lambda worker: started.append(worker))
     res = _paper_resource(bridge)
 
-    bridge.reader.loadRelatedPapers(res.id)
+    bridge.citations.loadRelatedPapers(res.id)
     assert len(started) == 2
-    assert bridge.reader.relatedPapers["references"]["loading"] is True
+    assert bridge.citations.relatedPapers["references"]["loading"] is True
 
     paper = PaperResult(title="Ref", authors=[], year=2016, citation_count=9, url="https://x", abstract=None,
                         openalex_id="W9")
-    bridge.reader._on_related_papers_finished("W2626778328", "references", [paper], "")
-    assert bridge.reader.relatedPapers["references"]["loaded"] is True
-    assert bridge.reader.relatedPapers["references"]["items"][0]["openalexId"] == "W9"
+    bridge.citations._on_related_papers_finished("W2626778328", "references", [paper], "")
+    assert bridge.citations.relatedPapers["references"]["loaded"] is True
+    assert bridge.citations.relatedPapers["references"]["items"][0]["openalexId"] == "W9"
 
-    bridge.reader._on_related_papers_finished("W2626778328", "citations", [], "boom")
-    assert bridge.reader.relatedPapers["citations"]["error"] != ""
+    bridge.citations._on_related_papers_finished("W2626778328", "citations", [], "boom")
+    assert bridge.citations.relatedPapers["citations"]["error"] != ""
 
     # Baska makale acilmisken gelen eski sonuc yok sayilir.
-    bridge.reader._on_related_papers_finished("W-OTHER", "references", [paper], "")
-    assert bridge.reader.relatedPapers["references"]["items"][0]["title"] == "Ref"
+    bridge.citations._on_related_papers_finished("W-OTHER", "references", [paper], "")
+    assert bridge.citations.relatedPapers["references"]["items"][0]["title"] == "Ref"
 
 
 def test_qml_bridge_related_papers_without_openalex_id_starts_nothing(qapp, session, monkeypatch):
@@ -624,10 +624,10 @@ def test_qml_bridge_related_papers_without_openalex_id_starts_nothing(qapp, sess
     monkeypatch.setattr(bridge.ctx.thread_pool, "start", lambda worker: started.append(worker))
     res = bridge.controllers.resources.add_resource({"title": "T", "url": "https://x.org/a", "category_id": None, "priority": 2})
 
-    bridge.reader.loadRelatedPapers(res.id)
+    bridge.citations.loadRelatedPapers(res.id)
 
     assert started == []
-    assert bridge.reader.relatedPapers["openalexId"] == ""
+    assert bridge.citations.relatedPapers["openalexId"] == ""
 
 
 def test_qml_bridge_export_markdown_writes_file_and_adds_extension(qapp, session, tmp_path):
@@ -749,7 +749,7 @@ def test_qml_bridge_pdf_note_crud(qapp, session, monkeypatch):
     })
     res_id = bridge.controllers.resources.load_resources_with_filters({})[0].id
 
-    bridge.reader.addPdfNote(res_id, 3, 120.5, 60.0, "onemli bir not")
+    bridge.annotations.addPdfNote(res_id, 3, 120.5, 60.0, "onemli bir not")
     notes = bridge.controllers.pdf_notes.load_resource_notes(res_id)
     assert len(notes) == 1
     assert notes[0].page == 3
@@ -758,10 +758,10 @@ def test_qml_bridge_pdf_note_crud(qapp, session, monkeypatch):
     bridge.reader.openReader(res_id)
     assert bridge.reader.currentReaderResource["pdfNotes"][0]["text"] == "onemli bir not"
 
-    bridge.reader.updatePdfNote(notes[0].id, "guncellenmis not")
+    bridge.annotations.updatePdfNote(notes[0].id, "guncellenmis not")
     assert bridge.reader.currentReaderResource["pdfNotes"][0]["text"] == "guncellenmis not"
 
-    bridge.reader.deletePdfNote(notes[0].id)
+    bridge.annotations.deletePdfNote(notes[0].id)
     assert bridge.reader.currentReaderResource["pdfNotes"] == []
 
 
@@ -772,7 +772,7 @@ def test_qml_bridge_add_pdf_note_ignores_blank_text(qapp, session, monkeypatch):
     bridge.library.saveResource({"title": "Bos Not Testi", "url": "https://example.com/y.pdf"})
     res_id = bridge.library.selectedResource["id"]
 
-    bridge.reader.addPdfNote(res_id, 0, 0.0, 0.0, "   ")
+    bridge.annotations.addPdfNote(res_id, 0, 0.0, 0.0, "   ")
 
     assert bridge.controllers.pdf_notes.load_resource_notes(res_id) == []
 

@@ -5,7 +5,7 @@ import "../js/highlights.js" as Highlights
 
 // PDF sayfasında metin seçilince beliren yüzen araç çubuğu (5 renkli alıntı kaydetme + "Kelime Havuzuna Ekle")
 // ve kelime çevirisi popover'ı. Sayfa (`paper`) üzerine bindirilir; seçim `pdfSelection` (PdfSelection) ile gelir.
-// Alıntı/kelime kaydı `bridge.reader.addPdfHighlight/addPdfVocabulary` ile yapılır (seçim page-point haritası).
+// Alıntı/kelime kaydı `bridge.annotations.addPdfHighlight/addPdfVocabulary` ile yapılır (seçim page-point haritası).
 Item {
     id: root
 
@@ -61,7 +61,7 @@ Item {
         readonly property point pointFrom: Qt.point(capturedFrom.x / safeScale, capturedFrom.y / safeScale)
         readonly property point pointTo: Qt.point(capturedTo.x / safeScale, capturedTo.y / safeScale)
 
-        // bridge.reader.addPdfHighlight / addPdfVocabulary'nin bekledigi secim haritasi (page-point uzayinda)
+        // bridge.annotations.addPdfHighlight / addPdfVocabulary'nin bekledigi secim haritasi (page-point uzayinda)
         function selectionMap(page) {
             return { page: page, fromX: pointFrom.x, fromY: pointFrom.y, toX: pointTo.x, toY: pointTo.y }
         }
@@ -98,10 +98,10 @@ Item {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         ToolTip.visible: containsMouse
-                        ToolTip.text: Highlights.labelForColor(parent.modelData, bridge.reader.highlightLabels)
+                        ToolTip.text: Highlights.labelForColor(parent.modelData, bridge.annotations.highlightLabels)
                         onClicked: {
                             if (newHighlightToolbar.capturedText.trim().length > 0 && root.resource) {
-                                bridge.reader.addPdfHighlight(
+                                bridge.annotations.addPdfHighlight(
                                     root.resource.id, root.resource.pdfFileUrl,
                                     newHighlightToolbar.selectionMap(root.pageIndex),
                                     parent.modelData
@@ -137,7 +137,7 @@ Item {
 
     // Secili kelimeyi/ifadeyi Bilgi Havuzu'na (kelime listesi) ekleme
     // popover'i -- HTML okuyucudaki "Kelime Havuzuna Ekle" ozelligiyle
-    // ayni: bridge.reader.addVocabulary(resourceId, word, translation).
+    // ayni: bridge.annotations.addVocabulary(resourceId, word, translation).
     Rectangle {
         id: newVocabPopover
         objectName: "newVocabPopover"
@@ -224,7 +224,7 @@ Item {
                     onClicked: {
                         if (root.resource) {
                             // Secim noktalariyla gonderilir: gectigi cumle baglam olarak da kaydedilir.
-                            bridge.reader.addPdfVocabulary(
+                            bridge.annotations.addPdfVocabulary(
                                 root.resource.id, root.resource.pdfFileUrl,
                                 newHighlightToolbar.selectionMap(root.pageIndex),
                                 vocabTranslationInput.text.trim()

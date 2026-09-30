@@ -66,7 +66,7 @@
 | comment | Text | Nullable (2026-09-29) — kullanıcının alıntıya eklediği serbest yorum (Alembic `8b3f1c2d9a47`). Anlam etiketi (Önemli/Bulgu/Yöntem/…) DB'de tutulmaz, `color`'dan türetilir (`core/constants/highlight_labels.py`) |
 | created_at | DateTime | |
 
-Repo/servis: `repositories/highlight_repo.py::HighlightRepository`, `services/highlight_service.py::HighlightService`. HTML okuyucusunda metin seçilip renk paletinden birine tıklanarak oluşturulur, silinebilir. Native PDF okuyucusunda (`PdfReaderView`, bkz. [[qml_arayuz]]) aynı highlight tablosu kullanılır ama oluşturma `bridge.reader.addPdfHighlight` (page-point koordinatlarından `start_index`/`length` hesaplar) üzerinden, düzenleme (`updateHighlightColor`) + silme reader içinden yapılabilir — manuel ekleme formu hiçbir zaman olmadı.
+Repo/servis: `repositories/highlight_repo.py::HighlightRepository`, `services/highlight_service.py::HighlightService`. HTML okuyucusunda metin seçilip renk paletinden birine tıklanarak oluşturulur, silinebilir. Native PDF okuyucusunda (`PdfReaderView`, bkz. [[qml_arayuz]]) aynı highlight tablosu kullanılır ama oluşturma `bridge.annotations.addPdfHighlight` (page-point koordinatlarından `start_index`/`length` hesaplar) üzerinden, düzenleme (`updateHighlightColor`) + silme reader içinden yapılabilir — manuel ekleme formu hiçbir zaman olmadı.
 
 ### `vocabulary` (Kelime Dağarcığı — 2026-07-06'da aktif edildi)
 | Alan | Tip | Not |

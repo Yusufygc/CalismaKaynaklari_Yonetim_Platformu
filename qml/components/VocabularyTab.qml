@@ -17,7 +17,7 @@ Item {
         clip: true
 
         model: {
-            var all = bridge.reader.vocabulary
+            var all = bridge.annotations.vocabulary
             if (!root.searchQuery) return all
             return all.filter(function(v) {
                 return TextUtils.foldTr(v.word).indexOf(root.searchQuery) !== -1 ||
@@ -94,7 +94,7 @@ Item {
                 iconName: "fa5s.trash"
                 iconSize: 11
                 tooltip: "Kelimeyi Sil"
-                onClicked: bridge.reader.deleteVocabulary(modelData.id)
+                onClicked: bridge.annotations.deleteVocabulary(modelData.id)
             }
         }
 

@@ -136,7 +136,7 @@ def test_knowledge_pool_bulk_delete_with_confirmation(qapp, bridge):
     resource = bridge.controllers.resources.load_resources_with_filters({})[0]
     for i in range(4):
         bridge.controllers.highlights.create_highlight(resource.id, f"alinti {i}", "#EAB308")
-    bridge.reader.reload_highlights()
+    bridge.annotations.reload_highlights()
     engine, window = open_window(qapp, bridge, "knowledge")
     view = find_item(window, lambda i: i.property("selectedCount") is not None)
 
@@ -148,12 +148,12 @@ def test_knowledge_pool_bulk_delete_with_confirmation(qapp, bridge):
 
     click(qapp, window, find_text(window, "Seçilenleri Sil (2)"))
     click(qapp, window, find_text(window, "Vazgeç"))  # onay penceresi: vazgec
-    assert len(bridge.reader.highlights) == 4
+    assert len(bridge.annotations.highlights) == 4
 
     click(qapp, window, find_text(window, "Seçilenleri Sil (2)"))
     click(qapp, window, find_text(window, "Sil (2)"))
 
-    assert len(bridge.reader.highlights) == 2
+    assert len(bridge.annotations.highlights) == 2
     assert view.property("selectedCount") == 0
     assert engine.captured_warnings == []
     del engine
@@ -164,7 +164,7 @@ def test_knowledge_pool_search_is_turkish_insensitive(qapp, bridge):
     resource = bridge.controllers.resources.load_resources_with_filters({})[0]
     for content in ("İstanbul'un tarihi", "Isparta gülleri", "Şeker üretimi"):
         bridge.controllers.highlights.create_highlight(resource.id, content, "#EAB308")
-    bridge.reader.reload_highlights()
+    bridge.annotations.reload_highlights()
     engine, window = open_window(qapp, bridge, "knowledge")
     view = find_item(window, lambda i: i.property("selectedCount") is not None)
 

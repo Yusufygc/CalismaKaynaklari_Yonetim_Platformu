@@ -163,7 +163,7 @@ Rectangle {
                     isCollapsed: root.isCollapsed
                     iconName: "fa5s.quote-right"
                     title: "Bilgi Havuzu"
-                    badgeText: (bridge.reader.highlights.length + bridge.reader.vocabulary.length).toString()
+                    badgeText: (bridge.annotations.highlights.length + bridge.annotations.vocabulary.length).toString()
                     isActive: root.activeNav === "knowledge"
                     onClicked: root.navSelected("knowledge")
                 }

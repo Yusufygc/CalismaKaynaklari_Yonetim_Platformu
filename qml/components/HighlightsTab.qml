@@ -35,7 +35,7 @@ Item {
     }
 
     function deleteSelected() {
-        bridge.reader.deleteHighlights(Object.keys(root.selectedIds).map(Number))
+        bridge.annotations.deleteHighlights(Object.keys(root.selectedIds).map(Number))
         root.clearSelection()
     }
 
@@ -54,7 +54,7 @@ Item {
 
     Item {
         id: selectionBar
-        visible: bridge.reader.highlights.length > 0
+        visible: bridge.annotations.highlights.length > 0
         width: parent.width
         height: visible ? 44 : 0
 
@@ -123,7 +123,7 @@ Item {
         clip: true
 
         model: {
-            var all = bridge.reader.highlights
+            var all = bridge.annotations.highlights
             return all.filter(function(h) {
                 if (root.labelFilter !== "" && h.label !== root.labelFilter) return false
                 if (!root.searchQuery) return true
@@ -146,7 +146,7 @@ Item {
             }
 
             Repeater {
-                model: bridge.reader.highlightLabels
+                model: bridge.annotations.highlightLabels
                 delegate: AppFilterChip {
                     required property var modelData
                     text: modelData.label
@@ -298,7 +298,7 @@ Item {
                         iconName: "fa5s.trash"
                         iconSize: 11
                         tooltip: "Alıntıyı Sil"
-                        onClicked: bridge.reader.deleteHighlight(modelData.id)
+                        onClicked: bridge.annotations.deleteHighlight(modelData.id)
                     }
                 }
             }

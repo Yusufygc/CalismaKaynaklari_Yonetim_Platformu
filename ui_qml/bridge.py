@@ -2,6 +2,8 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from sqlalchemy.orm import Session
 
 from core.events import event_bus
+from ui_qml.bridges.annotations_bridge import AnnotationsBridge
+from ui_qml.bridges.citations_bridge import CitationsBridge
 from ui_qml.bridges.discovery_bridge import DiscoveryBridge
 from ui_qml.bridges.library_bridge import LibraryBridge
 from ui_qml.bridges.market_bridge import MarketBridge
@@ -19,7 +21,9 @@ class QmlBridge(QObject):
     dort alt-bridge'e bolunmustur ve QML'e sabit property olarak sunulur:
 
     - `bridge.library`  -- kaynak listesi/filtre, detay cekmecesi, kaynak ekle-duzenle-sil, PDF iceri aktarma
-    - `bridge.reader`   -- okuyucu, alinti/kelime/not, PDF anahati, atif ve OpenAlex bilgisi
+    - `bridge.reader`   -- okuyucuyu ac/kapat, PDF indirme/anahat, Markdown disa aktarim
+    - `bridge.annotations` -- alinti, kelime havuzu, PDF sayfa notlari
+    - `bridge.citations` -- atif metni, OpenAlex bilgisi, referans/atif listeleri
     - `bridge.market`   -- Makale Market aramasi, sayfalama, gecmis, kaydetme/disa aktarma
     - `bridge.discovery` -- Market kart kesfi (referans/atif/benzer/yazar) ve kutuphaneden oneriler
     - `bridge.searches` -- kayitli aramalar ve yeni yayin takibi
@@ -60,6 +64,8 @@ class QmlBridge(QObject):
         self._library = LibraryBridge(self._ctx, self)
         self._reader = ReaderBridge(self._ctx, self._library, self.setCurrentView, self)
         search_state = SavedSearchState(self)
+        self._annotations = AnnotationsBridge(self._ctx, self._reader, self)
+        self._citations = CitationsBridge(self._ctx, self._library, self._reader, self)
         self._market = MarketBridge(self._ctx, self._library, search_state, self)
         self._discovery = DiscoveryBridge(self._ctx, self._library, self)
         self._searches = SearchesBridge(self._ctx, self._market, search_state, self)
@@ -77,6 +83,14 @@ class QmlBridge(QObject):
     @Property(QObject, constant=True)
     def reader(self) -> QObject:
         return self._reader
+
+    @Property(QObject, constant=True)
+    def annotations(self) -> QObject:
+        return self._annotations
+
+    @Property(QObject, constant=True)
+    def citations(self) -> QObject:
+        return self._citations
 
     @Property(QObject, constant=True)
     def market(self) -> QObject:
@@ -104,7 +118,7 @@ class QmlBridge(QObject):
 
     def refresh_all(self) -> None:
         self._library.reload()
-        for child in (self._settings, self._reader, self._searches):
+        for child in (self._settings, self._annotations, self._searches):
             child.refresh()
 
     # ------------------------------------------------------------------ #

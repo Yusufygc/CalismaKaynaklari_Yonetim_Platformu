@@ -25,8 +25,8 @@ Rectangle {
     function ensureRelatedLoaded() {
         if (activeTab !== 3 || !resource || !resource.id || paperOpenAlexId === "")
             return
-        if (bridge.reader.relatedPapers.openalexId !== paperOpenAlexId)
-            bridge.reader.loadRelatedPapers(resource.id)
+        if (bridge.citations.relatedPapers.openalexId !== paperOpenAlexId)
+            bridge.citations.loadRelatedPapers(resource.id)
     }
 
     // Anahat (içindekiler) arka planda okunur; yüklenene kadar anahtar yoktur.
@@ -245,7 +245,7 @@ Rectangle {
                     }
 
                     Repeater {
-                        model: bridge.reader.highlightLabels
+                        model: bridge.annotations.highlightLabels
                         AppFilterChip {
                             required property var modelData
                             text: modelData.label
@@ -379,7 +379,7 @@ Rectangle {
                 anchors.fill: parent
                 visible: root.activeTab === 3
 
-                readonly property var related: bridge.reader.relatedPapers
+                readonly property var related: bridge.citations.relatedPapers
                 readonly property var current: related[root.relatedKind]
 
                 // OpenAlex kimliği yoksa: önce bilgi getirilmeli
@@ -404,7 +404,7 @@ Rectangle {
                         text: "OpenAlex'ten Getir"
                         iconName: "fa5s.cloud-download-alt"
                         variant: "primary"
-                        onClicked: if (root.resource && root.resource.id) bridge.reader.fetchPaperMetadata(root.resource.id)
+                        onClicked: if (root.resource && root.resource.id) bridge.citations.fetchPaperMetadata(root.resource.id)
                     }
                 }
 

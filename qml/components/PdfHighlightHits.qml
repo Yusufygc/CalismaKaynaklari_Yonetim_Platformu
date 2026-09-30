@@ -125,9 +125,9 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             ToolTip.visible: containsMouse
-                            ToolTip.text: Highlights.labelForColor(parent.modelData, bridge.reader.highlightLabels)
+                            ToolTip.text: Highlights.labelForColor(parent.modelData, bridge.annotations.highlightLabels)
                             onClicked: {
-                                bridge.reader.updateHighlightColor(editHighlightPopover.highlightId, parent.modelData)
+                                bridge.annotations.updateHighlightColor(editHighlightPopover.highlightId, parent.modelData)
                                 editHighlightPopover.visible = false
                             }
                         }
@@ -149,7 +149,7 @@ Item {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            bridge.reader.deleteHighlight(editHighlightPopover.highlightId)
+                            bridge.annotations.deleteHighlight(editHighlightPopover.highlightId)
                             editHighlightPopover.visible = false
                         }
                     }
@@ -203,7 +203,7 @@ Item {
                     variant: "primary"
                     implicitHeight: 28
                     onClicked: {
-                        bridge.reader.updateHighlightComment(editHighlightPopover.highlightId, editCommentInput.text)
+                        bridge.annotations.updateHighlightComment(editHighlightPopover.highlightId, editCommentInput.text)
                         editHighlightPopover.visible = false
                     }
                 }

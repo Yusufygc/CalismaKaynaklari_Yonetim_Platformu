@@ -79,12 +79,16 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   └── saved_search_controller.py
 │
 ├── ui_qml/                     # Python ↔ QML köprü katmanı
-│   ├── bridge.py               # QmlBridge: ince kabuk / composition root (tema, sayfa, sade mod, toast) + 4 alt-bridge
+│   ├── bridge.py               # QmlBridge: ince kabuk / composition root (tema, sayfa, sade mod, toast) + 8 alt-bridge
 │   ├── context.py              # BridgeContext + Controllers (DI): controller'lar, thread pool, notifier, PDF/tam metin yardımcıları
-│   ├── bridges/                # İş alanı köprüleri (QML: bridge.library / reader / market / settings)
-│   │   ├── library_bridge.py   # Kaynak listesi/filtre, çekmece, ekle-düzenle-sil, yerel PDF içe aktarma, istatistik
-│   │   ├── reader_bridge.py    # Okuyucu, alıntı/kelime/not, PDF anahat, atıf, OpenAlex bilgisi, Markdown dışa aktarım
-│   │   ├── market_bridge.py    # Makale Market, keşif/öneri, toplu kaydet/dışa aktar, kayıtlı aramalar
+│   ├── bridges/                # İş alanı köprüleri (QML: bridge.library / reader / annotations / citations / market / discovery / searches / settings)
+│   │   ├── library_bridge.py   # Kaynak listesi/filtre, çekmece, ekle-düzenle-sil (yardımcılar: resource_form, importers, library_events)
+│   │   ├── reader_bridge.py    # Okuyucuyu aç/kapat, PDF indirme/anahat, Markdown dışa aktarım
+│   │   ├── annotations_bridge.py # Alıntı (HTML/PDF), kelime havuzu, PDF sayfa notları
+│   │   ├── citations_bridge.py # Atıf metni, OpenAlex bilgisi, referans/atıf yapanlar
+│   │   ├── market_bridge.py    # Makale Market araması/sayfalama/geçmiş, kaydet/dışa aktar (yardımcı: market_saver)
+│   │   ├── discovery_bridge.py # Market kart keşfi (referans/atıf/benzer/yazar) ve kütüphaneden öneriler
+│   │   ├── searches_bridge.py  # Kayıtlı aramalar ve yeni yayın takibi (durum: saved_search_state)
 │   │   └── settings_bridge.py  # Kategori ve etiket yönetimi
 │   ├── pdf_files.py            # PdfFileManager: yerel PDF URL/durum, QPdfDocument önbelleği, indirme, seçim, temizlik
 │   ├── full_text.py            # FullTextExtractor: tam metin çıkarımı (arka plan)

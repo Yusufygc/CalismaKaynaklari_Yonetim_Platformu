@@ -63,7 +63,7 @@ Item {
                                 }
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: "Alıntılar (" + bridge.reader.highlights.length + ")"
+                                    text: "Alıntılar (" + bridge.annotations.highlights.length + ")"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSm
                                     font.weight: root.activeTab === 0 ? Font.DemiBold : Font.Normal
@@ -98,7 +98,7 @@ Item {
                                 }
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: "Kelimeler (" + bridge.reader.vocabulary.length + ")"
+                                    text: "Kelimeler (" + bridge.annotations.vocabulary.length + ")"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSm
                                     font.weight: root.activeTab === 1 ? Font.DemiBold : Font.Normal

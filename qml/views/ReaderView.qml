@@ -281,7 +281,7 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     if (root.resource) {
-                                        bridge.reader.addHighlight(root.resource.id, textContent.selectedText, modelData, -1, -1, -1)
+                                        bridge.annotations.addHighlight(root.resource.id, textContent.selectedText, modelData, -1, -1, -1)
                                         textContent.deselect()
                                     }
                                 }
@@ -366,7 +366,7 @@ Item {
 
         onAccepted: {
             if (root.resource && translationInput.text.trim()) {
-                bridge.reader.addVocabulary(root.resource.id, vocabModal.word, translationInput.text.trim())
+                bridge.annotations.addVocabulary(root.resource.id, vocabModal.word, translationInput.text.trim())
                 translationInput.text = ""
                 textContent.deselect()
             }

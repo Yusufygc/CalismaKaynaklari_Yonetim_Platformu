@@ -44,7 +44,7 @@ def test_add_pdf_highlight_stores_text_and_char_position(pdf_env):
     bridge, resource, url, doc = pdf_env
     selection = _selection_for(doc, "tilki")
 
-    bridge.reader.addPdfHighlight(resource.id, url, selection, "#EAB308")
+    bridge.annotations.addPdfHighlight(resource.id, url, selection, "#EAB308")
 
     (highlight,) = bridge.controllers.highlights.load_resource_highlights(resource.id)
     assert highlight.content.strip() == "tilki"
@@ -57,7 +57,7 @@ def test_add_pdf_highlight_stores_text_and_char_position(pdf_env):
 def test_stored_highlight_geometry_matches_the_selected_word(pdf_env):
     bridge, resource, url, doc = pdf_env
     selection = _selection_for(doc, "kopegin")
-    bridge.reader.addPdfHighlight(resource.id, url, selection, "#EAB308")
+    bridge.annotations.addPdfHighlight(resource.id, url, selection, "#EAB308")
     bridge.reader.openReader(resource.id)
 
     (item,) = bridge.reader.currentReaderResource["highlights"]
@@ -72,7 +72,7 @@ def test_add_pdf_vocabulary_stores_sentence_context(pdf_env):
     bridge, resource, url, doc = pdf_env
     selection = _selection_for(doc, "tilki")
 
-    bridge.reader.addPdfVocabulary(resource.id, url, selection, "fox")
+    bridge.annotations.addPdfVocabulary(resource.id, url, selection, "fox")
 
     (vocab,) = bridge.controllers.resources.get_resource(resource.id).vocabulary
     assert vocab.word == "tilki" and vocab.translation == "fox"
@@ -86,8 +86,8 @@ def test_selection_over_blank_area_is_ignored(pdf_env):
     # Metin ust kenardan ~92pt asagida basliyor; 500pt asagisi bos alandir.
     blank = {"page": 0, "fromX": 300.0, "fromY": 500.0, "toX": 400.0, "toY": 500.0}
 
-    bridge.reader.addPdfHighlight(resource.id, url, blank, "#EAB308")
-    bridge.reader.addPdfVocabulary(resource.id, url, blank, "x")
+    bridge.annotations.addPdfHighlight(resource.id, url, blank, "#EAB308")
+    bridge.annotations.addPdfVocabulary(resource.id, url, blank, "x")
 
     assert bridge.controllers.highlights.load_resource_highlights(resource.id) == []
     assert bridge.controllers.resources.get_resource(resource.id).vocabulary == []
@@ -99,7 +99,7 @@ def test_unreadable_pdf_is_ignored(qapp, session, tmp_path):
                                                 "category_id": None, "priority": 2})
     selection = {"page": 0, "fromX": 1.0, "fromY": 1.0, "toX": 2.0, "toY": 1.0}
 
-    bridge.reader.addPdfHighlight(resource.id, (tmp_path / "yok.pdf").as_uri(), selection, "#EAB308")
+    bridge.annotations.addPdfHighlight(resource.id, (tmp_path / "yok.pdf").as_uri(), selection, "#EAB308")
 
     assert bridge.controllers.highlights.load_resource_highlights(resource.id) == []
 
@@ -108,9 +108,9 @@ def test_html_reader_highlight_position_map(qapp, session):
     bridge = QmlBridge(session)
     resource = bridge.controllers.resources.add_resource({"title": "Web", "url": "https://x.org/a", "category_id": None, "priority": 2})
 
-    bridge.reader.addHighlight(resource.id, "konumsuz", "#EAB308")  # HTML okuyucu: konum yok
-    bridge.reader.addHighlight(resource.id, "konumlu", "#EAB308", {"page": 1, "startIndex": 5, "length": 7})
-    bridge.reader.addHighlight(resource.id, "eksi", "#EAB308", {"page": -1, "startIndex": -1, "length": -1})
+    bridge.annotations.addHighlight(resource.id, "konumsuz", "#EAB308")  # HTML okuyucu: konum yok
+    bridge.annotations.addHighlight(resource.id, "konumlu", "#EAB308", {"page": 1, "startIndex": 5, "length": 7})
+    bridge.annotations.addHighlight(resource.id, "eksi", "#EAB308", {"page": -1, "startIndex": -1, "length": -1})
 
     by_content = {h.content: h for h in bridge.controllers.highlights.load_resource_highlights(resource.id)}
     assert by_content["konumsuz"].page_number is None

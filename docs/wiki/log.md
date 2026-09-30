@@ -4,6 +4,18 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] LINT | "Bilinçli kalanlar" kapandı: hepsi çözüldü ya da ölçümle gerekçelendi
+
+Ayarlar düzenleme arayüzü eklendi; `add_new_resource` ve CC 11-14 fonksiyonlar parçalandı (CC>10 = 0); tüm sınıflar ≤20 metot (sekiz alt-bridge); `InspectorDrawer.qml` 510 → 252; PDF popover yarışı düzeltildi; OpenAlex arXiv DOI'leri başlıkla aranır; `QPdfDocument.load` ölçüldü (≈35 ms, 3.000 sayfa/63 MB) ve UI thread'inde bırakıldı (gerekçeli). 496 test geçer, kapsam %87,6 (CI eşiği 84).
+
+---
+
+## [2026-09-30] REFACTOR | ReaderBridge 49 → 19 metot: alıntı/kelime/not ve atıf/OpenAlex ayrı alt-bridge'lere bölündü; tüm sınıflar ≤20 metot
+
+Yeni QML yolları: `bridge.annotations.*` (`highlights`, `vocabulary`, `highlightLabels`, alıntı/kelime/PDF notu slotları; `AnnotationsBridge`) ve `bridge.citations.*` (`relatedPapers`, `citationText`, `copyCitation`, `fetchPaperMetadata`, `loadRelatedPapers`; `CitationsBridge`). `bridge.reader.*` okuyucuyu aç/kapat, PDF indirme/anahat, Markdown dışa aktarım olarak kaldı; açık kaynak tazeleme için `refresh_current` + yeni `refresh_if_open`. QML/testler/wiki eşleme betiğiyle güncellendi. Sonuç (`audit_metrics.py`): dosya >500 satır 0, sınıf >300 satır 0, sınıf >20 metot 0, CC >10 0, fonksiyon >50 satır 0, parametre >5 0. Sekiz alt-bridge: library, reader, annotations, citations, market, discovery, searches, settings. Not: `test_market_bulk_selection_and_save_by_real_clicks` tam koşuda bir kez zamanlama kaynaklı düştü (tek başına ve sonraki koşularda geçti; sahte iş parçacığı havuzu + `pump` süresi).
+
+---
+
 ## [2026-09-30] REFACTOR | MarketBridge 42 → 19 metot: kesif ve kayıtlı aramalar ayrı alt-bridge'lere bölündü
 
 Yeni QML yolları: `bridge.discovery.*` (`marketDiscovery`, `marketSuggestions`, `loadDiscovery`, `loadLibrarySuggestions` + değişim sinyalleri; `DiscoveryBridge`) ve `bridge.searches.*` (`savedSearches`, `activeSavedSearchId`, `saveSearch`, `deleteSavedSearch`, `runSavedSearch`, `checkSavedSearches`, `savedSearchApplied` + sinyaller; `SearchesBridge`). `bridge.market.*` arama/sayfalama/geçmiş/kaydet/dışa aktar olarak kaldı. Çalışan kayıtlı arama durumu `ui_qml/saved_search_state.py::SavedSearchState` ile paylaşılır (market ↔ searches doğrudan birbirini çağırmaz; `SearchesBridge` `MarketBridge.start_search/recent_paper_ids` kullanır); kaydetme mantığı `ui_qml/market_saver.py::MarketSaver`. QML ve testler eşleme betiğiyle güncellendi; sözleşme testi (`children` kümesi) yeni yolları kapsar.

@@ -134,7 +134,7 @@ Item {
                     variant: "primary"
                     onClicked: {
                         if (newNoteInput.text.trim().length > 0 && root.resource) {
-                            bridge.reader.addPdfNote(root.resource.id, newNotePopover.pendingPage,
+                            bridge.annotations.addPdfNote(root.resource.id, newNotePopover.pendingPage,
                                                newNotePopover.pendingX, newNotePopover.pendingY,
                                                newNoteInput.text.trim())
                         }
@@ -203,7 +203,7 @@ Item {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            bridge.reader.deletePdfNote(editNotePopover.noteId)
+                            bridge.annotations.deletePdfNote(editNotePopover.noteId)
                             editNotePopover.visible = false
                         }
                     }
@@ -213,7 +213,7 @@ Item {
                     variant: "primary"
                     onClicked: {
                         if (editNoteInput.text.trim().length > 0) {
-                            bridge.reader.updatePdfNote(editNotePopover.noteId, editNoteInput.text.trim())
+                            bridge.annotations.updatePdfNote(editNotePopover.noteId, editNoteInput.text.trim())
                         }
                         editNotePopover.visible = false
                     }
