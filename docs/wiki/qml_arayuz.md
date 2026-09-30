@@ -63,6 +63,7 @@ python main.py
    - **Toplu silme (2026-09-30):** Alıntı kartlarında seçim kutusu; üstte "Tümünü seç" (görünen/filtrelenmiş alıntılar) / "Seçimi temizle" / "Seçilenleri Sil (N)". Silmeden önce onay penceresi ("N alıntı kalıcı olarak silinecek"). Etiket filtresi, arama ya da sekme değişince seçim bırakılır — görünmeyen alıntı yanlışlıkla silinmesin.
 6. **Ayarlar (SettingsView):**
    - Kategori (renk paletli) ve Etiket yönetimi.
+   - Satır içi düzenleme (2026-09-30): `CategoryRow` (ad + `ColorPalette`), `TagPill` (ad); Enter kaydeder, Esc iptal; hata olursa düzenleme açık kalır. Silme `ConfirmDialog` ile onaylanır (Bilgi Havuzu toplu silme de aynı bileşeni kullanır). Düzenleme alanlarında Esc için `Keys.onShortcutOverride` şart: `main.qml`'deki genel Esc kısayolu aksi halde yutar.
 7. **Makale Market (ArticleMarketView, 2026-09-28):**
    - Konu bazlı akademik makale keşfi — `services/paper_market_service.py::PaperMarketService`, [OpenAlex Works API](https://api.openalex.org) üzerinden (ücretsiz, API key gerektirmiyor).
    - Üç sonuç listesi: **En Güncel** (`sort=publication_date:desc`), **En Popüler** (OpenAlex relevance sıralaması, sort parametresi verilmez), **En Çok Atıf Alan** (`sort=cited_by_count:desc`), her biri 10 sonuç.

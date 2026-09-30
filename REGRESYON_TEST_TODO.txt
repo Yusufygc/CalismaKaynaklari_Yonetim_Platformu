@@ -36,6 +36,10 @@ Bir sey bozuk cikarsa: ekran goruntusu + "python -X faulthandler main.py" ciktis
 [ ] Kategori ekle/sil, etiket ekle/sil. Ayni isimle tekrar eklemede hata toast'i cikiyor mu?
 [ ] Bir kategoriye filtre uygulayip o kategoriyi sil: vitrin filtresi sifirlaniyor, tum kaynaklar geri geliyor mu?
 [ ] Acik cekmeceyle bir kategori/etiket adini degistir: cekmece ve kartlar yeni adi gosteriyor mu?
+[ ] Kategori satirinda kalem: ad ve renk degistir, Kaydet (ya da Enter). Liste ve vitrin yeni adi/rengi gosteriyor mu?
+[ ] Duzenlerken Esc: duzenleme kapaniyor, cekmece/modal kapanmiyor, kayit degismiyor mu?
+[ ] Var olan bir kategori/etiket adini ver: hata toast'i, duzenleme acik kalmali.
+[ ] Etiket hapinda kalem: yeniden adlandir. Sil (kategori/etiket): onay penceresi cikiyor, Vazgec silmiyor mu?
 
 5. OKUYUCU (HTML makale)
 ------------------------

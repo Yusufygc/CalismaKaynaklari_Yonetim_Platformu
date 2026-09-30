@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] FEAT | Ayarlar: kategori/etiket satır içi düzenleme ve onaylı silme
+
+`SettingsView` artık kategori adı + rengini (`CategoryRow`, kalem ikonu; ad alanı + `ColorPalette` + Kaydet/İptal) ve etiket adını (`TagPill`, satır içi alan) düzenletir; Enter kaydeder, Esc iptal eder. Kayıt `bridge.settings.updateCategory/updateTag` ile yapılır; başarıda köprü listeyi yeniler ve satır görünüm moduna döner, hata (yinelenen ad vb.) durumunda düzenleme açık kalır ve mevcut hata toast'ı çıkar. Silme artık onay ister: ortak `ConfirmDialog` bileşeni (`HighlightsTab` toplu silme onayı da bunu kullanır, tekrar kaldırıldı). **Tuzak:** `main.qml`'deki genel `Shortcut { sequence: "Esc" }` metin alanındaki `Keys.onEscapePressed`'ı geçersiz kılar; düzenleme alanlarına `Keys.onShortcutOverride` ile Esc'i yakalatmak gerekir. Testler: `tests/test_qml/test_settings_edit_flow.py` (gerçek fare/klavye: yeniden adlandır+renk, yinelenen ad, Esc, etiket, onaylı silme).
+
+---
+
 ## [2026-09-30] LINT | Denetim düzeltmelerinin kapanışı: önce/sonra ölçümü ve kalan işler
 
 V2 denetim raporundaki 18 bulgunun çözümü tamamlandı (15 adım, her biri ayrı commit). **Önce → sonra:** commit'siz dosya 93+ → 0; Python dosyası >500 satır: 1 (`bridge.py` 1.737) → 0 (en büyüğü 500); sınıf >300 satır: `QmlBridge` 1.677 + `ResourceService` 308 → yalnızca üç alt-bridge (391/454/476; `ResourceService` ≤300); import >25: 1 → 0; fonksiyon >50 satır: 8 → 1 (`add_new_resource` 52); CC >10: 13 → 8 (hepsi 11-14); parametre >5: 7 → 0; QML >500 satır: 4 → 1 (`InspectorDrawer` 510, bilinçli); test: 284 (2 atlanan, QML testsiz) → 474 (0 atlanan; QML derleme/sözleşme/fare akışları dahil); Python kapsamı: ölçülmemişti → %86 (CI eşiği 84); wiki kırık link 7 → 0; kullanılmayan bağımlılık/kilit uyumsuzluğu giderildi, `pip-audit`: bilinen zafiyet yok. **Bilinçli kalanlar (kapsam dışı/gerekçeli):** sınıf başına metot eşiği (20) dört sınıfta aşılıyor (`ResourceService` 22; `LibraryBridge` 34, `MarketBridge` 42, `ReaderBridge` 47 — QML API yüzeyini oluşturan slot/property'ler); `add_new_resource` 52 satır ve 8 fonksiyonda CC 11-14; `InspectorDrawer.qml` 510 satır; `QPdfDocument.load` UI thread'inde; `SettingsView`'da kategori/etiket düzenleme arayüzü yok (backend `updateCategory/updateTag` var); PDF'te başka popover açıkken alıntıya tıklamanın popover'ı kapatması (eski davranış); OpenAlex'te arXiv DOI'leri bulunmuyor. Manuel test için `REGRESYON_TEST_TODO.txt`. 474 test geçti.

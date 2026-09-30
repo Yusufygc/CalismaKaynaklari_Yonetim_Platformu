@@ -10,6 +10,32 @@ Item {
     property int activeTab: 0 // 0: Kategoriler, 1: Etiketler
     property string newCategoryColor: Theme.accent
 
+    // Silme onayı bekleyen öğe: kind "category" | "tag"
+    property string pendingKind: ""
+    property int pendingId: 0
+    property string pendingName: ""
+
+    function askDelete(kind, id, name) {
+        pendingKind = kind
+        pendingId = id
+        pendingName = name
+        confirmDialog.open()
+    }
+
+    function confirmDelete() {
+        if (pendingKind === "category")
+            bridge.settings.deleteCategory(pendingId)
+        else if (pendingKind === "tag")
+            bridge.settings.deleteTag(pendingId)
+    }
+
+    ConfirmDialog {
+        id: confirmDialog
+        title: root.pendingKind === "category" ? "Kategoriyi Sil" : "Etiketi Sil"
+        message: "\"" + root.pendingName + "\" kalıcı olarak silinecek. Bu işlem geri alınamaz."
+        onConfirmed: root.confirmDelete()
+    }
+
     Column {
         anchors.fill: parent
         spacing: 0
@@ -194,28 +220,10 @@ Item {
                                 }
                             }
 
-                            // Renk Paleti Seçimi
-                            Row {
+                            ColorPalette {
                                 anchors.verticalCenter: parent.verticalCenter
-                                spacing: 6
-
-                                Repeater {
-                                    model: Theme.categoryPalette
-                                    Rectangle {
-                                        width: 22
-                                        height: 22
-                                        radius: 11
-                                        color: modelData
-                                        border.width: String(root.newCategoryColor).toLowerCase() === String(modelData).toLowerCase() ? 2 : 0
-                                        border.color: Theme.textOnAccent
-
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.newCategoryColor = modelData
-                                        }
-                                    }
-                                }
+                                selectedColor: root.newCategoryColor
+                                onColorPicked: (color) => root.newCategoryColor = color
                             }
 
                         }
@@ -252,58 +260,9 @@ Item {
 
                         Repeater {
                             model: bridge.settings.categories
-                            Rectangle {
-                                width: parent.width
-                                height: 44
-                                radius: Theme.radiusSm
-                                color: Theme.bgElevated
-                                border.width: 1
-                                border.color: Theme.borderSubtle
-
-                                Row {
-                                    anchors.left: parent.left
-                                    anchors.right: deleteCategoryButton.left
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.leftMargin: 16
-                                    anchors.rightMargin: 12
-                                    spacing: 12
-
-                                    Rectangle {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 10
-                                        height: 10
-                                        radius: 5
-                                        color: modelData.color_hex || Theme.fallbackCategoryColor
-                                    }
-
-                                    Text {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: modelData.name
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontBase
-                                        font.weight: Font.Medium
-                                        color: Theme.textPrimary
-                                    }
-
-                                    AppBadge {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: modelData.resource_count + " kaynak"
-                                        badgeColor: Theme.bgSurface
-                                        borderColor: Theme.borderSubtle
-                                        textColor: Theme.textMuted
-                                    }
-                                }
-
-                                AppIconButton {
-                                    id: deleteCategoryButton
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 16
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    iconName: "fa5s.trash"
-                                    iconSize: 12
-                                    tooltip: "Kategoriyi Sil"
-                                    onClicked: bridge.settings.deleteCategory(modelData.id)
-                                }
+                            CategoryRow {
+                                category: modelData
+                                onDeleteRequested: (id, name) => root.askDelete("category", id, name)
                             }
                         }
                     }
@@ -403,47 +362,9 @@ Item {
 
                         Repeater {
                             model: bridge.settings.tags
-                            Rectangle {
-                                implicitWidth: tagRow.implicitWidth + 20
-                                implicitHeight: 32
-                                radius: Theme.radiusPill
-                                color: Theme.bgElevated
-                                border.width: 1
-                                border.color: Theme.borderSubtle
-
-                                Row {
-                                    id: tagRow
-                                    anchors.centerIn: parent
-                                    spacing: 8
-
-                                    Text {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: "#" + modelData.name
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSm
-                                        font.weight: Font.Medium
-                                        color: Theme.textPrimary
-                                    }
-
-                                    // Kaynak sayısı
-                                    Text {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: "(" + modelData.resource_count + ")"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 10
-                                        color: Theme.textMuted
-                                    }
-
-                                    AppIconButton {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        iconName: "fa5s.times"
-                                        iconSize: 10
-                                        implicitWidth: 18
-                                        implicitHeight: 18
-                                        tooltip: "Etiketi Sil"
-                                        onClicked: bridge.settings.deleteTag(modelData.id)
-                                    }
-                                }
+                            TagPill {
+                                tag: modelData
+                                onDeleteRequested: (id, name) => root.askDelete("tag", id, name)
                             }
                         }
                     }

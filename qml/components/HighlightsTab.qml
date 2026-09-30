@@ -44,63 +44,12 @@ Item {
     onSearchQueryChanged: clearSelection()
     onVisibleChanged: if (!visible) clearSelection()  // Sekme değişince seçim bırakılır
 
-    Popup {
+    ConfirmDialog {
         id: confirmDeletePopup
-        anchors.centerIn: Overlay.overlay
-        width: 360
-        padding: 20
-        modal: true
-        focus: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        background: Rectangle {
-            color: Theme.popoverBg
-            radius: Theme.radiusMd
-            border.width: 1
-            border.color: Theme.borderStrong
-        }
-
-        contentItem: Column {
-            spacing: 14
-
-            Text {
-                text: "Alıntıları Sil"
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontMd
-                font.weight: Font.Bold
-                color: Theme.textPrimary
-            }
-
-            Text {
-                width: parent.width
-                wrapMode: Text.Wrap
-                text: root.selectedCount + " alıntı kalıcı olarak silinecek. Bu işlem geri alınamaz."
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSm
-                color: Theme.textSecondary
-            }
-
-            Row {
-                anchors.right: parent.right
-                spacing: 8
-
-                AppButton {
-                    text: "Vazgeç"
-                    variant: "ghost"
-                    onClicked: confirmDeletePopup.close()
-                }
-
-                AppButton {
-                    text: "Sil (" + root.selectedCount + ")"
-                    iconName: "fa5s.trash"
-                    variant: "danger"
-                    onClicked: {
-                        confirmDeletePopup.close()
-                        root.deleteSelected()
-                    }
-                }
-            }
-        }
+        title: "Alıntıları Sil"
+        message: root.selectedCount + " alıntı kalıcı olarak silinecek. Bu işlem geri alınamaz."
+        confirmText: "Sil (" + root.selectedCount + ")"
+        onConfirmed: root.deleteSelected()
     }
 
     Item {
