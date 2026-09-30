@@ -42,25 +42,28 @@ class ExportService:
     @staticmethod
     def _highlights_section(resource: Resource, section: str, subsection: str) -> list[str]:
         """Alıntılar, akademik anlam etiketine göre gruplu (sayfa/konum sırasıyla)."""
-        highlights = sorted(
+        grouped = ExportService._highlights_by_label(resource)
+        if not grouped:
+            return []
+        lines = [f"{section} Alıntılar", ""]
+        for label, items in grouped.items():
+            lines += [f"{subsection} {label} ({len(items)})", ""]
+            lines += [line for item in items for line in ExportService._highlight_lines(item)]
+            lines.append("")
+        return lines
+
+    @staticmethod
+    def _highlights_by_label(resource: Resource) -> dict[str, list]:
+        """Etiket sirasiyla (bos etiketler atlanir) gruplu, sayfa/konum sirali alintilar."""
+        ordered = sorted(
             resource.highlights or [],
             key=lambda x: (x.page_number if x.page_number is not None else 10**6, x.start_index or 0),
         )
-        if not highlights:
-            return []
         label_order = [entry["label"] for entry in HIGHLIGHT_LABELS] + ["Genel"]
         grouped: dict[str, list] = {label: [] for label in label_order}
-        for highlight in highlights:
+        for highlight in ordered:
             grouped[label_for_color(highlight.color)].append(highlight)
-
-        lines = [f"{section} Alıntılar", ""]
-        for label in label_order:
-            items = grouped[label]
-            if items:
-                lines += [f"{subsection} {label} ({len(items)})", ""]
-                lines += [line for item in items for line in ExportService._highlight_lines(item)]
-                lines.append("")
-        return lines
+        return {label: items for label, items in grouped.items() if items}
 
     @staticmethod
     def _highlight_lines(item) -> list[str]:

@@ -112,7 +112,7 @@ def _display_fields(resource: Resource) -> dict:
     }
 
 
-def serialize_resource(resource: Resource, *, highlights: list[dict], pdf_file_url: str, pdf_state: str) -> dict:
+def _core_fields(resource: Resource) -> dict:
     return {
         "id": resource.id,
         "title": resource.title or "",
@@ -124,13 +124,25 @@ def serialize_resource(resource: Resource, *, highlights: list[dict], pdf_file_u
         "content": resource.content or "",
         "fullText": resource.full_text or "",
         "readingMinutes": resource.reading_minutes or 0,
+        "createdAt": format_local_datetime(resource.created_at),
+    }
+
+
+def _relation_fields(resource: Resource) -> dict:
+    return {
         "tags": [{"id": tag.id, "name": tag.name} for tag in resource.tags],
-        "highlights": highlights,
         "vocabulary": [serialize_vocabulary_entry(v) for v in (resource.vocabulary or [])],
         "pdfNotes": [serialize_pdf_note(n) for n in (resource.pdf_notes or [])],
+    }
+
+
+def serialize_resource(resource: Resource, *, highlights: list[dict], pdf_file_url: str, pdf_state: str) -> dict:
+    return {
+        **_core_fields(resource),
+        **_relation_fields(resource),
+        "highlights": highlights,
         "pdfFileUrl": pdf_file_url,
         "pdfState": pdf_state,
-        "createdAt": format_local_datetime(resource.created_at),
         **_category_fields(resource),
         **_display_fields(resource),
     }

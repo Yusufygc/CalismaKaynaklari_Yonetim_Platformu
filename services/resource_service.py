@@ -122,29 +122,11 @@ class ResourceService:
     # Okuma
     # ------------------------------------------------------------------ #
 
-    def get_all(self) -> list[Resource]:
-        return self._resource_repo.get_all()
-
     def get_by_id(self, resource_id: int) -> Resource:
         resource = self._resource_repo.get_by_id(resource_id)
         if resource is None:
             raise ResourceNotFoundError(f"Kaynak bulunamadi: id={resource_id}")
         return resource
-
-    def get_by_status(self, status: ResourceStatus) -> list[Resource]:
-        return self._resource_repo.get_by_status(status)
-
-    def search(self, keyword: str) -> list[Resource]:
-        return self._resource_repo.search_by_keyword(keyword)
-
-    def get_by_category(self, category_id: int) -> list[Resource]:
-        return self._resource_repo.get_by_category(category_id)
-
-    def get_urls_only(self) -> list[Resource]:
-        return self._resource_repo.get_urls_only()
-
-    def get_favorites(self) -> list[Resource]:
-        return self._resource_repo.get_favorites()
 
     def query_resources(self, filters: dict) -> list[Resource]:
         return self._resource_repo.query_filtered(_resource_filter_from_dict(filters))
@@ -154,38 +136,7 @@ class ResourceService:
     # ------------------------------------------------------------------ #
 
     def add_new_resource(self, payload: ResourceCreateSchema) -> Resource:
-        title = payload.title.strip()
-        if not title:
-            raise ValidationError("Baslik bos olamaz.")
-
-        url = payload.url
-        if url:
-            url = url.strip()
-            _validate_url(url)
-
-        category_id = payload.category_id
-        if category_id is not None:
-            if self._category_repo.get_by_id(category_id) is None:
-                raise ResourceNotFoundError(f"Kategori bulunamadi: id={category_id}")
-        else:
-            category_id = self._auto_category_id(url)
-
-        priority = payload.priority
-        if priority not in (1, 2, 3):
-            raise ValidationError("Oncelik degeri 1, 2 veya 3 olmalidir.")
-
-        initial_status = payload.status
-
-        resource = Resource(
-            title=title,
-            url=url or None,
-            category_id=category_id,
-            status=initial_status,
-            priority=priority,
-            content=payload.content,
-            reading_minutes=estimate_reading_minutes(payload.content),
-            extra_metadata=payload.extra_metadata,
-        )
+        resource = self._build_resource(payload)
 
         # Once resource'u session'a ekle, sonra etiketleri bagla.
         # Bu sayede flush sirasinda relationship tam olarak cozumlenir.
@@ -193,9 +144,7 @@ class ResourceService:
             self._session.add(resource)
             self._session.flush()  # ID atanir, iliski tablosu hazir olur
 
-            resource.tags = self._get_or_create_tags(
-                _merge_tag_names(payload.tag_names, url)
-            )
+            resource.tags = self._get_or_create_tags(_merge_tag_names(payload.tag_names, resource.url))
 
             self._session.commit()
             log.info("Yeni kaynak eklendi: id=%d title=%r", resource.id, resource.title)
@@ -205,6 +154,39 @@ class ResourceService:
             raise
 
         return resource
+
+    def _build_resource(self, payload: ResourceCreateSchema) -> Resource:
+        """Yeni kaydi dogrular (baslik, URL, kategori, oncelik) ve oturuma eklemeden olusturur."""
+        title = payload.title.strip()
+        if not title:
+            raise ValidationError("Baslik bos olamaz.")
+
+        url = (payload.url or "").strip()
+        if url:
+            _validate_url(url)
+
+        category_id = self._resolve_new_category_id(payload.category_id, url or None)
+
+        if payload.priority not in (1, 2, 3):
+            raise ValidationError("Oncelik degeri 1, 2 veya 3 olmalidir.")
+
+        return Resource(
+            title=title,
+            url=url or None,
+            category_id=category_id,
+            status=payload.status,
+            priority=payload.priority,
+            content=payload.content,
+            reading_minutes=estimate_reading_minutes(payload.content),
+            extra_metadata=payload.extra_metadata,
+        )
+
+    def _resolve_new_category_id(self, category_id: int | None, url: str | None) -> int | None:
+        if category_id is None:
+            return self._auto_category_id(url)
+        if self._category_repo.get_by_id(category_id) is None:
+            raise ResourceNotFoundError(f"Kategori bulunamadi: id={category_id}")
+        return category_id
 
     def update_resource(self, resource_id: int, payload: ResourceUpdateSchema) -> Resource:
         resource = self.get_by_id(resource_id)
@@ -222,27 +204,9 @@ class ResourceService:
             self._apply_category(resource, payload, fields)
             self._apply_status(resource, payload, fields)
             self._apply_priority(resource, payload, fields)
-
-            if "content" in fields:
-                resource.content = payload.content
-            if "full_text" in fields:
-                resource.full_text = payload.full_text
-            if fields & {"content", "full_text"}:
-                resource.reading_minutes = estimate_reading_minutes(resource.full_text or resource.content)
-            if "is_pinned" in fields:
-                resource.is_pinned = bool(payload.is_pinned)
-
+            self._apply_content(resource, payload, fields)
             self._apply_metadata(resource, payload, fields)
-
-            if "tag_names" in fields or "url" in fields:
-                base_tag_names = (
-                    payload.tag_names
-                    if "tag_names" in fields
-                    else [tag.name for tag in resource.tags]
-                )
-                resource.tags = self._get_or_create_tags(
-                    _merge_tag_names(base_tag_names, resource.url)
-                )
+            self._apply_tags(resource, payload, fields)
             self._resource_repo.update(resource)
             self._session.commit()
             log.info("Kaynak guncellendi: id=%d", resource_id)
@@ -296,7 +260,24 @@ class ResourceService:
         resource.priority = priority
 
     @staticmethod
+    def _apply_content(resource: Resource, payload: ResourceUpdateSchema, fields: set[str]) -> None:
+        if "content" in fields:
+            resource.content = payload.content
+        if "full_text" in fields:
+            resource.full_text = payload.full_text
+        if fields & {"content", "full_text"}:
+            resource.reading_minutes = estimate_reading_minutes(resource.full_text or resource.content)
+
+    def _apply_tags(self, resource: Resource, payload: ResourceUpdateSchema, fields: set[str]) -> None:
+        if not fields & {"tag_names", "url"}:
+            return
+        base_tag_names = payload.tag_names if "tag_names" in fields else [tag.name for tag in resource.tags]
+        resource.tags = self._get_or_create_tags(_merge_tag_names(base_tag_names, resource.url))
+
+    @staticmethod
     def _apply_metadata(resource: Resource, payload: ResourceUpdateSchema, fields: set[str]) -> None:
+        if "is_pinned" in fields:
+            resource.is_pinned = bool(payload.is_pinned)
         if "extra_metadata" in fields:
             resource.extra_metadata = payload.extra_metadata
 

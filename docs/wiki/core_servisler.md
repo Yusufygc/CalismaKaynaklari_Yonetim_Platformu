@@ -52,12 +52,8 @@ Aynı şekil: `get_by_resource(resource_id)`, `get_all_with_resource()`.
 
 | Metod | Kurallar |
 |-------|----------|
-| `get_all()` | Tüm kaynaklar |
 | `get_by_id(id)` | Bulunamazsa `ResourceNotFoundError` |
-| `get_by_status(status)` | `ResourceStatus` enum değeri alır |
-| `search(keyword)` | `search_by_keyword` proxy |
-| `get_by_category(id)` | Kategoriye göre |
-| `get_urls_only()` | URL alanı dolu |
+| `query_resources(filters: dict)` | Tek sorgu yolu (`ResourceFilter`); eski `get_all/get_by_status/search/...` sarmalayıcıları kaldırıldı (2026-09-30, kullanılmıyordu) |
 | `add_new_resource(data: dict)` | URL varsa regex doğrula (scheme zorunlu: `https?://`). Kategori ID varsa kontrol et. `tag_names` normalize + dedupe + get-or-create. `extra_metadata` verilmemişse URL metadata çekilir. `flush()` sonra `commit()`. Hata da `rollback()`. |
 | `update_resource(id, data: dict)` | Sadece dict'te bulunan anahtarları günceller. URL validasyonu. `tag_names` varsa etiket ilişkilerini tam senkronize eder; boş liste tüm etiketleri kaldırır. `status` artık tamamen manuel (2026-07-06'da `progress` alanı ve ona bağlı otomatik status türetme kaldırıldı). `commit()`. |
 | `delete_resource(id)` | Bulunamazsa `ResourceNotFoundError`. Cascade ile etiket linkleri de silinir. |

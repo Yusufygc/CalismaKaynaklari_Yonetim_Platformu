@@ -58,6 +58,29 @@ _DOI = re.compile(r"10\.\d{4,9}/\S+")
 _WORK_TYPES = {"article", "review", "preprint", "book", "dissertation"}
 
 
+def _parse_year(raw) -> int | None:
+    try:
+        value = int(raw or 0)
+    except (TypeError, ValueError):
+        return None
+    return value if 1000 <= value <= 3000 else None
+
+
+def _parse_author_id(raw) -> str:
+    author_id = str(raw or "").strip().upper()
+    return author_id if _AUTHOR_ID.fullmatch(author_id) else ""
+
+
+def _parse_work_type(raw) -> str:
+    work_type = str(raw or "").strip().lower()
+    return work_type if work_type in _WORK_TYPES else ""
+
+
+def _parse_language(raw) -> str:
+    language = str(raw or "").strip().lower()
+    return language if language.isalpha() and len(language) == 2 else ""
+
+
 @dataclass(frozen=True)
 class MarketFilters:
     """Makale Market arama filtreleri; OpenAlex `filter=` ifadesine cevrilir."""
@@ -73,24 +96,13 @@ class MarketFilters:
     def from_dict(cls, data: dict | None) -> MarketFilters:
         """QML'den gelen gevsek dict'i (bos/gecersiz alanlar yok sayilir) filtreye cevirir."""
         data = data or {}
-
-        def _year(key: str) -> int | None:
-            try:
-                value = int(data.get(key) or 0)
-            except (TypeError, ValueError):
-                return None
-            return value if 1000 <= value <= 3000 else None
-
-        work_type = str(data.get("workType") or "").strip().lower()
-        language = str(data.get("language") or "").strip().lower()
-        author_id = str(data.get("authorId") or "").strip().upper()
         return cls(
-            author_id=author_id if _AUTHOR_ID.fullmatch(author_id) else "",
-            year_from=_year("yearFrom"),
-            year_to=_year("yearTo"),
+            author_id=_parse_author_id(data.get("authorId")),
+            year_from=_parse_year(data.get("yearFrom")),
+            year_to=_parse_year(data.get("yearTo")),
             open_access=bool(data.get("openAccess")),
-            work_type=work_type if work_type in _WORK_TYPES else "",
-            language=language if language.isalpha() and len(language) == 2 else "",
+            work_type=_parse_work_type(data.get("workType")),
+            language=_parse_language(data.get("language")),
         )
 
     def to_openalex(self) -> str:
@@ -160,18 +172,18 @@ def _best_url(work: dict) -> str | None:
     return None
 
 
+def _authors_and_ids(work: dict) -> tuple[list[str], list[str]]:
+    """Adi olan yazarlar ve ayni siradaki OpenAlex kimlikleri (bilinmiyorsa '')."""
+    named = [a["author"] for a in work.get("authorships", []) if (a.get("author") or {}).get("display_name")]
+    return [a["display_name"] for a in named], [_short_openalex_id(a.get("id")) or "" for a in named]
+
+
 def _to_paper_result(work: dict) -> PaperResult | None:
     url = _best_url(work)
     if not url:
         return None
-    named_authors = [
-        a["author"]
-        for a in work.get("authorships", [])
-        if a.get("author") and a["author"].get("display_name")
-    ]
-    authors = [a["display_name"] for a in named_authors]
-    author_ids = [_short_openalex_id(a.get("id")) or "" for a in named_authors]
-    source = (work.get("primary_location") or {}).get("source") or {}
+    authors, author_ids = _authors_and_ids(work)
+    location = work.get("primary_location") or {}
     return PaperResult(
         title=work.get("title") or work.get("display_name") or "(Baslik yok)",
         authors=authors,
@@ -181,9 +193,9 @@ def _to_paper_result(work: dict) -> PaperResult | None:
         abstract=_reconstruct_abstract(work.get("abstract_inverted_index")),
         doi=_clean_doi(work.get("doi")),
         openalex_id=_short_openalex_id(work.get("id")),
-        venue=source.get("display_name"),
+        venue=(location.get("source") or {}).get("display_name"),
         is_open_access=bool((work.get("open_access") or {}).get("is_oa")),
-        has_pdf=bool((work.get("primary_location") or {}).get("pdf_url")),
+        has_pdf=bool(location.get("pdf_url")),
         author_ids=author_ids,
     )
 

@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-09-30] REFACTOR | Karmaşık fonksiyonlar parçalandı (CC>10 ve >50 satır sıfırlandı), ölü okuma metotları kaldırıldı
+
+`ResourceService.add_new_resource` (52 sat.) → `_build_resource` + `_resolve_new_category_id`; `update_resource` → `_apply_content/_apply_tags/_apply_metadata`; kullanılmayan `get_all/get_by_status/search/get_by_category/get_urls_only/get_favorites` sarmalayıcıları silindi (sorgu yolu `query_resources`; repo metotları duruyor) — sınıf 22 → 16 metot. `paper_market_service`: `_to_paper_result` → `_authors_and_ids`; `MarketFilters.from_dict` → `_parse_year/_parse_author_id/_parse_work_type/_parse_language`. `ExportService._highlights_section` → `_highlights_by_label`. `SavedSearchService.create` → `_validated`. `detect_category_name` → `_web_category_name`. `serialize_resource` → `_core_fields/_relation_fields`. `ReaderBridge._on_pdf_download_finished` → `_on_pdf_downloaded/_on_pdf_download_failed`. Davranış değişmedi (483 test geçer); `audit_metrics.py`: CC>10 = 0, fonksiyon>50 satır = 0.
+
+---
+
 ## [2026-09-30] FEAT | Ayarlar: kategori/etiket satır içi düzenleme ve onaylı silme
 
 `SettingsView` artık kategori adı + rengini (`CategoryRow`, kalem ikonu; ad alanı + `ColorPalette` + Kaydet/İptal) ve etiket adını (`TagPill`, satır içi alan) düzenletir; Enter kaydeder, Esc iptal eder. Kayıt `bridge.settings.updateCategory/updateTag` ile yapılır; başarıda köprü listeyi yeniler ve satır görünüm moduna döner, hata (yinelenen ad vb.) durumunda düzenleme açık kalır ve mevcut hata toast'ı çıkar. Silme artık onay ister: ortak `ConfirmDialog` bileşeni (`HighlightsTab` toplu silme onayı da bunu kullanır, tekrar kaldırıldı). **Tuzak:** `main.qml`'deki genel `Shortcut { sequence: "Esc" }` metin alanındaki `Keys.onEscapePressed`'ı geçersiz kılar; düzenleme alanlarına `Keys.onShortcutOverride` ile Esc'i yakalatmak gerekir. Testler: `tests/test_qml/test_settings_edit_flow.py` (gerçek fare/klavye: yeniden adlandır+renk, yinelenen ad, Esc, etiket, onaylı silme).

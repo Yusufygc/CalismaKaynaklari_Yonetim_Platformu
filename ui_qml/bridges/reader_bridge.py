@@ -182,31 +182,36 @@ class ReaderBridge(QObject):
         self._navigate("reader")
 
     def _on_pdf_download_finished(self, resource_id: int, path: str | None) -> None:
-        resources = self._ctx.controllers.resources
-        is_open = self._current.get("id") == resource_id
         if path:
-            resource = resources.get_resource(resource_id)
-            if resource is None:
-                Path(path).unlink(missing_ok=True)
-                return
-            metadata = dict(resource.extra_metadata or {})
-            metadata["local_pdf"] = path
-            if resources.update_resource(resource_id, {"extra_metadata": metadata}) is None:
-                Path(path).unlink(missing_ok=True)
-                return
-            self._library.reload()
-            self._library.update_selected_if_matches(resource_id)
-            if is_open:
-                self.refresh_current(resource_id)
-            if not resource.full_text:
-                self._ctx.extractor.schedule(resource_id, Path(path).as_uri())
-            return
-        self._ctx.pdf_files.mark_failed(resource_id)
+            self._on_pdf_downloaded(resource_id, path)
+        else:
+            self._on_pdf_download_failed(resource_id)
+
+    def _on_pdf_downloaded(self, resource_id: int, path: str) -> None:
+        resources = self._ctx.controllers.resources
         resource = resources.get_resource(resource_id)
+        if resource is None:
+            Path(path).unlink(missing_ok=True)
+            return
+        metadata = dict(resource.extra_metadata or {})
+        metadata["local_pdf"] = path
+        if resources.update_resource(resource_id, {"extra_metadata": metadata}) is None:
+            Path(path).unlink(missing_ok=True)
+            return
+        self._library.reload()
+        self._library.update_selected_if_matches(resource_id)
+        if self._current.get("id") == resource_id:
+            self.refresh_current(resource_id)
+        if not resource.full_text:
+            self._ctx.extractor.schedule(resource_id, Path(path).as_uri())
+
+    def _on_pdf_download_failed(self, resource_id: int) -> None:
+        self._ctx.pdf_files.mark_failed(resource_id)
+        resource = self._ctx.controllers.resources.get_resource(resource_id)
         if resource and resource.url and not resource.full_text:
             # Metin okuyucusu icin tam metin yine de cikarilmali.
             self._ctx.extractor.schedule(resource_id, resource.url)
-        if is_open:
+        if self._current.get("id") == resource_id:
             self._ctx.notify.error(AppStrings.NOTIFICATION_PDF_DOWNLOAD_FAILED)
             self.refresh_current(resource_id)
             self._navigate("reader")

@@ -43,13 +43,7 @@ class SavedSearchService:
         tag_name: str | None = None,
         seen_ids: list[str] | None = None,
     ) -> SavedSearch:
-        topic = (topic or "").strip()
-        clean = _clean_filters(filters)
-        if not topic and not clean.get("authorId"):
-            raise ValidationError("Kaydedilecek bir konu ya da yazar filtresi yok.")
-        identity = _identity(topic, clean)
-        if any(_identity(s.topic, s.filters or {}) == identity for s in self._repo.get_all()):
-            raise DuplicateRecordError("Bu arama zaten kayitli.")
+        topic, clean = self._validated(topic, filters)
         try:
             search = SavedSearch(
                 topic=topic,
@@ -67,6 +61,17 @@ class SavedSearchService:
             self._session.rollback()
             log.exception("Arama kaydedilirken hata olustu.")
             raise
+
+    def _validated(self, topic: str, filters: dict | None) -> tuple[str, dict]:
+        """Temizlenmis (konu, filtreler); bos ya da yinelenen arama reddedilir."""
+        topic = (topic or "").strip()
+        clean = _clean_filters(filters)
+        if not topic and not clean.get("authorId"):
+            raise ValidationError("Kaydedilecek bir konu ya da yazar filtresi yok.")
+        identity = _identity(topic, clean)
+        if any(_identity(s.topic, s.filters or {}) == identity for s in self._repo.get_all()):
+            raise DuplicateRecordError("Bu arama zaten kayitli.")
+        return topic, clean
 
     def delete(self, search_id: int) -> None:
         try:

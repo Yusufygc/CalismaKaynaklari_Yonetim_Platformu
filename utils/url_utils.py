@@ -72,26 +72,22 @@ def detect_category_name(url: str | None) -> str | None:
         return None
 
     parsed = urlparse(url)
-
     if parsed.scheme == "file":
         return "Makale" if parsed.path.lower().endswith(".pdf") else None
-
     if parsed.scheme not in ("http", "https"):
         return None
+    return _web_category_name(parsed)
 
-    host = (parsed.hostname or "").lower()
-    if host.startswith("www."):
-        host = host[4:]
+
+def _web_category_name(parsed) -> str | None:
+    host = (parsed.hostname or "").lower().removeprefix("www.")
     if not host:
         return None
-
     if host in _ACADEMIC_HOSTS or parsed.path.lower().endswith(".pdf"):
         return "Makale"
-
     platform = _match_platform_name(host)
     if platform:
         return _AUTO_CATEGORY_DISPLAY_NAMES.get(platform, platform.capitalize())
-
     return "Web"
 
 
