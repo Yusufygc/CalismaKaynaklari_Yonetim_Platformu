@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] REFACTOR | pdfkit Faz 3d: temizlik, QML taşıma ve toplu silme
+
+`PdfFileManager` belge önbelleği/`select_text`/`highlight_geometry` ve serileştiricideki kopya blok + eski `_highlights` silindi; PDF belgesini yalnız `DocumentSession` açar. PDF QML dosyaları `qml/pdf/` altına taşındı (`main.qml` `import "pdf"`). Toplu alıntı silme: tek `DELETE ... IN` + 16'dan fazla öğede tek model sıfırlaması (503 alıntı 674 → 5,6 ms). `bench_pdf.py` yalnız pdfkit yolunu ölçer; bütçeler karşılandı (1000 alıntıda açılış 94 ms, ekleme ≈6 ms). `QPdfDocument` LRU önbelleği bilinçli eklenmedi (yükleme 1–13 ms, Windows dosya kilidi). 648 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz3d-raporu.md`.
+
+---
+
 ## [2026-10-12] REFACTOR | pdfkit Faz 3c: okuyucu, havuz ve dışa aktarım pdfkit'e geçti
 
 PDF okuyucu QML'i `bridge.pdf` modellerine bağlandı (artımlı vurgu/not katmanları, kalıcı geometri, dilimli tembel hesap); eski PDF slotları ve `resource.highlights` filtreleri kaldırıldı. Kaynak sözlüğü PDF belgelerinde geometri hesaplamıyor. Bilgi Havuzu PDF + HTML alıntılarını `key` ile birleştiriyor (silme anahtara göre), havuz tazelemesi birleştirilmiş/gecikmeli. Markdown dışa aktarım pdfkit verisini kullanıyor. Eski PDF alıntı/not/kelime kayıtları açılışta pdfkit'e taşınıp eski satırlar siliniyor. Gerçek veri kopyasında gerçek PDF ile duman testi yapıldı. 645 test geçti. Ayrıntı: [[pdfkit]], [[qml_arayuz]], `docs/plans/pdfkit-faz3c-raporu.md`.

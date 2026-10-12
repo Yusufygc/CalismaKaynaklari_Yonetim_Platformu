@@ -90,7 +90,7 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   │   ├── discovery_bridge.py # Market kart keşfi (referans/atıf/benzer/yazar) ve kütüphaneden öneriler
 │   │   ├── searches_bridge.py  # Kayıtlı aramalar ve yeni yayın takibi (durum: saved_search_state)
 │   │   └── settings_bridge.py  # Kategori ve etiket yönetimi
-│   ├── pdf_files.py            # PdfFileManager: yerel PDF URL/durum, QPdfDocument önbelleği, indirme, seçim, temizlik
+│   ├── pdf_files.py            # PdfFileManager: yerel PDF URL/durum, web PDF indirme durumu, silme temizliği (belge açmayı pdfkit yapar)
 │   ├── full_text.py            # FullTextExtractor: tam metin çıkarımı (arka plan)
 │   ├── notifier.py             # Notifier: tek toast kanalı
 │   ├── file_export.py          # write_export: Markdown/BibTeX/CSV dosya yazımı
@@ -116,10 +116,6 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   │   ├── AppFilterChip.qml
 │   │   ├── PaperListItem.qml   # Kompakt makale satırı (Kaynakça sekmesi, keşif listeleri)
 │   │   ├── PaperCard.qml       # Makale Market sonuç kartı (rozetler, açılır özet, Kaydet/Kütüphanede)
-│   │   ├── PdfPageArea.qml     # Native PDF render, kaydırma/zoom/arama (Qt PdfMultiPageView temelli)
-│   │   ├── PdfSelectionOverlay.qml # Sayfada metin seçilince: renkli alıntı araç çubuğu + kelime çevirisi popover'ı
-│   │   ├── PdfHighlightHits.qml    # Kalıcı alıntılara tıklama alanı + renk/yorum/sil düzenleme popover'ı
-│   │   ├── PdfNoteLayer.qml        # Sayfa notu işaretleri + yeni/düzenle not popover'ları
 │   │   ├── HighlightsTab.qml       # Bilgi Havuzu > Alıntılar (etiket filtresi, toplu seçim/silme)
 │   │   ├── VocabularyTab.qml       # Bilgi Havuzu > Kelimeler
 │   │   ├── MarketSearchBar.qml     # Market: konu arama + son aramalar + sekmeler
@@ -127,10 +123,16 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   │   ├── SavedSearchBar.qml      # Market: kayıtlı aramalar çubuğu
 │   │   ├── MarketResultsToolbar.qml # Market: toplu seçim, dışa aktar, toplu kaydet
 │   │   └── SaveSearchPopup.qml     # Market: aramayı kaydet (koleksiyon etiketi)
+│   ├── pdf/                    # PDF okuyucu (pdfkit modellerine bağlı; bkz. [[pdfkit]])
+│   │   ├── PdfReaderView.qml   # Native PDF okuyucu (yerel PDF kaynaklar)
+│   │   ├── PdfPageArea.qml     # Native PDF render, kaydırma/zoom/arama (Qt PdfMultiPageView temelli)
+│   │   ├── PdfSidePanel.qml    # Sayfalar / Anahat / Notlarım / Kaynakça
+│   │   ├── PdfSelectionOverlay.qml # Sayfada metin seçilince: renkli alıntı araç çubuğu + kelime çevirisi popover'ı
+│   │   ├── PdfHighlightHits.qml    # Kalıcı alıntılara tıklama alanı + renk/yorum/sil düzenleme popover'ı
+│   │   └── PdfNoteLayer.qml        # Sayfa notu işaretleri + yeni/düzenle not popover'ları
 │   └── views/                  # Sayfa görünümleri
 │       ├── ShowcaseView.qml    # Bağlantı vitrini
 │       ├── ReaderView.qml      # Dikkat dağıtmayan okuyucu (HTML makaleler)
-│       ├── PdfReaderView.qml   # Native PDF okuyucu (yerel PDF kaynaklar)
 │       ├── KnowledgePoolView.qml # Bilgi havuzu (alıntılar/kelimeler)
 │       ├── SettingsView.qml    # Kategori ve etiket yönetimi
 │       └── ArticleMarketView.qml # Makale Market (OpenAlex konu araması)

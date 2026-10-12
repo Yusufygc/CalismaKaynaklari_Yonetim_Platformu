@@ -1,6 +1,6 @@
 # pdfkit — PDF Okuma ve Çalışma Modülü
 
-Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · Faz 0–1 raporları: `docs/plans/pdfkit-faz0-raporu.md`, `docs/plans/pdfkit-faz1-raporu.md`. Durum: **Faz 3c tamam** (okuyucu pdfkit'e geçti: belge deposu, alıntı alanı, çapa çözümleyici, okuma/yazma yolu, QML, havuz, dışa aktarım); temizlik (3d), vault sonraki fazlar. Alt faz planı: `docs/plans/pdfkit-faz3-plani.md`.
+Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · Faz 0–1 raporları: `docs/plans/pdfkit-faz0-raporu.md`, `docs/plans/pdfkit-faz1-raporu.md`. Durum: **Faz 3 tamam** (okuyucu pdfkit'e geçti, eski yol temizlendi: belge deposu, alıntı alanı, çapa çözümleyici, okuma/yazma yolu, QML, havuz, dışa aktarım); Faz 4 okuma deneyimi, vault sonraki fazlar. Alt faz planı: `docs/plans/pdfkit-faz3-plani.md`.
 
 ## Sınır kuralları
 
@@ -62,6 +62,14 @@ PDF okuyucu artık alıntı/not/kelimeyi yalnız `bridge.pdf` üzerinden okur ve
 - **Dışa aktarım:** `ui_qml/export_view.py` PDF belgesi olan kaynakların alıntı/not/kelimelerini pdfkit'ten `ExportService`'e verir (geçici; Faz 5'te vault çıktısı doğrudan pdfkit'ten üretilir).
 - **Veri göçü (geri dönüşsüz):** `LegacyAnnotationImporter.migrate()` açılışta eski `highlights` (konumlu), `pdf_notes`, `vocabulary` kayıtlarını PDF belgesine bağlı kaynaklar için pdfkit'e **taşır ve eski satırları siler**; PDF belgesi olmayan kaynakların (HTML makale) kayıtları eski tablolarda kalır. Geri dönüş: günlük DB görüntüsü ve migration öncesi yedek.
 - **Sayfa modelleri:** `DocumentSession` sayfa filtrelerini LRU(64) ile önbellekler (atılan filtre `deleteLater`); filtreler kalıcı kaynak modele bağlı olduğundan belge değişiminde de geçerlidir. Filtreyi kaynak modelin çocuğu yapmak yıkım sırası yüzünden access violation üretir; ebeveyn `DocumentSession`'dır.
+
+## Temizlik ve son ölçüm (Faz 3d)
+
+- **Silinenler:** `PdfFileManager` belge önbelleği, `select_text`, `highlight_geometry`; `ResourceSerializer._highlights` ve kopya bir serileştirici bloğu. PDF belgesi yalnız `DocumentSession` tarafından açılır (uygulama kodunda tek `QPdfDocument` yolu); `PdfFileManager` artık yalnız URL/indirme durumu ve silme temizliğidir.
+- **QML düzeni:** PDF okuyucu dosyaları `qml/pdf/` altında (`PdfReaderView`, `PdfPageArea`, `PdfHighlightHits`, `PdfNoteLayer`, `PdfSelectionOverlay`, `PdfSidePanel`); `main.qml` `import "pdf"` yapar.
+- **`QPdfDocument` ömrü:** LRU(3) önbellek eklenmedi. Yükleme ölçümü 1–13 ms (15 sayfa) olduğundan kazanç yok; açık belge Windows'ta dosyayı kilitlediği için önbellek, kaynak silme/GC yolunu karmaşıklaştırırdı. Belge değişince `close()` + `deleteLater()`.
+- **Toplu silme:** `AnnotationRepository.delete_annotations` tek `DELETE ... IN (...)` (500'lük parçalar); `_IncrementalModel.remove_many` 16'dan fazla öğede tek model sıfırlaması yapar (az öğede satır sinyalleri). 503 alıntı silme: **674 ms → 5,6 ms** (satır satır yükleme + satır başına flush + her sayfa süzgecine 503 sinyal).
+- **Son ölçüm** (`scripts/bench_pdf.py --pdf <gerçek 15 sayfa>`): açılış 1000 alıntıda **94 ms** (bütçe ≤150), tek ekleme **≈6 ms** (≤16), tüm sayfa modelleri 15 ms, toplu silme 503 alıntı **5,8 ms**, eski kayıtlar için ilk açılış geometrisi ≈4,8 sn/1000 (tek seferlik, 44 ms'lik dilimlerle). `bench_pdf.py` artık yalnız pdfkit yolunu ölçer (eski serileştirme ölçümü kaldırıldı).
 
 ## Ölçümler ve kararlar
 

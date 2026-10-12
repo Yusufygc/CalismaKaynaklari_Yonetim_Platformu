@@ -151,6 +151,8 @@ Kaynak araması (`ResourceRepository.search_by_keyword` / `query_filtered(keywor
 ### PdfNoteService — `services/pdf_note_service.py` (2026-09-29)
 Native PDF okuyucudaki nokta-bazlı margin notları (`create_note`, `update_note`, `get_by_resource`, `delete_note`) — `HighlightService`'in üçlü katman deseninin (repo/service/controller) birebir kopyası, yeni `models.PdfNote` için. `Highlight`'tan farkı: metin aralığı değil `(page, x, y)` tek nokta + serbest metin tutar. `ui_qml/bridges/reader_bridge.py::addPdfNote`/`updatePdfNote`/`deletePdfNote` üzerinden QML'e bağlanır — bkz. [[qml_arayuz]].
 
+> **Eski (Faz 3d'de kaldırıldı):** `PdfFileManager.load_document/highlight_geometry/select_text` artık yok; seçim ve geometri `pdfkit` içindedir (bkz. [[pdfkit]]). Aşağıdaki kısıt bilgisi hâlâ geçerlidir (QML'den `QPdfSelection` dönen metotlar çağrılamaz).
+
 **PDF highlight geometrisi — QML kısıtı (2026-09-29, canlı testte keşfedildi):** `QPdfDocument.getSelection()`/`getSelectionAtIndex()` (döndürdüğü `QPdfSelection` degeri) QML script'inden çağrılamıyor (`Unknown method return type: QPdfSelection`). Çözüm: `ui_qml/pdf_files.py::PdfFileManager` (`load_document`, `highlight_geometry`, `select_text`) bu işlemi Python'da yapıp düz sayı listesi (`boundsPolygons`, `boundingRect`) olarak `ResourceSerializer` üzerinden QML'e gönderiyor. Ayrıca QML'de `Repeater { delegate: ShapePath {...} }` de hata veriyordu (`ShapePath` bir `Item` değil) — `Instantiator` kullanıldı. Bu iki bulgu ileride PDF-render tarafında yeni bir şey eklenirken tekrar karşılaşılabilir, not düşüldü.
 
 ---
