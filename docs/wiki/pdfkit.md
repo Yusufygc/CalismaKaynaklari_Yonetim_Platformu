@@ -1,6 +1,6 @@
 # pdfkit — PDF Okuma ve Çalışma Modülü
 
-Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · Faz 0–1 raporları: `docs/plans/pdfkit-faz0-raporu.md`, `docs/plans/pdfkit-faz1-raporu.md`. Durum: **Faz 3b tamam** (belge deposu, alıntı alanı, çapa çözümleyici, okuma ve yazma yolu arka ucu); QML geçişi (3c), birleştirme (3d), vault sonraki fazlar. Alt faz planı: `docs/plans/pdfkit-faz3-plani.md`.
+Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · Faz 0–1 raporları: `docs/plans/pdfkit-faz0-raporu.md`, `docs/plans/pdfkit-faz1-raporu.md`. Durum: **Faz 3c tamam** (okuyucu pdfkit'e geçti: belge deposu, alıntı alanı, çapa çözümleyici, okuma/yazma yolu, QML, havuz, dışa aktarım); temizlik (3d), vault sonraki fazlar. Alt faz planı: `docs/plans/pdfkit-faz3-plani.md`.
 
 ## Sınır kuralları
 
@@ -50,6 +50,18 @@ Arayüz değişmedi; `bridge.pdf` yazma slotları eski `bridge.annotations` ile 
 - **Kelime:** seçilen metin, geçtiği cümleyle (`pdfkit/domain/sentences.py::extract_sentence`; eski `utils.text_utils.extract_sentence` buna yönlenir) ve konum+geometriyle `pdf_terms`'e yazılır (`unanchored` olan eski kelimelerin aksine).
 - **Modeller:** ortak taban `_IncrementalModel` (sıralı, kimlikle erişimli, satır düzeyi sinyaller); `AnnotationListModel`, `NoteListModel`; `PageFilterModel` ikisinde de çalışır.
 - **Ölçüm** (`scripts/bench_pdf.py --pdfkit`, gerçek PDF): tek alıntı ekleme **≈6–7 ms** (1000 alıntı varken de; eski yolda 100–3450 ms), hedef ≤16 ms.
+
+## Okuyucu geçişi (Faz 3c)
+
+PDF okuyucu artık alıntı/not/kelimeyi yalnız `bridge.pdf` üzerinden okur ve yazar; eski `bridge.annotations` PDF slotları (`addPdfHighlight`, `addPdfVocabulary`, `addPdfNote`, `update/deletePdfNote`, `updateHighlightColor/Comment`) kaldırıldı.
+
+- **QML veri akışı:** `PdfReaderView`, kaynak değişince `bridge.pdf.openDocument(resourceId)`, kaynak boşalınca `closeDocument()` çağırır. `PdfPageArea` sayfa delegesi başına `bridge.pdf.pageModel(index)` / `notePageModel(index)` alır; vurgu şekilleri (`Shape`), tıklama alanları (`PdfHighlightHits`) ve not işaretleri (`PdfNoteLayer`) bu modellere bağlıdır — `resource.highlights` filtreleri kalktı, tek alıntı eklemek yalnız o satırın şeklini kurar. Sayfa görünür olunca `bridge.pdf.ensureGeometry(index)` eksik geometriyi dilimleyerek hesaplar. Seçim araç çubuğu ve vurgu düzenleme popover'ı rengi `bridge.pdf.labels` (anlam etiketi anahtarı + ad + renk) ile gösterir; kayıt `addHighlight(selectionMap, labelKey)`, kelime `addTerm(selectionMap, anlam)`.
+- **Yan panel 'Notlarım':** `bridge.pdf.notebookItems(labelKey, bridge.pdf.revision)` — alıntı + sayfa notu birleşik, sayfa/konum sıralı; yalnız sekme açıkken hesaplanır, `revision` her başarılı yazmada artar. Etiket süzgeci anahtarla çalışır.
+- **Kaynak sözlüğü:** `ResourceSerializer` PDF belgesi olan kaynaklarda `highlights`/`vocabulary`/`pdfNotes` alanlarını pdfkit'ten alır ve **geometri hesaplamaz** (eski yolun donma kaynağı buydu). Çekmecedeki alıntı özeti bu veriyle çalışır.
+- **Bilgi Havuzu:** `AnnotationsBridge` PDF (pdfkit) ve HTML makale (eski tablolar) alıntılarını/kelimelerini birleştirir; her öğe kaynağı belirten `key` taşır (`pdf:<id>`, `html:<id>`) ve silme bu anahtarla yönlenir (`deleteHighlight(key)`, `deleteHighlights(keys)`, `deleteVocabulary(key)`). PDF yazmaları havuzu 150 ms gecikmeli ve birleştirilerek (`schedule_refresh`) tazeler; yazma yolunu bloklamaz. `PdfBridge.contentChanged` → kök `QmlBridge._on_pdf_content_changed`.
+- **Dışa aktarım:** `ui_qml/export_view.py` PDF belgesi olan kaynakların alıntı/not/kelimelerini pdfkit'ten `ExportService`'e verir (geçici; Faz 5'te vault çıktısı doğrudan pdfkit'ten üretilir).
+- **Veri göçü (geri dönüşsüz):** `LegacyAnnotationImporter.migrate()` açılışta eski `highlights` (konumlu), `pdf_notes`, `vocabulary` kayıtlarını PDF belgesine bağlı kaynaklar için pdfkit'e **taşır ve eski satırları siler**; PDF belgesi olmayan kaynakların (HTML makale) kayıtları eski tablolarda kalır. Geri dönüş: günlük DB görüntüsü ve migration öncesi yedek.
+- **Sayfa modelleri:** `DocumentSession` sayfa filtrelerini LRU(64) ile önbellekler (atılan filtre `deleteLater`); filtreler kalıcı kaynak modele bağlı olduğundan belge değişiminde de geçerlidir. Filtreyi kaynak modelin çocuğu yapmak yıkım sırası yüzünden access violation üretir; ebeveyn `DocumentSession`'dır.
 
 ## Ölçümler ve kararlar
 
