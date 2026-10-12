@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | pdfkit Faz 5c: pkm:// derin bağlantı (tek örnek, atlama, Windows kaydı)
+
+Obsidian'daki `pkm://open?doc=&page=&ann=` bağlantısı uygulamayı açar/öne getirir, PDF'i açıp alıntıya gider ve çerçeveler. Tek örnek (`core/single_instance.py`; ardışık hızlı istemcilerde "meşgul" için yeniden deneme), `extract_link_arg` + `main.py` iletme, `DeepLinkRouter` (katı doğrulama, belirsiz belge reddi), `PdfBridge.requestJump/jumpTarget` (hedef başlık yayılmadan önce çözülür; bekleyen hedef kayıtlı konumu geçer), `focusFrame`, isteğe bağlı HKCU kaydı (Ayarlar > Obsidian). Testler gerçek kayıt defterine dokunamaz. Gerçek veri kopyasında iki ayrı süreçle doğrulandı. 824 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz5c-raporu.md`.
+
+---
+
 ## [2026-10-13] FEAT | pdfkit Faz 5b: vault yazıcı, eşitleme ve Ayarlar > Obsidian
 
 `VaultWriter` (atomik yazım, değişmediyse dokunmama, eşzamanlı kullanıcı düzenlemesinde yeniden birleştirme, BOM/UTF-8/yol güvenliği), `NoteBuilder`, `VaultSync` (1,5 sn birleştirme, dilimli hazırlık, tek worker'da sıralı yazım, `SyncReport`), `UserSettings` (vault yolu `user_settings.json`'da), `bridge.vault` ve Ayarlar'da Obsidian sekmesi. Alıntı/not/kelime ve kaynak başlığı/durum değişimleri notlara akar; kullanıcı notu asla silinmez. Kullanıcıya dönük vault hata iletileri Türkçe karakterli. Gerçek veri kopyasında gerçek PDF + gerçek thread havuzuyla not üretildi (`bardak2024makine.md`). `QTest.qWait` GIL'i tuttuğundan gerçek havuz worker'ı bekletir: gerçek havuz denemelerinde `QEventLoop.exec` kullan. 782 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz5b-raporu.md`.

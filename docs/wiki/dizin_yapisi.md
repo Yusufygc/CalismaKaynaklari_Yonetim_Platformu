@@ -20,6 +20,8 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 ├── core/                       # Yapılandırma, sabitler, temel araçlar
 │   ├── config.py
 │   ├── user_settings.py        # Kullanıcı ayarları (JSON, atomik): Obsidian vault yolu
+│   ├── single_instance.py      # Tek uygulama örneği + örnekler arası mesajlaşma (QLocalServer)
+│   ├── protocol_registration.py # Windows HKCU pkm:// protokol kaydı (isteğe bağlı)
 │   ├── logger.py
 │   ├── exceptions.py
 │   ├── events.py               # Event Bus singleton
