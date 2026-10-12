@@ -121,3 +121,15 @@ class PdfReadingStateRow(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=func.now(), onupdate=func.now()
     )
+
+
+class PdfVaultNoteRow(Base):
+    """Belge basina kalici citekey (vault not dosya adi ve Obsidian baglantilari icin); atandiktan sonra degismez."""
+
+    __tablename__ = "pdf_vault_notes"
+
+    document_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("pdf_documents.id", ondelete="CASCADE"), primary_key=True
+    )
+    citekey: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=func.now())

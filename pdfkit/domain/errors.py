@@ -20,3 +20,11 @@ class InvalidAnnotationError(PdfkitError):
 
 class NotFoundError(PdfkitError):
     """Istenen belge, alinti, not ya da kelime bulunamadi."""
+
+
+class InvalidLinkError(PdfkitError):
+    """`pkm://` derin baglantisi gecersiz, desteklenmiyor ya da cok uzun."""
+
+
+class VaultNoteError(PdfkitError):
+    """Vault notu uretilemedi ya da mevcut dosyayla guvenle birlestirilemedi (ornegin bozuk sentinel)."""

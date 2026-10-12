@@ -1,0 +1,42 @@
+---
+pkm_id: abababababababab
+citekey: "lecun2015deep"
+title: "Deep learning"
+authors: ["Yann LeCun", "Y. Bengio"]
+year: 2015
+doi: "10.1038/nature14539"
+status: "Devam Ediyor"
+tags: [paper]
+---
+
+# Deep learning
+
+%% pkm:begin annotations — bu bloğun içi uygulama tarafından yazılır %%
+
+### Alıntılar
+
+> [!note] Genel · [s. 1](pkm://open?doc=abababababababab&page=1&ann=01HZX3K9M2P4Q6R8S0T1V2WZZZ)
+> “Genel alıntı” ^hl-t1v2wzzz
+
+> [!finding] Bulgu / Sonuç · [s. 3](pkm://open?doc=abababababababab&page=3&ann=01HZX3K9M2P4Q6R8S0T1V2W3X4)
+> “Model doğruluğu %92 oldu.”
+>
+> **Yorum:** Çok önemli.
+> İkinci satır % % bozucu
+>
+> #hipotez #örnek-etiket ^hl-t1v2w3x4
+
+> [!critique] Eleştiri / Soru · konumu bulunamadı
+> “Kayıp metin” ^hl-t1v2waaa
+
+### Notlar
+
+> [!note] Not · [s. 4](pkm://open?doc=abababababababab&page=4&ann=01HZX3K9M2P4Q6R8S0T1V2WNNN)
+> Tekrar oku
+> sonra ^nt-t1v2wnnn
+
+### Kelimeler
+
+- **ubiquitous** — her yerde · [s. 5](pkm://open?doc=abababababababab&page=5&ann=01HZX3K9M2P4Q6R8S0T1V2WTTT) — _“It is ubiquitous.”_
+
+%% pkm:end annotations %%

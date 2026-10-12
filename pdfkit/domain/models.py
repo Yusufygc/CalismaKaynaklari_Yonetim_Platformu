@@ -46,3 +46,15 @@ class Document:
     source: str  # "local" | "web"
     original_filename: str | None
     imported_at: datetime | None
+
+
+@dataclass(frozen=True)
+class SourceInfo:
+    """Belgenin bagli oldugu kaynagin (Resource) kunyesi: citekey ve vault notu icin. Uygulama tarafi doldurur."""
+
+    title: str
+    authors: tuple[str, ...] = ()
+    year: int | None = None
+    doi: str | None = None
+    status: str = ""  # kullaniciya gorunen okuma durumu ("Gelen Kutusu", "Tamamlandi", ...)
+    url: str | None = None  # web kaynagi adresi (yerel dosya degil)

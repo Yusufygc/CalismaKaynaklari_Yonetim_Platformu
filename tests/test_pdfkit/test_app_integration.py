@@ -133,3 +133,29 @@ def test_catalog_lists_and_repoints_legacy_pdfs(session, tmp_path):
     assert controller.get_resource(by_url.id).url == new_path.as_uri()
     assert controller.get_resource(web.id).extra_metadata["local_pdf"] == str(new_path)
     assert not catalog.repoint(LegacyPdf(99999, legacy_file, "local_pdf"), new_path)
+
+
+def test_catalog_describes_a_resource_for_the_vault_note(bridge):
+    catalog = ResourceCatalog(bridge.controllers.resources)
+    resource = bridge.controllers.resources.add_resource(
+        {"title": "Deep learning", "url": "https://x.org/dl", "category_id": None, "priority": 2,
+         "extra_metadata": {"authors": ["Y. LeCun", "Y. Bengio"], "year": "2015", "doi": "10.1038/nature14539"}}
+    )
+
+    info = catalog.describe(resource.id)
+
+    assert (info.title, info.authors, info.year, info.doi) == ("Deep learning", ("Y. LeCun", "Y. Bengio"), 2015, "10.1038/nature14539")
+    assert info.status and info.url == "https://x.org/dl"
+    assert catalog.describe(99999) is None
+
+
+def test_catalog_describe_tolerates_missing_or_odd_metadata_and_hides_local_file_urls(bridge, tmp_path):
+    catalog = ResourceCatalog(bridge.controllers.resources)
+    resource = bridge.controllers.resources.add_resource(
+        {"title": "Yerel", "url": (tmp_path / "x.pdf").as_uri(), "category_id": None, "priority": 2,
+         "extra_metadata": {"authors": "Tek Yazar", "year": "yok"}}
+    )
+
+    info = catalog.describe(resource.id)
+
+    assert info.authors == ("Tek Yazar",) and info.year is None and info.doi is None and info.url is None

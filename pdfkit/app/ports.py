@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from pdfkit.domain.models import SourceInfo
+
 
 @dataclass(frozen=True)
 class LegacyPdf:
@@ -23,3 +25,6 @@ class ResourceCatalogPort(Protocol):
 
     def repoint(self, legacy: LegacyPdf, new_path: Path) -> bool:
         """Kaynagin PDF baglantisini depodaki yeni dosyaya yonlendirir."""
+
+    def describe(self, resource_id: int) -> SourceInfo | None:
+        """Kaynagin kunyesi (baslik, yazarlar, yil, DOI, durum); kaynak yoksa None. Vault notu ve citekey icin."""

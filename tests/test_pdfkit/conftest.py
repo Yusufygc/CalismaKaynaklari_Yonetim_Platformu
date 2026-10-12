@@ -45,6 +45,9 @@ class NullCatalog:
     def repoint(self, legacy, new_path):
         return False
 
+    def describe(self, resource_id):
+        return None
+
 
 @pytest.fixture()
 def pdf_library(qapp, session, pdf_store):
