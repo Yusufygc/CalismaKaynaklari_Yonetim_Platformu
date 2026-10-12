@@ -2,14 +2,17 @@ from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
+from PySide6.QtGui import QDesktopServices
 
 from core.constants.strings import AppStrings
 from core.events import event_bus
+from core.logger import log
 from services.export_service import ExportService
 from services.pdf_download_service import looks_like_remote_pdf
 from ui_qml.bridges.library_bridge import LibraryBridge
 from ui_qml.context import BridgeContext
 from ui_qml.file_export import write_export
+from utils.url_utils import is_safe_external_link
 from workers import PdfOutlineWorker
 
 
@@ -191,6 +194,15 @@ class ReaderBridge(QObject):
         self._pdf_outlines_loading.discard(file_url)
         self._pdf_outlines[file_url] = outline
         self.pdfOutlinesChanged.emit()
+
+    @Slot(str)
+    def openExternalLink(self, url: str) -> None:
+        """PDF icindeki baglantiyi varsayilan uygulamada acar; yalnizca guvenli semalar (http/https/mailto)."""
+        if not is_safe_external_link(url):
+            log.warning("PDF baglantisi engellendi (izin verilmeyen sema): %s", url)
+            self._ctx.notify.error(AppStrings.NOTIFICATION_LINK_BLOCKED)
+            return
+        QDesktopServices.openUrl(QUrl(url.strip()))
 
     # ------------------------------------------------------------------ #
     # Markdown disa aktarim

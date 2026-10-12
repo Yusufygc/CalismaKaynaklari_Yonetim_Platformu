@@ -170,6 +170,7 @@ class AppStrings:
     NOTIFICATION_PAPER_METADATA_SAVED = "Makale bilgileri güncellendi."
     NOTIFICATION_EXPORT_DONE_FMT = "Dışa aktarıldı: {name}"
     NOTIFICATION_EXPORT_FAILED = "Dışa aktarım yazılamadı."
+    NOTIFICATION_LINK_BLOCKED = "Bu bağlantı güvenlik nedeniyle açılmadı (yalnızca web ve e-posta bağlantıları açılır)."
     NOTIFICATION_EXPORT_EMPTY = "Dışa aktarılacak alıntı, not veya kelime bulunamadı."
     RELATED_PAPERS_LOAD_FAILED = "Liste yüklenemedi. Bağlantını kontrol edip tekrar dene."
     ERR_CATEGORY_NAME_EMPTY = "Kategori adı boş olamaz."

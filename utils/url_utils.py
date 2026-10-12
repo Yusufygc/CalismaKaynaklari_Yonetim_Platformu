@@ -3,6 +3,10 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
+# Guvenilmeyen kaynaktan (PDF baglanti aciklamalari) gelen URL'lerin isletim sistemine
+# acilmasina izin verilen semalar; file:, smb: ve ozel protokol isleyicileri disarida kalir.
+EXTERNAL_LINK_SCHEMES = frozenset({"http", "https", "mailto"})
+
 # Depoya kopyalanirken eklenen benzersiz on ek (uuid8_) kullaniciya gosterilmez.
 _STORAGE_PREFIX = re.compile(r"^[0-9a-f]{8}_")
 
@@ -21,6 +25,11 @@ PLATFORM_NAMES = {
     "substack.com": "substack",
     "reddit.com": "reddit",
 }
+
+
+def is_safe_external_link(url: str | None) -> bool:
+    """URL'nin sema'si dis uygulamada acilmasina izin verilenlerden mi (bkz. EXTERNAL_LINK_SCHEMES)."""
+    return bool(url) and urlparse(url.strip()).scheme.lower() in EXTERNAL_LINK_SCHEMES
 
 
 def _match_platform_name(host: str) -> str | None:

@@ -359,7 +359,7 @@ Item {
                                 if (link.page >= 0)
                                     root.goToLocation(link.page, link.location, link.zoom)
                                 else
-                                    Qt.openUrlExternally(url)
+                                    bridge.reader.openExternalLink(url)
                             }
                     }
                 }
