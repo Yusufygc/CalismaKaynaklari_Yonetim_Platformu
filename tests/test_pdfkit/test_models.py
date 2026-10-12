@@ -141,3 +141,25 @@ def test_multi_page_annotation_is_visible_on_each_of_its_pages(model):
 
     assert PageFilterModel(model, 0).rowCount() == 1 and PageFilterModel(model, 1).rowCount() == 1
     assert PageFilterModel(model, 2).rowCount() == 0
+
+
+def test_note_model_exposes_roles_sorts_by_page_and_supports_page_filter(qapp):
+    from pdfkit.domain.annotations import PageNote
+    from pdfkit.ui.models import NoteListModel
+
+    def note(note_id, page, text="not"):
+        return PageNote(id=note_id, uid=f"N{note_id:025d}", document_id=1, page=page, x=1.5, y=2.5, text=text)
+
+    model = NoteListModel()
+    model.set_notes([note(1, 4), note(2, 0), note(3, 4)])
+    roles = {bytes(name).decode(): role for role, name in model.roleNames().items()}
+
+    assert [model.data(model.index(r), roles["noteId"]) for r in range(3)] == [2, 1, 3]
+    assert (model.data(model.index(0), roles["x"]), model.data(model.index(0), roles["text"])) == (1.5, "not")
+    assert model.data(model.index(9), roles["noteId"]) is None
+    view = PageFilterModel(model, 4)
+    assert view.rowCount() == 2
+
+    model.upsert(note(1, 4, text="guncel"))
+    assert model.note(1).text == "guncel" and model.note(99) is None
+    assert model.remove(2) and model.count == 2 and not model.remove(2)

@@ -1,5 +1,6 @@
 from bisect import bisect_left
 from dataclasses import dataclass
+from typing import Any
 
 from PySide6.QtCore import (
     Property,
@@ -11,14 +12,92 @@ from PySide6.QtCore import (
     Signal,
 )
 
-from pdfkit.domain.annotations import Annotation
+from pdfkit.domain.annotations import Annotation, PageNote
 from pdfkit.domain.labels import effective_color, name_for_label
 
 _NO_PAGE = 1 << 30
 
 
+class _IncrementalModel(QAbstractListModel):
+    """Sirali, kimlikle erisilen liste modeli. Yapisal degisiklikler (ekle/sil/tasi) yalnizca etkilenen satir
+    icin sinyal yayar; boylece QML'deki sayfa katmanlari her degisimde yeniden kurulmaz.
+
+    Alt siniflar `_build(item)` ile satir uretir; satir `item_id`, `sort_key` (kimligi de iceren, benzersiz) ve
+    `pages` tasimalidir."""
+
+    countChanged = Signal()
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        self._rows: list[Any] = []
+        self._keys: list[tuple] = []  # _rows ile paralel siralama anahtarlari (bisect icin)
+        self._by_id: dict[int, Any] = {}
+
+    def _build(self, item: Any) -> Any:  # pragma: no cover - alt sinif sorumlulugu
+        raise NotImplementedError
+
+    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        return 0 if parent.isValid() else len(self._rows)
+
+    @Property(int, notify=countChanged)
+    def count(self) -> int:
+        return len(self._rows)
+
+    def _set_items(self, items: list[Any]) -> None:
+        self.beginResetModel()
+        self._rows = sorted((self._build(item) for item in items), key=lambda r: r.sort_key)
+        self._keys = [r.sort_key for r in self._rows]
+        self._by_id = {r.item_id: r for r in self._rows}
+        self.endResetModel()
+        self.countChanged.emit()
+
+    def clear(self) -> None:
+        if self._rows:
+            self._set_items([])
+
+    def _upsert(self, item: Any) -> None:
+        """Yeni ogeyi sirali yerine ekler; var olani yerinde gunceller (konumu degistiyse tasir)."""
+        new_row = self._build(item)
+        current = self._by_id.get(new_row.item_id)
+        if current is not None:
+            position = bisect_left(self._keys, current.sort_key)
+            if current.sort_key == new_row.sort_key:
+                self._rows[position] = new_row
+                self._by_id[new_row.item_id] = new_row
+                self.dataChanged.emit(self.index(position), self.index(position))
+                return
+            self.remove(new_row.item_id)
+        position = bisect_left(self._keys, new_row.sort_key)
+        self.beginInsertRows(QModelIndex(), position, position)
+        self._rows.insert(position, new_row)
+        self._keys.insert(position, new_row.sort_key)
+        self._by_id[new_row.item_id] = new_row
+        self.endInsertRows()
+        self.countChanged.emit()
+
+    def remove(self, item_id: int) -> bool:
+        row = self._by_id.get(item_id)
+        if row is None:
+            return False
+        position = bisect_left(self._keys, row.sort_key)
+        self.beginRemoveRows(QModelIndex(), position, position)
+        del self._rows[position]
+        del self._keys[position]
+        del self._by_id[item_id]
+        self.endRemoveRows()
+        self.countChanged.emit()
+        return True
+
+    # ---- PageFilterModel icin hizli erisim ----
+    def row_pages(self, source_row: int) -> list[int]:
+        return self._rows[source_row].pages
+
+    def row_label_key(self, source_row: int) -> str:
+        return getattr(self._rows[source_row], "label_key", "")
+
+
 @dataclass
-class _Row:
+class _AnnotationRow:
     """Bir alinti + QML icin onceden hesaplanmis turevleri (her `data()` cagrisinda tekrar hesaplanmasin)."""
 
     annotation: Annotation
@@ -27,8 +106,16 @@ class _Row:
     pages: list
     sort_key: tuple
 
+    @property
+    def item_id(self) -> int:
+        return self.annotation.id
+
+    @property
+    def label_key(self) -> str:
+        return self.annotation.label_key
+
     @classmethod
-    def of(cls, annotation: Annotation) -> "_Row":
+    def of(cls, annotation: Annotation) -> "_AnnotationRow":
         polygons = [
             [[x, y] for x, y in polygon]
             for segment in annotation.segments
@@ -45,11 +132,8 @@ class _Row:
         return cls(annotation, polygons, rect, sorted({s.page for s in annotation.segments}), key)
 
 
-class AnnotationListModel(QAbstractListModel):
-    """Acik belgenin alintilari. Yapisal degisiklikler (ekle/sil) yalnizca etkilenen satir icin sinyal yayar;
-    boylece QML'deki tum sayfa katmanlari yeniden kurulmaz."""
-
-    countChanged = Signal()
+class AnnotationListModel(_IncrementalModel):
+    """Acik belgenin alintilari (sayfa ve konuma gore sirali)."""
 
     IdRole = Qt.UserRole + 1
     UidRole = Qt.UserRole + 2
@@ -66,13 +150,9 @@ class AnnotationListModel(QAbstractListModel):
     BoundingRectRole = Qt.UserRole + 13
     HasGeometryRole = Qt.UserRole + 14
 
-    def __init__(self, parent: QObject | None = None) -> None:
-        super().__init__(parent)
-        self._rows: list[_Row] = []
-        self._keys: list[tuple] = []  # _rows ile paralel siralama anahtarlari (bisect icin)
-        self._by_id: dict[int, _Row] = {}
+    def _build(self, item: Annotation) -> _AnnotationRow:
+        return _AnnotationRow.of(item)
 
-    # ---- Qt arayuzu ----
     def roleNames(self) -> dict:
         return {
             self.IdRole: b"annotationId",
@@ -90,9 +170,6 @@ class AnnotationListModel(QAbstractListModel):
             self.BoundingRectRole: b"boundingRect",
             self.HasGeometryRole: b"hasGeometry",
         }
-
-    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
-        return 0 if parent.isValid() else len(self._rows)
 
     def data(self, index: QModelIndex, role: int = Qt.DisplayRole):
         if not index.isValid() or not 0 <= index.row() < len(self._rows):
@@ -117,57 +194,12 @@ class AnnotationListModel(QAbstractListModel):
         }
         return values.get(role)
 
-    @Property(int, notify=countChanged)
-    def count(self) -> int:
-        return len(self._rows)
-
-    # ---- icerik ----
     def set_annotations(self, annotations: list[Annotation]) -> None:
-        self.beginResetModel()
-        self._rows = sorted((_Row.of(a) for a in annotations), key=lambda r: r.sort_key)
-        self._keys = [r.sort_key for r in self._rows]
-        self._by_id = {r.annotation.id: r for r in self._rows}
-        self.endResetModel()
-        self.countChanged.emit()
-
-    def clear(self) -> None:
-        if self._rows:
-            self.set_annotations([])
+        self._set_items(annotations)
 
     def upsert(self, annotation: Annotation) -> None:
-        """Yeni alintiyi sirali yerine ekler; var olani yerinde gunceller (sayfa/konum degistiyse tasir)."""
-        new_row = _Row.of(annotation)
-        current = self._by_id.get(annotation.id)
-        if current is not None:
-            position = bisect_left(self._keys, current.sort_key)
-            if current.sort_key == new_row.sort_key:
-                self._rows[position] = new_row
-                self._by_id[annotation.id] = new_row
-                self.dataChanged.emit(self.index(position), self.index(position))
-                return
-            self.remove(annotation.id)
-        position = bisect_left(self._keys, new_row.sort_key)
-        self.beginInsertRows(QModelIndex(), position, position)
-        self._rows.insert(position, new_row)
-        self._keys.insert(position, new_row.sort_key)
-        self._by_id[annotation.id] = new_row
-        self.endInsertRows()
-        self.countChanged.emit()
+        self._upsert(annotation)
 
-    def remove(self, annotation_id: int) -> bool:
-        row = self._by_id.get(annotation_id)
-        if row is None:
-            return False
-        position = bisect_left(self._keys, row.sort_key)
-        self.beginRemoveRows(QModelIndex(), position, position)
-        del self._rows[position]
-        del self._keys[position]
-        del self._by_id[annotation_id]
-        self.endRemoveRows()
-        self.countChanged.emit()
-        return True
-
-    # ---- Python tarafi sorgular ----
     def annotation(self, annotation_id: int) -> Annotation | None:
         row = self._by_id.get(annotation_id)
         return row.annotation if row else None
@@ -175,20 +207,78 @@ class AnnotationListModel(QAbstractListModel):
     def annotations_on_page(self, page: int) -> list[Annotation]:
         return [r.annotation for r in self._rows if page in r.pages]
 
-    def row_pages(self, source_row: int) -> list[int]:
-        return self._rows[source_row].pages
 
-    def row_label_key(self, source_row: int) -> str:
-        return self._rows[source_row].annotation.label_key
+@dataclass
+class _NoteRow:
+    note: PageNote
+
+    @property
+    def item_id(self) -> int:
+        return self.note.id
+
+    @property
+    def sort_key(self) -> tuple:
+        return (self.note.page, self.note.id)
+
+    @property
+    def pages(self) -> list[int]:
+        return [self.note.page]
+
+
+class NoteListModel(_IncrementalModel):
+    """Acik belgenin sayfa notlari (sayfa noktasi uzayinda x, y)."""
+
+    IdRole = Qt.UserRole + 1
+    UidRole = Qt.UserRole + 2
+    PageRole = Qt.UserRole + 3
+    XRole = Qt.UserRole + 4
+    YRole = Qt.UserRole + 5
+    TextRole = Qt.UserRole + 6
+
+    def _build(self, item: PageNote) -> _NoteRow:
+        return _NoteRow(item)
+
+    def roleNames(self) -> dict:
+        return {
+            self.IdRole: b"noteId",
+            self.UidRole: b"uid",
+            self.PageRole: b"page",
+            self.XRole: b"x",
+            self.YRole: b"y",
+            self.TextRole: b"text",
+        }
+
+    def data(self, index: QModelIndex, role: int = Qt.DisplayRole):
+        if not index.isValid() or not 0 <= index.row() < len(self._rows):
+            return None
+        note = self._rows[index.row()].note
+        return {
+            self.IdRole: note.id,
+            self.UidRole: note.uid,
+            self.PageRole: note.page,
+            self.XRole: note.x,
+            self.YRole: note.y,
+            self.TextRole: note.text,
+        }.get(role)
+
+    def set_notes(self, notes: list[PageNote]) -> None:
+        self._set_items(notes)
+
+    def upsert(self, note: PageNote) -> None:
+        self._upsert(note)
+
+    def note(self, note_id: int) -> PageNote | None:
+        row = self._by_id.get(note_id)
+        return row.note if row else None
 
 
 class PageFilterModel(QSortFilterProxyModel):
-    """Tek bir sayfanin (ve istege bagli tek anlam etiketinin) alintilari. Sayfa delegesi basina bir tane."""
+    """Tek bir sayfanin (ve istege bagli tek anlam etiketinin) ogeleri. Sayfa delegesi basina bir tane."""
 
     pageChanged = Signal()
     labelKeyChanged = Signal()
 
-    def __init__(self, source: AnnotationListModel, page: int = -1, parent: QObject | None = None) -> None:
+    def __init__(self, source: _IncrementalModel, page: int = -1, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._page = page
         self._label_key = ""
