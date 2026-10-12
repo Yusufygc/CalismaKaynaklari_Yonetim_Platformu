@@ -30,14 +30,22 @@ _AUTO_CATEGORY_COLORS = {
     "Web": "#6366F1",
 }
 
-_URL_RE = re.compile(
-    r"^https?://"
-    r"([\w\-]+\.)+[\w\-]+"
-    r"(:\d+)?"
-    r"(/[\w\-./?%&=#@!$&'()*+,;:]*)?"
-    r"$",
-    re.IGNORECASE,
-)
+# Nokta ile ayrilmis en az iki etiketli ana bilgisayar adi (`localhost` bilerek reddedilir).
+_HOST_RE = re.compile(r"^([\w\-]+\.)+[\w\-]+$")
+
+
+def _is_valid_web_url(url: str) -> bool:
+    """http(s) + noktali ana bilgisayar; yol/sorgu serbest (`~`, `[]`, `|` dahil), bosluk/kontrol karakteri ve kullanici bilgisi yok."""
+    if any(ch.isspace() or ord(ch) < 32 for ch in url):
+        return False
+    parsed = urlparse(url)
+    if parsed.scheme.lower() not in ("http", "https") or "@" in parsed.netloc:
+        return False
+    try:
+        parsed.port
+    except ValueError:
+        return False
+    return bool(parsed.hostname and _HOST_RE.match(parsed.hostname))
 
 
 def _validate_url(url: str) -> None:
@@ -48,7 +56,7 @@ def _validate_url(url: str) -> None:
         if not parsed.path:
             raise InvalidURLError(f"Gecersiz URL formati: {url!r}")
         return
-    if not _URL_RE.match(url):
+    if not _is_valid_web_url(url):
         raise InvalidURLError(f"Gecersiz URL formati: {url!r}")
 
 
