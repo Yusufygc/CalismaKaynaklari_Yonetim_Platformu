@@ -125,6 +125,10 @@ class QmlBridge(QObject):
     # Kabuk durumu
     # ------------------------------------------------------------------ #
 
+    def run_startup_tasks(self) -> None:
+        """Pencere acildiktan sonra bir kez: PDF deposu bakimi (cop toplama, eski PDF'leri depoya alma)."""
+        self._ctx.pdf_library.start_maintenance()
+
     @Property(bool, notify=isDarkThemeChanged)
     def isDarkTheme(self) -> bool:
         return self._is_dark_theme

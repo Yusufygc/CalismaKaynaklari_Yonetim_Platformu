@@ -81,6 +81,7 @@ def main() -> None:
         sys.exit(-1)
 
     log.info("QML Arayuzu basariyla calisiyor.")
+    bridge.run_startup_tasks()
     exit_code = app.exec()
 
     # Pencere kapanirken hala calisan bir arka plan worker'i (scrape/extract/

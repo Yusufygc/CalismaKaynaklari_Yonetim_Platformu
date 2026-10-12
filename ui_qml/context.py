@@ -16,9 +16,12 @@ from controllers.saved_search_controller import SavedSearchController
 from controllers.tag_controller import TagController
 from controllers.vocabulary_controller import VocabularyController
 from core.events import event_bus
+from pdfkit.api import PdfLibrary
 from services.library_index import LibraryIndex
+from services.pdf_download_service import stream_fetch
 from ui_qml.full_text import FullTextExtractor
 from ui_qml.notifier import Notifier
+from ui_qml.pdf_catalog import ResourceCatalog
 from ui_qml.pdf_files import PdfFileManager
 from ui_qml.serializers import ResourceSerializer
 
@@ -34,6 +37,7 @@ class Controllers:
     vocabulary: VocabularyController
     pdf_notes: PdfNoteController
     saved_searches: SavedSearchController
+    session: Session
 
     @classmethod
     def build(cls, session: Session) -> "Controllers":
@@ -45,6 +49,7 @@ class Controllers:
             vocabulary=VocabularyController(session),
             pdf_notes=PdfNoteController(session),
             saved_searches=SavedSearchController(session),
+            session=session,
         )
 
 
@@ -81,6 +86,14 @@ class BridgeContext:
         self.thread_pool = thread_pool or QThreadPool.globalInstance()
         self.notify = notifier or Notifier()
         self.pdf_files = PdfFileManager(self)
+        self.pdf_library = PdfLibrary(
+            controllers.session,
+            storage_dir=self.pdf_files.storage_dir,
+            catalog=ResourceCatalog(controllers.resources),
+            thread_pool=lambda: self.thread_pool,  # testler havuzu sonradan degistirebilir
+            fetch=stream_fetch,
+        )
+        self.pdf_library.downloadFinished.connect(self.pdf_files.on_download_finished)
         self.extractor = FullTextExtractor(self)
         self.library_index = LibraryIndexCache(controllers.resources)
         self.serializer = ResourceSerializer(self.pdf_files)

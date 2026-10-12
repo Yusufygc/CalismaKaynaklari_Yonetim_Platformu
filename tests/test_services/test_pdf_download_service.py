@@ -1,22 +1,11 @@
 import socket
 
 import pytest
+import requests
 
-from services.pdf_download_service import PdfDownloadService, looks_like_remote_pdf
+from services.pdf_download_service import looks_like_remote_pdf, stream_fetch
 
 pytestmark = pytest.mark.usefixtures("fake_dns")
-
-
-class _Response:
-    is_redirect = False
-
-    def __init__(self, content: bytes, url: str = "https://example.com/papers/attention.pdf") -> None:
-        self.content = content
-        self.url = url
-        self.headers: dict = {}
-
-    def raise_for_status(self) -> None:
-        return None
 
 
 @pytest.mark.parametrize(
@@ -36,42 +25,38 @@ def test_looks_like_remote_pdf(url, expected):
     assert looks_like_remote_pdf(url) is expected
 
 
-def test_download_saves_valid_pdf(monkeypatch, tmp_path):
-    monkeypatch.setattr(
-        "services.pdf_download_service.requests.get",
-        lambda *a, **k: _Response(b"%PDF-1.7 fake pdf body"),
-    )
+class _Response:
+    is_redirect = False
+    headers: dict = {}
 
-    path = PdfDownloadService().download("https://example.com/papers/attention.pdf", tmp_path)
-
-    assert path is not None
-    assert path.parent == tmp_path.resolve()
-    assert path.name.endswith("_attention.pdf")
-    assert path.read_bytes().startswith(b"%PDF-")
+    def raise_for_status(self) -> None:
+        return None
 
 
-def test_download_rejects_html_masquerading_as_pdf(monkeypatch, tmp_path):
-    monkeypatch.setattr(
-        "services.pdf_download_service.requests.get",
-        lambda *a, **k: _Response(b"<html>404 not found</html>"),
-    )
+def test_stream_fetch_requests_with_stream_enabled(monkeypatch):
+    seen = {}
 
-    assert PdfDownloadService().download("https://example.com/x.pdf", tmp_path) is None
-    assert list(tmp_path.iterdir()) == []
+    def _get(url, **kwargs):
+        seen.update(kwargs)
+        return _Response()
+
+    monkeypatch.setattr("services.pdf_download_service.requests.get", _get)
+
+    assert stream_fetch("https://example.com/x.pdf") is not None
+    assert seen["stream"] is True and seen["allow_redirects"] is False
 
 
-def test_download_returns_none_on_network_error(monkeypatch, tmp_path):
-    import requests
-
+def test_stream_fetch_propagates_network_errors(monkeypatch):
     def _boom(*a, **k):
         raise requests.ConnectionError("down")
 
     monkeypatch.setattr("services.pdf_download_service.requests.get", _boom)
 
-    assert PdfDownloadService().download("https://example.com/x.pdf", tmp_path) is None
+    with pytest.raises(requests.ConnectionError):
+        stream_fetch("https://example.com/x.pdf")
 
 
-def test_download_blocks_internal_addresses(monkeypatch, tmp_path):
+def test_stream_fetch_blocks_internal_addresses(monkeypatch):
     monkeypatch.setattr(
         "core.net_utils.socket.getaddrinfo",
         lambda host, *a, **k: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 0))],
@@ -82,4 +67,4 @@ def test_download_blocks_internal_addresses(monkeypatch, tmp_path):
 
     monkeypatch.setattr("services.pdf_download_service.requests.get", _refuse)
 
-    assert PdfDownloadService().download("http://internal.example/x.pdf", tmp_path) is None
+    assert stream_fetch("http://internal.example/x.pdf") is None

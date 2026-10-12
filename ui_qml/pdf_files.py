@@ -14,7 +14,6 @@ from core.logger import log
 from core.paths import pdf_storage_dir
 from models import Resource
 from utils.text_utils import sanitize_utf8
-from workers import PdfDownloadWorker
 
 if TYPE_CHECKING:
     from ui_qml.context import BridgeContext
@@ -97,13 +96,12 @@ class PdfFileManager(QObject):
         if resource.id in self._downloads_in_progress or not resource.url:
             return
         self._downloads_in_progress.add(resource.id)
-        worker = PdfDownloadWorker(resource.id, resource.url, pdf_storage_dir())
-        worker.signals.finished.connect(self._on_download_finished)
-        self._ctx.thread_pool.start(worker)
+        self._ctx.pdf_library.download_remote(resource.id, resource.url)
 
-    def _on_download_finished(self, resource_id: int, path: str | None) -> None:
+    def on_download_finished(self, resource_id: int, path: Path | None) -> None:
+        """`PdfLibrary.downloadFinished` sonucu: depodaki dosya yolu ya da basarisizlik (None)."""
         self._downloads_in_progress.discard(resource_id)
-        self.downloadFinished.emit(resource_id, path)
+        self.downloadFinished.emit(resource_id, str(path) if path else None)
 
     # ------------------------------------------------------------------ #
     # QPdfDocument onbellegi ve geometri
@@ -178,7 +176,11 @@ class PdfFileManager(QObject):
         if not (url.startswith("file://") and url.lower().endswith(".pdf")):
             return
         local_path = Path(QUrl(url).toLocalFile() or url)
-        if pdf_storage_dir() in local_path.resolve().parents:
+        if self._ctx.pdf_library.owns(local_path):
+            # Icerik adresli depo dosyasi baska kaynaklarla paylasiliyor olabilir: dogrudan silinmez, kimse
+            # kullanmiyorsa cop toplama karantinaya alir (Windows kilidi icin yeniden denenir).
+            self._ctx.pdf_library.collect_garbage(attempts=6)
+        elif pdf_storage_dir() in local_path.resolve().parents:
             self._unlink_with_retry(local_path, attempts=6)
 
     def _unlink_with_retry(self, path: Path, attempts: int) -> None:

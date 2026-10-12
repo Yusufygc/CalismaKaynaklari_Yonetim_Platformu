@@ -3,18 +3,14 @@
 Sonuc kaynak kayitlari controller uzerinden yazilir; kutuphane listesi/cekmece `resource_*` olaylariyla
 (bkz. `LibraryEventRouter`) kendiliginden tazelenir, bu siniflar `LibraryBridge`'i dogrudan cagirmaz.
 """
-import re
-import uuid
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QUrl, Signal
 
 from core.constants.strings import AppStrings
-from models import ResourceStatus
+from pdfkit.api import ImportOutcome
 from ui_qml.context import BridgeContext
-from workers import PdfImportWorker, ScrapeWorker
-
-_UNSAFE_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*]')
+from workers import PaperMetadataWorker, ScrapeWorker
 
 
 class MetadataScraper(QObject):
@@ -56,18 +52,18 @@ class MetadataScraper(QObject):
 
 
 class PdfImporter(QObject):
-    """Yerel bir PDF'i kopyalayip kaynak olarak ekler. Orijinal dosyaya dokunulmaz (kopyalanir, tasinmaz/silinmez).
+    """Yerel bir PDF'i pdfkit deposuna alip kaynak olarak ekler. Orijinal dosyaya dokunulmaz (kopyalanir).
 
-    Kopyalama arka planda yapilir; kaynak tamamlaninca olusturulur. `resources.url` standart bir `file:///...`
-    URI'si olarak yazilir -- boylece mevcut okuyucu/extraction altyapisi degismeden calisir. Her `import_pdf`
-    cagrisi sonunda tam bir kez `finished(bool)` yayilir (basari/basarisizlik).
-    """
+    Hash, PDFium incelemesi ve kopyalama arka planda yapilir (`PdfLibrary.import_local`); ayni icerik zaten
+    kutuphanedeyse ikinci kaynak olusturulmaz. PDF'ten DOI okunabildiyse OpenAlex'ten yazar/yil/dergi bilgisi
+    arka planda tamamlanir. Her `import_pdf` cagrisi sonunda tam bir kez `finished(bool)` yayilir."""
 
     finished = Signal(bool)
 
     def __init__(self, ctx: BridgeContext, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._ctx = ctx
+        ctx.pdf_library.importFinished.connect(self._on_import_finished)
 
     def import_pdf(self, file_url: str) -> None:
         local_path = Path(QUrl(file_url).toLocalFile() or file_url)
@@ -75,36 +71,47 @@ class PdfImporter(QObject):
             self._ctx.notify.error(AppStrings.NOTIFICATION_PDF_IMPORT_INVALID)
             self.finished.emit(False)
             return
+        self._ctx.pdf_library.import_local(local_path)
 
-        safe_stem = _UNSAFE_FILENAME_CHARS.sub("_", local_path.stem)[:60]
-        dest_path = (self._ctx.pdf_files.storage_dir() / f"{uuid.uuid4().hex[:8]}_{safe_stem}.pdf").resolve()
-        worker = PdfImportWorker(local_path, dest_path)
-        worker.signals.finished.connect(self._on_copied)
-        self._ctx.thread_pool.start(worker)
-
-    def _on_copied(self, source: str, destination: str, error: str) -> None:
-        local_path, dest_path = Path(source), Path(destination)
-        if error:
-            self._ctx.notify.error(AppStrings.NOTIFICATION_PDF_IMPORT_FAILED)
+    def _on_import_finished(self, outcome: ImportOutcome) -> None:
+        notify = self._ctx.notify
+        if outcome.status == "created":
+            self._after_created(outcome)
+            self.finished.emit(True)
+        elif outcome.status == "duplicate":
+            notify.info(AppStrings.NOTIFICATION_PDF_DUPLICATE_FMT.format(title=outcome.title))
+            self.finished.emit(True)
+        else:
+            invalid = outcome.status == "invalid"
+            notify.error(
+                AppStrings.NOTIFICATION_PDF_IMPORT_INVALID if invalid else AppStrings.NOTIFICATION_PDF_IMPORT_FAILED
+            )
             self.finished.emit(False)
-            return
 
-        payload = {
-            "title": local_path.stem,
-            "url": dest_path.as_uri(),
-            "category_id": None,
-            "status": ResourceStatus.INBOX,
-            "priority": 2,
-            "content": None,
-            "tag_names": [],
-            "extra_metadata": {"source": "local_pdf", "original_filename": local_path.name},
-        }
-        res = self._ctx.controllers.resources.add_resource(payload)
-        if res is None:
-            # Kaynak olusturma basarisiz oldu (hata zaten toast olarak gosterildi) -- kopya oksuz kalmasin.
-            dest_path.unlink(missing_ok=True)
-            self.finished.emit(False)
+    def _after_created(self, outcome: ImportOutcome) -> None:
+        resource = self._ctx.controllers.resources.get_resource(outcome.resource_id)
+        if resource is not None:
+            self._ctx.extractor.schedule(resource.id, resource.url)
+        self._ctx.notify.info(AppStrings.NOTIFICATION_PDF_IMPORTED_FMT.format(title=outcome.title))
+        inspection = outcome.inspection
+        if inspection is not None and not inspection.has_text_layer:
+            self._ctx.notify.info(AppStrings.NOTIFICATION_PDF_NO_TEXT_LAYER)
+        if inspection is not None and inspection.doi:
+            worker = PaperMetadataWorker(outcome.resource_id, inspection.doi, None)
+            worker.signals.finished.connect(self._on_paper_found)
+            self._ctx.thread_pool.start(worker)
+
+    def _on_paper_found(self, resource_id: int, paper, error: str) -> None:
+        """DOI ile bulunan OpenAlex kaydini kaynaga isler; bulunamazsa sessiz kalir (kullanici istemedi)."""
+        if error or paper is None:
             return
-        self._ctx.extractor.schedule(res.id, res.url)
-        self._ctx.notify.info(AppStrings.NOTIFICATION_PDF_IMPORTED_FMT.format(title=res.title))
-        self.finished.emit(True)
+        resources = self._ctx.controllers.resources
+        resource = resources.get_resource(resource_id)
+        if resource is None:
+            return
+        metadata = resource.extra_metadata or {}
+        changes: dict = {"extra_metadata": {**metadata, **paper.to_metadata()}}
+        if paper.title and resource.title == Path(metadata.get("original_filename") or "").stem:
+            changes["title"] = paper.title  # Baslik hala dosya adiysa makale basligiyla degistir.
+        if resources.update_resource(resource_id, changes) is not None:
+            self._ctx.notify.info(AppStrings.NOTIFICATION_PAPER_METADATA_SAVED)

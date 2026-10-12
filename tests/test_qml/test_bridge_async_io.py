@@ -1,5 +1,6 @@
 import pytest
 
+from tests.pdf_factory import write_text_pdf
 from ui_qml.bridge import QmlBridge
 
 
@@ -37,31 +38,29 @@ def test_import_does_not_copy_on_the_calling_thread(bridge, monkeypatch, tmp_pat
     storage = _fake_pdf_storage(monkeypatch, tmp_path)
     pool = _RecordingPool()
     bridge.ctx.thread_pool = pool
-    original = tmp_path / "buyuk.pdf"
-    original.write_bytes(b"%PDF-1.4 x")
+    original = write_text_pdf(tmp_path / "buyuk.pdf")
     results = []
     bridge.library.pdfImportFinished.connect(results.append)
 
     bridge.library.importLocalPdf(original.as_uri())
 
     assert len(pool.workers) == 1  # is worker'a verildi
-    assert list(storage.glob("*.pdf")) == []  # henuz kopyalanmadi (UI thread'i bloklanmadi)
+    assert list(storage.rglob("*.pdf")) == []  # henuz kopyalanmadi (UI thread'i bloklanmadi)
     assert results == []  # sonuc worker bitince gelir
 
     pool.workers[0].run()
-    assert results == [True] and len(list(storage.glob("*.pdf"))) == 1
+    assert results == [True] and len(list(storage.rglob("*.pdf"))) == 1
 
 
 def test_import_copy_failure_reports_error_and_creates_no_resource(bridge, monkeypatch, tmp_path):
     _fake_pdf_storage(monkeypatch, tmp_path)
     bridge.ctx.thread_pool = _SyncThreadPool()
-    original = tmp_path / "a.pdf"
-    original.write_bytes(b"%PDF-1.4 x")
+    original = write_text_pdf(tmp_path / "a.pdf")
 
     def broken_copy(src, dst):
         raise OSError("disk dolu")
 
-    monkeypatch.setattr("workers.pdf_import_worker.shutil.copyfile", broken_copy)
+    monkeypatch.setattr("pdfkit.infra.file_store.shutil.copyfile", broken_copy)
     notes, results = [], []
     bridge.notificationEmitted.connect(lambda kind, msg: notes.append(kind))
     bridge.library.pdfImportFinished.connect(results.append)
@@ -77,11 +76,7 @@ def test_import_signal_fires_once_per_call_for_multiple_files(bridge, monkeypatc
     bridge.ctx.thread_pool = _SyncThreadPool()
     results = []
     bridge.library.pdfImportFinished.connect(results.append)
-    files = []
-    for name in ("a.pdf", "b.pdf"):
-        f = tmp_path / name
-        f.write_bytes(b"%PDF-1.4 x")
-        files.append(f)
+    files = [write_text_pdf(tmp_path / name, [f"{name} icerigi"]) for name in ("a.pdf", "b.pdf")]
     bad = tmp_path / "c.txt"
     bad.write_text("x")
 
@@ -141,8 +136,7 @@ def test_load_pdf_outline_ignores_empty_url(bridge, monkeypatch):
 def test_delete_resource_drops_cached_outline(bridge, monkeypatch, tmp_path):
     _fake_pdf_storage(monkeypatch, tmp_path)
     bridge.ctx.thread_pool = _SyncThreadPool()
-    original = tmp_path / "a.pdf"
-    original.write_bytes(b"%PDF-1.4 x")
+    original = write_text_pdf(tmp_path / "a.pdf")
     bridge.library.importLocalPdf(original.as_uri())
     resource = bridge.controllers.resources.load_resources_with_filters({})[0]
     bridge.reader._pdf_outlines[resource.url] = [{"title": "x", "level": 0, "page": 0}]

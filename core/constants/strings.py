@@ -136,6 +136,10 @@ class AppStrings:
     DROP_PDF_HINT = "PDF'i buraya bırak"
     NOTIFICATION_PDF_IMPORT_INVALID = "Sadece PDF dosyaları desteklenir."
     NOTIFICATION_PDF_IMPORT_FAILED = "PDF kopyalanamadı."
+    NOTIFICATION_PDF_DUPLICATE_FMT = "'{title}' zaten kütüphanede."
+    NOTIFICATION_PDF_NO_TEXT_LAYER = (
+        "Bu PDF'in metin katmanı yok (taranmış olabilir): metin seçimi, arama ve alıntı çalışmaz."
+    )
     NOTIFICATION_PDF_IMPORTED_FMT = "'{title}' içeri aktarıldı."
 
     # Bilgi Havuzu

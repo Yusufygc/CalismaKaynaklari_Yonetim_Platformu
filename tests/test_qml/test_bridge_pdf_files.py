@@ -1,6 +1,7 @@
 """Yerel/web PDF kaynaklari: ice aktarma, indirme, silme ve okuyucuya dusme."""
 import pytest
 
+from tests.pdf_factory import write_text_pdf
 from tests.test_qml.qml_harness import SyncThreadPool
 from ui_qml.bridge import QmlBridge
 
@@ -20,8 +21,7 @@ def local_pdf_env(qapp, session, monkeypatch, tmp_path):
 
     monkeypatch.setattr("ui_qml.pdf_files.pdf_storage_dir", _fake_pdf_storage_dir)
 
-    original = tmp_path / "orijinal_makale.pdf"
-    original.write_bytes(b"%PDF-1.4 fake bytes")
+    original = write_text_pdf(tmp_path / "orijinal_makale.pdf")
     bridge.ctx.thread_pool = SyncThreadPool()
     return bridge, storage_dir, original
 
@@ -43,10 +43,12 @@ def test_qml_bridge_import_local_pdf_copies_and_creates_resource(local_pdf_env):
 
     # Orijinal dosya yerinde durmali (kopya, tasima degil).
     assert original.exists()
-    # Kopya storage dizininde olusmus olmali.
-    copied_files = list(storage_dir.glob("*.pdf"))
+    # Kopya icerik adresli depoda (store/ab/<sha256>/<ad>.pdf) olusmus olmali.
+    copied_files = list((storage_dir / "store").rglob("*.pdf"))
     assert len(copied_files) == 1
-    assert copied_files[0].name.endswith("orijinal_makale.pdf")
+    assert copied_files[0].name == "orijinal_makale.pdf"
+    document = bridge.ctx.pdf_library.documents().document_for_resource(resource.id)
+    assert document is not None and document.has_text_layer and document.page_count == 1
 
 
 def test_qml_bridge_delete_resource_removes_copied_local_pdf(local_pdf_env):
@@ -57,7 +59,7 @@ def test_qml_bridge_delete_resource_removes_copied_local_pdf(local_pdf_env):
     bridge.library.importLocalPdf(original.as_uri())
 
     resource = bridge.controllers.resources.load_resources_with_filters({})[0]
-    copied_path = list(storage_dir.glob("*.pdf"))[0]
+    copied_path = list((storage_dir / "store").rglob("*.pdf"))[0]
     assert copied_path.exists()
 
     # Onbellege gercek bir QPdfDocument koymaya gerek yok -- sadece anahtarin
@@ -66,7 +68,9 @@ def test_qml_bridge_delete_resource_removes_copied_local_pdf(local_pdf_env):
 
     bridge.library.deleteResource(resource.id)
 
-    assert not copied_path.exists()
+    assert not copied_path.exists()  # silinmedi, karantinaya alindi (30 gun saklanir)
+    assert len(list((storage_dir / ".trash").glob("*.pdf"))) == 1
+    assert bridge.ctx.pdf_library.documents().find_by_sha(copied_path.parent.name) is None
     assert resource.url not in bridge.ctx.pdf_files._document_cache
 
 
