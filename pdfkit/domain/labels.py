@@ -41,3 +41,11 @@ def name_for_label(key: str) -> str:
 
 def is_known_label(key: str) -> bool:
     return key in _BY_KEY or key == GENERAL_KEY
+
+
+DEFAULT_COLOR = "#B45309"  # Etiketsiz/bilinmeyen renkli alintilarin gorunen rengi (Theme ile ayni)
+
+
+def effective_color(label_key: str, color: str | None) -> str:
+    """Alintinin gorunen rengi: acik renk > etiketin rengi > varsayilan."""
+    return color or color_for_label(label_key) or DEFAULT_COLOR
