@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from core.logger import log
 from pdfkit.app.annotations import AnnotationService
 from pdfkit.app.documents import DocumentService
+from pdfkit.app.reading import ReadingService
 from pdfkit.app.legacy_import import LegacyAnnotationImporter, LegacyMigrationReport
 from pdfkit.app.importing import prepare_pdf, prepare_remote_pdf
 from pdfkit.app.ports import LegacyPdf, ResourceCatalogPort
@@ -87,6 +88,13 @@ class PdfLibrary(QObject):
 
     def annotations(self) -> AnnotationService:
         return AnnotationService(self._session)
+
+    def reading(self) -> ReadingService:
+        return ReadingService(self._session)
+
+    def progress_map(self) -> dict[int, float]:
+        """{kaynak kimligi: okunan oran}: kaynak kartlarindaki ilerleme cubugu icin tek sorgu."""
+        return self.reading().progress_map()
 
     def annotations_of(self, resource_id: int) -> ResourceAnnotations | None:
         """Kaynagin PDF belgesi yoksa None (HTML makaleler); varsa alinti/not/kelimeler (geometri hesaplanmaz)."""

@@ -28,9 +28,43 @@ Item {
         else
             bridge.pdf.closeDocument()
     }
-    onResourceIdChanged: syncDocument()
+    onResourceIdChanged: {
+        pageArea.flushViewState()  // onceki belgenin son konumu (oturum henuz eski belgede)
+        pageArea.trackView = false
+        if (resourceId === 0)
+            restoredResourceId = 0
+        syncDocument()
+    }
     onResourcePdfUrlChanged: syncDocument()
     Component.onCompleted: syncDocument()
+
+    // Kaldığı yerden devam: belge hazır olunca (QML belgesi + pdfkit oturumu) kayıtlı sayfa/konum/zoom'a gidilir.
+    // Geri yükleme bitip yerleşene kadar konum kaydı kapalıdır (eski kayıt sayfa 0 ile ezilmesin).
+    property int restoredResourceId: 0
+    function tryRestore() {
+        if (resourceId === 0 || restoredResourceId === resourceId || pdfDoc.status !== PdfDocument.Ready)
+            return
+        if (bridge.pdf.currentDocument.resourceId !== resourceId)
+            return
+        restoredResourceId = resourceId
+        const state = bridge.pdf.readingState
+        if (state.hasState)
+            pageArea.restoreView(state.page, state.x, state.y, state.zoom)
+        trackSettleTimer.restart()
+    }
+    Timer {
+        id: trackSettleTimer
+        interval: 700
+        onTriggered: pageArea.trackView = root.restoredResourceId === root.resourceId && root.resourceId > 0
+    }
+    Connections {
+        target: pdfDoc
+        function onStatusChanged() { root.tryRestore() }
+    }
+    Connections {
+        target: bridge.pdf
+        function onCurrentDocumentChanged() { root.tryRestore() }
+    }
     property bool sidePanelOpen: false
     property bool searchOpen: false
 
@@ -352,6 +386,7 @@ Item {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 document: pdfDoc
+                onViewStateChanged: (page, x, y, zoom, seenPage) => bridge.pdf.saveReadingState(page, x, y, zoom, seenPage)
             }
 
             Column {

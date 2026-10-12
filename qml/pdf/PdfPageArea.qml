@@ -31,6 +31,53 @@ Item {
         })
     }
 
+    // Kalinan yer degisince (sayfa, sayfa ici konum, yakinlastirma) 500 ms birlestirilerek bildirilir.
+    // `trackView` kapaliyken (belge acilis/geri yukleme sirasinda) bildirilmez: eski kayit ezilmesin.
+    signal viewStateChanged(int page, real x, real y, real zoom, int seenPage)
+    property bool trackView: false
+
+    function restoreView(page, x, y, zoom) {
+        goToLocation(page, Qt.point(x, y), zoom)
+    }
+
+    // Geri donus noktasi gorunumun USTUNDEKI sayfa + o sayfa icindeki konumdur (sayfa sayaci ise ortadaki sayfayi
+    // gosterir): ortadaki sayfaya gore konum, ust sayfa yukaridaysa negatif olur ve geri yuklenemez.
+    function topViewState() {
+        let cell = tableView.cellAtPos(root.width / 2, 1)
+        if (cell.y < 0)
+            cell = tableView.cellAtPos(root.width / 2, 12)  // sayfalar arasi bosluk
+        const item = cell.y >= 0 ? tableView.itemAtCell(cell) : null
+        if (!item)
+            return null
+        return {
+            page: cell.y,
+            x: (tableView.contentX - item.x + tableView.jumpLocationMargin.x) / root.renderScale,
+            y: (tableView.contentY - item.y + tableView.jumpLocationMargin.y) / root.renderScale
+        }
+    }
+
+    function emitViewState() {
+        if (!root.trackView || pageNavigator.jumping || root.document?.status !== PdfDocument.Ready)
+            return
+        const top = root.topViewState()
+        if (top)
+            root.viewStateChanged(top.page, top.x, top.y, root.renderScale, pageNavigator.currentPage)
+    }
+
+    // Bekleyen konum bildirimini hemen gonderir (okuyucu kapanir / kaynak degisirken son konum kaybolmasin).
+    function flushViewState() {
+        if (viewStateTimer.running) {
+            viewStateTimer.stop()
+            root.emitViewState()
+        }
+    }
+
+    Timer {
+        id: viewStateTimer
+        interval: 500
+        onTriggered: root.emitViewState()
+    }
+
     property alias currentPage: pageNavigator.currentPage
     property alias backEnabled: pageNavigator.backAvailable
     property alias forwardEnabled: pageNavigator.forwardAvailable
@@ -119,7 +166,8 @@ Item {
         property real rotationNorm: Math.round((360 + (root.pageRotation % 360)) % 360)
         property bool rot90: rotationNorm == 90 || rotationNorm == 270
         onRot90Changed: forceLayout()
-        onContentYChanged: if (!pageNavigator.jumping) pageSyncTimer.restart()
+        onContentYChanged: if (!pageNavigator.jumping) { pageSyncTimer.restart(); viewStateTimer.restart() }
+        onContentXChanged: if (!pageNavigator.jumping) viewStateTimer.restart()
         onHeightChanged: forceLayout()
         onWidthChanged: forceLayout()
         property size firstPagePointSize: root.document?.status === PdfDocument.Ready ? root.document.pagePointSize(0) : Qt.size(1, 1)
@@ -456,6 +504,9 @@ Item {
         id: pageNavigator
         property bool jumping: false
         property int previousPage: 0
+        onCurrentPageChanged: viewStateTimer.restart()
+        onCurrentLocationChanged: viewStateTimer.restart()
+        onCurrentZoomChanged: viewStateTimer.restart()
         onJumped: function(current) {
             jumping = true
             if (current.zoom > 0)

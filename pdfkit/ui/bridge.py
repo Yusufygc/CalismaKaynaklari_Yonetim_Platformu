@@ -1,10 +1,15 @@
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QCoreApplication, QObject, QTimer, Signal, Slot
+
+from core.logger import log
 
 from pdfkit.domain.labels import LABELS, effective_color, name_for_label
 from pdfkit.ui.commands import AnnotationCommands
 from pdfkit.ui.library import PdfLibrary
 from pdfkit.ui.models import AnnotationListModel, NoteListModel
 from pdfkit.ui.session import DocumentSession
+
+
+_READING_SAVE_DELAY_MS = 1000
 
 
 class PdfBridge(QObject):
@@ -19,6 +24,8 @@ class PdfBridge(QObject):
     revisionChanged = Signal()
     termsChanged = Signal()
     notification = Signal(str, str)  # tur (info/error), mesaj
+    readingStateChanged = Signal()
+    readingProgressChanged = Signal(int)  # kaynak kimligi: okuma durumu yazildi (kart ilerlemesi tazelenir)
     contentChanged = Signal(int)  # kaynak kimligi: alinti/not/kelime degisti (havuz, cekmece, disa aktarim tazelenir)
 
     def __init__(self, library: PdfLibrary, parent: QObject | None = None) -> None:
@@ -30,6 +37,15 @@ class PdfBridge(QObject):
         self._commands = AnnotationCommands(self._session, library, self.notification.emit)
         self._header: dict = {}
         self._revision = 0
+        self._reading_state: dict = {}
+        self._pending_reading: tuple | None = None  # (belge, sayfa, x, y, zoom, gorulen sayfa): gecikmeli yazilmayi bekler
+        self._reading_timer = QTimer(self)
+        self._reading_timer.setSingleShot(True)
+        self._reading_timer.setInterval(_READING_SAVE_DELAY_MS)
+        self._reading_timer.timeout.connect(self._flush_reading_state)
+        app = QCoreApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self._flush_reading_state)  # uygulama kapanirken son konum kaybolmasin
 
     # ------------------------------------------------------------------ #
     # Okuma
@@ -58,6 +74,11 @@ class PdfBridge(QObject):
             }
             for t in self._session.terms
         ]
+
+    @Property(dict, notify=readingStateChanged)
+    def readingState(self) -> dict:
+        """Belge acilirken okuma durumu: {hasState, page, x, y, zoom}; kayit yoksa hasState=False."""
+        return self._reading_state
 
     @Property(int, notify=revisionChanged)
     def revision(self) -> int:
@@ -97,8 +118,10 @@ class PdfBridge(QObject):
 
     @Slot(int, result=bool)
     def openDocument(self, resource_id: int) -> bool:
+        self._flush_reading_state()
         opened = self._session.open(resource_id)
         document = self._session.document
+        self._load_reading_state(document.id if opened and document else None)
         self._set_header(
             {
                 "resourceId": resource_id,
@@ -116,7 +139,9 @@ class PdfBridge(QObject):
 
     @Slot()
     def closeDocument(self) -> None:
+        self._flush_reading_state()
         self._session.close()
+        self._load_reading_state(None)
         self._set_header({})
         self.termsChanged.emit()
         self._bump_revision()
@@ -133,6 +158,43 @@ class PdfBridge(QObject):
     def ensureGeometry(self, page: int) -> int:
         """Sayfa gorunur olunca cagrilir; eksik geometriyi dilimler halinde hesaplar. Ilk dilimde hesaplanan sayi doner."""
         return self._session.request_geometry(page)
+
+    # ------------------------------------------------------------------ #
+    # Okuma durumu
+    # ------------------------------------------------------------------ #
+
+    @Slot(int, float, float, float, int)
+    def saveReadingState(self, page: int, x: float, y: float, zoom: float, seen_page: int) -> None:
+        """Kalinan yeri kaydeder: gorunumun ustundeki sayfa + sayfa ici konum + yakinlastirma; `seen_page` ilerleme
+        icin gorunumun ortasindaki sayfa. Sik cagrilir; yazma 1 sn birlestirilir, belge kapanirken anında yazilir."""
+        document = self._session.document
+        if document is None:
+            return
+        self._pending_reading = (document.id, page, x, y, zoom, seen_page)
+        if not self._reading_timer.isActive():
+            self._reading_timer.start()
+
+    def _flush_reading_state(self) -> None:
+        self._reading_timer.stop()
+        pending, self._pending_reading = self._pending_reading, None
+        if pending is None or not self._header:
+            return
+        document_id, page, x, y, zoom, seen_page = pending
+        try:
+            self._library.reading().save(document_id, page, x, y, zoom, seen_page=seen_page)
+        except Exception:
+            log.exception("Okuma durumu kaydedilemedi: belge=%s", document_id)
+            return
+        self.readingProgressChanged.emit(self._header["resourceId"])
+
+    def _load_reading_state(self, document_id: int | None) -> None:
+        state = self._library.reading().get(document_id) if document_id is not None else None
+        self._reading_state = (
+            {"hasState": True, "page": state.last_page, "x": state.loc_x, "y": state.loc_y, "zoom": state.zoom}
+            if state
+            else {"hasState": False, "page": 0, "x": 0.0, "y": 0.0, "zoom": 0.0}
+        )
+        self.readingStateChanged.emit()
 
     # ------------------------------------------------------------------ #
     # Alinti

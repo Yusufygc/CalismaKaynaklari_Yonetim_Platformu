@@ -102,3 +102,22 @@ class PdfTermRow(_AnchorColumns, Base):
     mastery_level: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=func.now())
     legacy_id: Mapped[int | None] = mapped_column(Integer, nullable=True, unique=True)
+
+
+class PdfReadingStateRow(Base):
+    """Belge basina okuma durumu (kaldigi yer, en uzak sayfa, aktif okuma suresi)."""
+
+    __tablename__ = "pdf_reading_state"
+
+    document_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("pdf_documents.id", ondelete="CASCADE"), primary_key=True
+    )
+    last_page: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    loc_x: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    loc_y: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    zoom: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    max_page: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=func.now(), onupdate=func.now()
+    )

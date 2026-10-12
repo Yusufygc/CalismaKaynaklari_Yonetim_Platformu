@@ -62,6 +62,7 @@ class ResourceListModel(QAbstractListModel):
     TagsRole = Qt.ItemDataRole.UserRole + 18
     CreatedAtRole = Qt.ItemDataRole.UserRole + 19
     DurationLabelRole = Qt.ItemDataRole.UserRole + 20
+    ReadingProgressRole = Qt.ItemDataRole.UserRole + 21  # PDF okuma orani 0..1 (kaynak degil, pdfkit'ten gelir)
 
     # QML `rowCount()` cagrisi degisimi bildirmez (binding bir kez hesaplanip donar);
     # bildirimli `count` property'si QML'in bos-durum/grid gorunurlugunu gunceller.
@@ -70,6 +71,7 @@ class ResourceListModel(QAbstractListModel):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._resources: list[Resource] = []
+        self._progress: dict[int, float] = {}
 
     @Property(int, notify=countChanged)
     def count(self) -> int:
@@ -103,13 +105,25 @@ class ResourceListModel(QAbstractListModel):
     }
 
     def roleNames(self) -> dict[int, bytes]:
-        return {role: name for role, (name, _getter) in self._ROLES.items()}
+        names = {role: name for role, (name, _getter) in self._ROLES.items()}
+        names[self.ReadingProgressRole] = b"readingProgress"
+        return names
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
         if not index.isValid() or not (0 <= index.row() < len(self._resources)):
             return None
+        if role == self.ReadingProgressRole:
+            return self._progress.get(self._resources[index.row()].id, 0.0)
         spec = self._ROLES.get(role)
         return spec[1](self._resources[index.row()]) if spec else None
+
+    def set_progress(self, progress: dict[int, float]) -> None:
+        """Kaynak kimligi -> okuma orani; yalnizca degistiyse kartlara bildirilir."""
+        if progress == self._progress:
+            return
+        self._progress = dict(progress)
+        if self._resources:
+            self.dataChanged.emit(self.index(0), self.index(len(self._resources) - 1), [self.ReadingProgressRole])
 
     def set_resources(self, resources: list[Resource]) -> None:
         self.beginResetModel()

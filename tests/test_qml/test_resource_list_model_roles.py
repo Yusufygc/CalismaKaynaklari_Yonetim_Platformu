@@ -29,8 +29,9 @@ def test_every_role_has_a_unique_qml_name_and_a_getter(qapp):
     model = ResourceListModel()
     names = [bytes(n).decode() for n in model.roleNames().values()]
 
-    assert len(names) == len(set(names)) == 19
-    assert set(model.roleNames()) == set(ResourceListModel._ROLES)
+    assert len(names) == len(set(names)) == 20
+    # Okuma ilerlemesi kaynaktan degil pdfkit'ten gelir (set_progress); digerlerinin hepsinin getter'i var.
+    assert set(model.roleNames()) - {ResourceListModel.ReadingProgressRole} == set(ResourceListModel._ROLES)
 
 
 def test_all_roles_for_a_fully_populated_resource(qapp):
@@ -121,3 +122,16 @@ def test_qml_only_reads_roles_the_model_provides(qapp):
 
     assert used, "AppCard model rollerini kullanmali"
     assert used <= provided, f"modelde olmayan roller: {used - provided}"
+
+
+def test_reading_progress_role_defaults_to_zero_and_follows_set_progress(qapp):
+    model, index = _model_with(_resource(id=7))
+    changes = []
+    model.dataChanged.connect(lambda a, b, roles: changes.append(list(roles)))
+    assert model.data(index, ResourceListModel.ReadingProgressRole) == 0.0
+
+    model.set_progress({7: 0.4})
+    model.set_progress({7: 0.4})  # ayni deger: bildirim yok
+
+    assert model.data(index, ResourceListModel.ReadingProgressRole) == 0.4
+    assert changes == [[ResourceListModel.ReadingProgressRole]]

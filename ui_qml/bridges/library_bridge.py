@@ -88,10 +88,15 @@ class LibraryBridge(QObject):
     def reload(self) -> None:
         """Vitrin listesini (mevcut filtrelerle) ve istatistikleri yeniler; kutuphane indeksi gecersiz olur."""
         self._ctx.library_index.invalidate()
+        self._model.set_progress(self._ctx.pdf_library.progress_map())
         self._model.set_resources(self._resources.load_resources_with_filters(self.filters))
         self._stats_cache = _library_stats(self._resources.load_resources_with_filters({}))
         self.statsChanged.emit()
         self.resourcesReloaded.emit()
+
+    def refresh_progress(self) -> None:
+        """PDF okuma ilerlemesi degisti: yalnizca kartlardaki ilerleme cubugunu tazeler (liste yeniden kurulmaz)."""
+        self._model.set_progress(self._ctx.pdf_library.progress_map())
 
     @contextmanager
     def suspend_events(self):

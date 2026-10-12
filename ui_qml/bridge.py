@@ -70,6 +70,7 @@ class QmlBridge(QObject):
         self._pdf = PdfBridge(self._ctx.pdf_library, self)
         self._pdf.notification.connect(self._on_pdf_notification)
         self._pdf.contentChanged.connect(self._on_pdf_content_changed)
+        self._pdf.readingProgressChanged.connect(lambda _resource_id: self._library.refresh_progress())
         self._citations = CitationsBridge(self._ctx, self._library, self._reader, self)
         self._market = MarketBridge(self._ctx, self._library, search_state, self)
         self._discovery = DiscoveryBridge(self._ctx, self._library, self)

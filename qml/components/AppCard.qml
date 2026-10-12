@@ -25,6 +25,7 @@ Item {
     property string thumbnailUrl: model ? model.thumbnailUrl : ""
     property int readingMinutes: model ? model.readingMinutes : 0
     property string durationLabel: model ? model.durationLabel : ""
+    property real readingProgress: model ? model.readingProgress : 0
     property var tags: model ? model.tags : []
 
     signal clicked()
@@ -368,6 +369,17 @@ Item {
                 }
             }
 
+        }
+
+        // PDF okuma ilerlemesi: kartin en altinda ince cubuk (okuma durumu olmayan kaynaklarda gorunmez).
+        Rectangle {
+            objectName: "readingProgressBar"
+            anchors.left: parent.left
+            anchors.bottom: parent.bottom
+            height: 3
+            width: parent.width * Math.min(1, root.readingProgress)
+            color: Theme.accent
+            visible: root.readingProgress > 0
         }
 
         // 3. Kart Alt Barı (Durum ve Etiketler) -- Column disina alinip kartin
