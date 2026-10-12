@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from alembic import command as alembic_command
@@ -128,7 +128,7 @@ def _prune_backups(db_file: Path, keep: int = _BACKUP_KEEP) -> None:
 
 def _backup_before_migration(db_file: Path, revision: str) -> Path:
     """Migration oncesi tutarli bir yedek alir (SQLite backup API: WAL dosyasini da kapsar)."""
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    stamp = datetime.now(timezone.utc).astimezone().strftime("%Y%m%d-%H%M%S")
     destination = db_file.with_name(f"{db_file.name}.bak-{stamp}-{revision}")
     source = sqlite3.connect(db_file)
     try:

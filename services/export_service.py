@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from core.constants.highlight_labels import HIGHLIGHT_LABELS, label_for_color
 from models import Resource
@@ -104,7 +104,7 @@ class ExportService:
         header = [
             "# Literatür Notları",
             "",
-            f"_Oluşturulma: {datetime.now():%d.%m.%Y %H:%M} · {len(exportable)} kaynak_",
+            f"_Oluşturulma: {datetime.now(timezone.utc).astimezone():%d.%m.%Y %H:%M} · {len(exportable)} kaynak_",
             "",
         ]
         body = [cls.resource_markdown(r, level=2) for r in exportable]
