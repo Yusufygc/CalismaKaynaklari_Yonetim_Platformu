@@ -31,3 +31,27 @@ def resource_with_document(session, pdf_store, tmp_path):
 @pytest.fixture()
 def annotations(session):
     return AnnotationService(session)
+
+
+class NullCatalog:
+    """Kaynak katalogu gerektirmeyen testler icin bos port uygulamasi."""
+
+    def create_pdf_resource(self, title, file_url, extra_metadata):
+        return None
+
+    def legacy_pdfs(self):
+        return []
+
+    def repoint(self, legacy, new_path):
+        return False
+
+
+@pytest.fixture()
+def pdf_library(qapp, session, pdf_store):
+    from pdfkit.api import PdfLibrary
+
+    class _Pool:
+        def start(self, worker):
+            worker.run()
+
+    return PdfLibrary(session, lambda: pdf_store.root, NullCatalog(), lambda: _Pool(), lambda url: None)

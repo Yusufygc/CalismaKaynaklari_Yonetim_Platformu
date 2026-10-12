@@ -2,6 +2,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from sqlalchemy.orm import Session
 
 from core.events import event_bus
+from pdfkit.api import PdfBridge
 from ui_qml.bridges.annotations_bridge import AnnotationsBridge
 from ui_qml.bridges.citations_bridge import CitationsBridge
 from ui_qml.bridges.discovery_bridge import DiscoveryBridge
@@ -23,6 +24,7 @@ class QmlBridge(QObject):
     - `bridge.library`  -- kaynak listesi/filtre, detay cekmecesi, kaynak ekle-duzenle-sil, PDF iceri aktarma
     - `bridge.reader`   -- okuyucuyu ac/kapat, PDF indirme/anahat, Markdown disa aktarim
     - `bridge.annotations` -- alinti, kelime havuzu, PDF sayfa notlari
+    - `bridge.pdf`      -- pdfkit: PDF belgesi, alinti modelleri (artimli), sayfa filtreleri (bkz. docs/plans/pdfkit-faz3-plani.md)
     - `bridge.citations` -- atif metni, OpenAlex bilgisi, referans/atif listeleri
     - `bridge.market`   -- Makale Market aramasi, sayfalama, gecmis, kaydetme/disa aktarma
     - `bridge.discovery` -- Market kart kesfi (referans/atif/benzer/yazar) ve kutuphaneden oneriler
@@ -65,6 +67,7 @@ class QmlBridge(QObject):
         self._reader = ReaderBridge(self._ctx, self._library, self.setCurrentView, self)
         search_state = SavedSearchState(self)
         self._annotations = AnnotationsBridge(self._ctx, self._reader, self)
+        self._pdf = PdfBridge(self._ctx.pdf_library, self)
         self._citations = CitationsBridge(self._ctx, self._library, self._reader, self)
         self._market = MarketBridge(self._ctx, self._library, search_state, self)
         self._discovery = DiscoveryBridge(self._ctx, self._library, self)
@@ -87,6 +90,10 @@ class QmlBridge(QObject):
     @Property(QObject, constant=True)
     def annotations(self) -> QObject:
         return self._annotations
+
+    @Property(QObject, constant=True)
+    def pdf(self) -> QObject:
+        return self._pdf
 
     @Property(QObject, constant=True)
     def citations(self) -> QObject:

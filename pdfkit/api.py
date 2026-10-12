@@ -3,6 +3,7 @@ from pdfkit.app.ports import LegacyPdf, ResourceCatalogPort
 from pdfkit.domain.errors import DownloadError, NotAPdfError, PdfkitError, TooLargeError
 from pdfkit.domain.models import Document, PdfInspection
 from pdfkit.infra.text import extract_page_texts
+from pdfkit.ui.bridge import PdfBridge
 from pdfkit.ui.library import ImportOutcome, PdfLibrary
 
 __all__ = [
@@ -11,6 +12,7 @@ __all__ = [
     "ImportOutcome",
     "LegacyPdf",
     "NotAPdfError",
+    "PdfBridge",
     "PdfInspection",
     "PdfLibrary",
     "PdfkitError",

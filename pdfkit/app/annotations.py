@@ -174,6 +174,23 @@ class AnnotationService:
 
         return self._write(change)
 
+    def store_geometry(self, updates: dict[int, list[Segment]], engine_fp: str | None) -> list[Annotation]:
+        """Hesaplanan sayfa-noktasi poligonlarini alintilara kalici yazar (belge basina bir kez; sonraki
+        acilislarda hesap gerekmez). `updates`: alinti kimligi -> poligonlu parcalar."""
+
+        def change() -> list[Annotation]:
+            stored = []
+            for annotation_id, segments in updates.items():
+                row = self._repo.get_annotation(annotation_id)
+                if row is None:
+                    continue
+                row.segments = segments_to_json(segments)
+                row.engine_fp = engine_fp
+                stored.append(annotation_from_row(row))
+            return stored
+
+        return self._write(change)
+
     def backfill_context(self, document_id: int, provider: PageTextProvider, engine_fp: str | None) -> BackfillReport:
         """Eski kayitlarin (konum var, baglam yok) konumunu dogrular ve onceki/sonraki baglami cikarir.
         Belge ilk acildiginda Qt metin saglayicisiyla cagrilir."""
