@@ -1,6 +1,6 @@
 # pdfkit — PDF Okuma ve Çalışma Modülü
 
-Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · Faz 0–1 raporları: `docs/plans/pdfkit-faz0-raporu.md`, `docs/plans/pdfkit-faz1-raporu.md`. Durum: **Faz 4b tamam** (metin katmanı bandı, döndürülmüş sayfa doğrulaması); **Faz 4a tamam** (okuma durumu); **Faz 3 tamam** (okuyucu pdfkit'e geçti, eski yol temizlendi: belge deposu, alıntı alanı, çapa çözümleyici, okuma/yazma yolu, QML, havuz, dışa aktarım); Faz 4 okuma deneyimi, vault sonraki fazlar. Alt faz planı: `docs/plans/pdfkit-faz3-plani.md`.
+Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · Faz 0–1 raporları: `docs/plans/pdfkit-faz0-raporu.md`, `docs/plans/pdfkit-faz1-raporu.md`. Durum: **Faz 4 tamam** (4c: yetim alıntılar ve serbest etiketler); **Faz 4b tamam** (metin katmanı bandı, döndürülmüş sayfa doğrulaması); **Faz 4a tamam** (okuma durumu); **Faz 3 tamam** (okuyucu pdfkit'e geçti, eski yol temizlendi: belge deposu, alıntı alanı, çapa çözümleyici, okuma/yazma yolu, QML, havuz, dışa aktarım); Faz 4 okuma deneyimi, vault sonraki fazlar. Alt faz planı: `docs/plans/pdfkit-faz3-plani.md`.
 
 ## Sınır kuralları
 
@@ -84,6 +84,13 @@ PDF okuyucu artık alıntı/not/kelimeyi yalnız `bridge.pdf` üzerinden okur ve
 
 - **Döndürülmüş sayfalar (`/Rotate` 90/180/270):** Qt koordinatları **görüntülenen (döndürülmüş) uzaydadır**: `pagePointSize` boyutları takas eder, seçim poligonları render ile örtüşür (piksel doğrulaması yapıldı). Tek tuzak: `QPdfSelection.boundingRectangle()` döndürülmüş sayfada **normalize edilmemiş** (negatif genişlik/yükseklik) döner. pdfkit sınırlayıcı dikdörtgeni poligonlardan hesaplar (`AnnotationListModel`), bu yüzden etkilenmez; Qt dikdörtgenini doğrudan kullanan kod `normalized()` çağırmalıdır. Düzeltilecek bir hata bulunmadı; gerçek fare testi (`test_pdf_rotation.py`, 90/180/270) kelimeyi seçip alıntılar, saklanan geometri ve tıklama alanı kelimenin üstünde. Görünüm döndürme (`PdfPageArea.pageRotation`) arayüzde açık değildir; açılırsa koordinat dönüşümü yeniden sınanmalıdır.
 - **Metin katmanı bandı:** `PdfReaderView` içinde `noTextLayerBanner`: belge metin katmanı yoksa (`bridge.pdf.currentDocument.hasTextLayer == false`; kaynak `PdfInspection`) "seçim, alıntı ve arama çalışmaz; sayfa notu eklenebilir" uyarısı; "Gizle" yalnız o belge açılışı için geçerlidir. **Kural:** bandın yüksekliği okuyucu *kapanırken* değişmemeli — `textLayerMissing` yalnız yeni belge açılınca güncellenir; kapanışta oturum başlığı boşalınca bant yüksekliğinin değişmesi sayfa alanını (TableView) yeniden yerleştirip Qt çökmesine yol açtı (testte gözlendi).
+
+## Yetim alıntılar ve serbest etiketler (Faz 4c)
+
+- **Yetim alıntı:** metni belgede bulunamayan (`orphaned`) alıntı sayfada çizilmez ama kaybolmaz; yan panel 'Notlarım' sekmesinde "Konumu bulunamayan (N)" süzgeç çipiyle listelenir (`bridge.pdf.orphanCount`, `notebookItems(..., onlyOrphaned, ...)`). Satırda "Konumu bulunamadı" + **Yeniden bağla** + **Sil**; satır tıklaması (konuma git) yetimde kapalıdır.
+- **Yeniden bağlama akışı:** "Yeniden bağla" → `PdfReaderView.relinkTargetId` set edilir, sayfa alanının üstünde yüzen bilgi bandı çıkar (yerleşimi etkilemez; bkz. 4b çökme kuralı) → kullanıcı sayfada yeni metni seçer → seçim araç çubuğu renk yerine **"Buraya bağla"** gösterir (`PdfSelectionOverlay.relinkTargetId`) → `bridge.pdf.relinkAnnotation(id, seçim)` → `AnnotationCommands.relink`: metin, bağlam (önceki/sonraki), geometri ve `engine_fp` yeni seçimden alınır, durum `ok` olur; **anlam etiketi, yorum ve serbest etiketler korunur**; model artımlı güncellenir (alıntı sayfada belirir). Seçim yoksa hata bildirimi ve yetim korunur. "Vazgeç" ya da kaynak değişimi hedefi sıfırlar.
+- **Serbest etiketler (K10):** vurgu düzenleme popover'ında virgülle ayrılan alan; kayıtta `#` atılır, küçük harfe çevrilir, tekrarlar elenir (`_clean_tags`). `bridge.pdf.tags` = belgedeki etiketler ve kullanım sayıları (çok kullanılandan aza); 'Notlarım' çiplerinde `#etiket (n)` ile süzülür; satırlarda `#etiket` görünür. Obsidian çıktısında `#tag` olacak (Faz 5).
+- **`notebookItems(labelKey, tag, onlyOrphaned, revision)`:** süzgeç (anlam etiketi/serbest etiket/yetim) varken sayfa notları listeden çıkar.
 
 ## Ölçümler ve kararlar
 

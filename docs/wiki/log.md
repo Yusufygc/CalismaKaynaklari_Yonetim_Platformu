@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | pdfkit Faz 4c: yetim alıntı paneli, yeniden bağlama ve serbest etiketler
+
+Konumu bulunamayan alıntılar 'Notlarım' panelinde süzgeç çipi (`orphanCount`) ve satır eylemleriyle (Yeniden bağla/Sil) listelenir. Yeniden bağlama: yan panelden başlar, sayfada yeni metin seçilince "Buraya bağla" ile `bridge.pdf.relinkAnnotation` çağrılır (metin/bağlam/geometri yeni seçimden; etiket, yorum ve serbest etiketler korunur). Serbest etiketler vurgu popover'ında düzenlenir, `bridge.pdf.tags` ile sayılır ve panelde süzülür. `notebookItems` imzası `(labelKey, tag, onlyOrphaned, revision)` oldu. Test yardımcısı `type_text` büyük harf/bosluk/virgül/# yazabiliyor. 680 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz4c-raporu.md`.
+
+---
+
 ## [2026-10-13] FEAT | pdfkit Faz 4b: metin katmanı bandı ve döndürülmüş sayfa doğrulaması
 
 Taranmış (metin katmanı yok) PDF'te okuyucu üstte uyarı bandı gösterir. Döndürülmüş (`/Rotate`) sayfalarda seçim → alıntı → vurgu gerçek fareyle 90/180/270 için sınandı: Qt koordinatları döndürülmüş uzaydadır ve pdfkit poligonlardan sınırlayıcı dikdörtgen hesapladığından düzeltme gerekmedi (Qt'nin `boundingRectangle()` değeri döndürülmüşte normalize edilmemiştir). Test fabrikasına `rotate` parametresi eklendi. Bant yüksekliğinin okuyucu kapanırken değişmesi Qt çökmesi ürettiği için değer yalnız belge açılınca güncellenir. 672 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz4b-raporu.md`.
