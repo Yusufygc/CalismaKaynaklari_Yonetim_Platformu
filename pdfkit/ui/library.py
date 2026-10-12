@@ -10,7 +10,9 @@ from PySide6.QtCore import QObject, QThreadPool, QTimer, Signal
 from sqlalchemy.orm import Session
 
 from core.logger import log
+from pdfkit.app.annotations import AnnotationService
 from pdfkit.app.documents import DocumentService
+from pdfkit.app.legacy_import import LegacyAnnotationImporter, LegacyImportReport
 from pdfkit.app.importing import prepare_pdf, prepare_remote_pdf
 from pdfkit.app.ports import LegacyPdf, ResourceCatalogPort
 from pdfkit.domain.errors import NotAPdfError
@@ -60,6 +62,7 @@ class PdfLibrary(QObject):
         self._max_download_bytes = max_download_bytes
         self._adopt_queue: deque = deque()
         self._adopted = 0
+        self.legacyAdoptionFinished.connect(self._after_adoption)
 
     # ------------------------------------------------------------------ #
     # Yardimcilar
@@ -70,6 +73,9 @@ class PdfLibrary(QObject):
 
     def documents(self) -> DocumentService:
         return DocumentService(self._session, self.store())
+
+    def annotations(self) -> AnnotationService:
+        return AnnotationService(self._session)
 
     def _run(self, fn: Callable[[], Any], callback: Callable[[Any, Exception | None], None]) -> None:
         submit(self._thread_pool(), CallWorker(fn, callback), self._dispatch)
@@ -230,9 +236,23 @@ class PdfLibrary(QObject):
             log.warning("%d PDF belgesi kilitli, sonraki acilista yeniden denenecek.", report.pending)
 
     def start_maintenance(self) -> None:
-        """Acilista: cop toplama + eski PDF'leri depoya alma."""
+        """Acilista: cop toplama + eski PDF'leri depoya alma (bitince eski alinti/not/kelime kopyalanir)."""
         self.collect_garbage()
         self.adopt_legacy()
+
+    # ------------------------------------------------------------------ #
+    # Eski alinti / not / kelime kayitlarinin kopyalanmasi
+    # ------------------------------------------------------------------ #
+
+    def import_legacy_annotations(self, delete_missing: bool = True) -> LegacyImportReport:
+        """Eski tablolardaki PDF kayitlarini pdfkit tablolarina esitler (bkz. `LegacyAnnotationImporter`)."""
+        return LegacyAnnotationImporter(self._session).run(delete_missing)
+
+    def _after_adoption(self, _adopted: int) -> None:
+        try:
+            self.import_legacy_annotations()
+        except Exception:  # Acilisi engellemez; hata zaten loglandi, sonraki acilista yeniden denenir.
+            log.warning("Eski PDF kayitlarinin kopyalanmasi atlandi.")
 
 
 def _legacy_display_name(path: Path) -> str:

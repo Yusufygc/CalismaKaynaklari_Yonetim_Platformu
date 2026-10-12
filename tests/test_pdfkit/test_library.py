@@ -226,3 +226,19 @@ def test_garbage_collection_retries_until_a_locked_file_can_be_moved(qapp, libra
 
     assert not list((storage / "store").rglob("*.pdf"))
     assert calls["n"] >= 2
+
+
+def test_maintenance_copies_legacy_annotations_once_adoption_has_finished(qapp, library, session, tmp_path):
+    from models import Highlight
+
+    outcomes = _capture(library.importFinished)
+    library.import_local(write_text_pdf(tmp_path / "a.pdf"))
+    resource_id = outcomes[0].resource_id
+    session.add(Highlight(resource_id=resource_id, content="Hizli kahverengi", color="#22C55E", page_number=0, start_index=0, length=16))
+    session.commit()
+
+    library.start_maintenance()  # bos benimseme -> kopyalama
+
+    document = library.documents().document_for_resource(resource_id)
+    (copied,) = library.annotations().list_highlights(document.id)
+    assert copied.quote_exact == "Hizli kahverengi" and copied.legacy_id is not None
