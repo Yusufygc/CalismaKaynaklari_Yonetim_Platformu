@@ -110,6 +110,9 @@ Repo/servis/controller: `repositories/saved_search_repo.py`, `services/saved_sea
 ### `pdf_documents` / `pdf_resource_documents` (pdfkit belge deposu — 2026-10-12, migration `b3a91c5d7e20`)
 Modeller `pdfkit/infra/orm.py` (ortak `Base`). `pdf_documents`: id, `sha256` (benzersiz), `rel_path` (depo köküne göre `store/ab/<sha>/<ad>.pdf`), `byte_size`, `page_count`, `has_text_layer`, `pdf_title`, `pdf_author`, `doi` (indeksli), `source` (`local`/`web`), `original_filename`, `imported_at`. `pdf_resource_documents`: `resource_id` (PK, FK → resources, CASCADE) → `document_id` (FK → pdf_documents, RESTRICT, indeksli); aynı PDF birden çok kaynakta olabilir, hiçbir kaynağa bağlı olmayan belge çöp toplamayla karantinaya alınır. Bkz. [[pdfkit]].
 
+### `pdf_vault_notes` (pdfkit vault citekey — 2026-10-13, migration `a5d1e7c3b920`)
+`PdfVaultNoteRow`: `document_id` (PK, FK → pdf_documents, CASCADE), `citekey` (benzersiz, ≤80; `[a-z0-9]`), `created_at`. Citekey ilk atamada yazılır ve değişmez; not yolu `Papers/<citekey>.md`. Servis `pdfkit/app/vault.py::CitekeyService`; bkz. [[pdfkit]] 'Obsidian vault: not modeli (Faz 5a)'.
+
 ### `pdf_reading_state` (pdfkit okuma durumu — 2026-10-13, migration `f2c8d4a61b93`)
 Modeller `pdfkit/infra/orm.py::PdfReadingStateRow`. Birincil anahtar `document_id` (FK → pdf_documents, CASCADE). `last_page`, `loc_x`, `loc_y` (görünümün üstündeki sayfa ve sayfa içi konum), `zoom`, `max_page` (en uzak görülen sayfa; kart ilerlemesi), `total_seconds` (aktif okuma süresi), `updated_at`. Servis `pdfkit/app/reading.py::ReadingService`; bkz. [[pdfkit]] 'Okuma durumu (Faz 4a)'.
 

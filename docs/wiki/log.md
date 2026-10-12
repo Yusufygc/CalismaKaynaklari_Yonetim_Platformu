@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | pdfkit Faz 5a: Obsidian vault not modeli (citekey, not oluşturucu/birleştirici, derin bağlantı)
+
+Faz 5 alt fazlara bölündü (`docs/plans/pdfkit-faz5-plani.md`). 5a saf çekirdek: kalıcı citekey (`pdf_vault_notes`, migration `a5d1e7c3b920`), frontmatter + sentinel'li blok üreten ve kullanıcı metnini koruyarak birleştiren `compose_note` (callout, `^hl-` blok kimliği, `#etiket`, derin bağlantı; bozuk sentinel reddi; idempotent), `pkm://open` bağlantı üretici/ayrıştırıcı, `ResourceCatalogPort.describe`. Dosya/arayüz yok (5b). 743 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz5a-raporu.md`.
+
+---
+
 ## [2026-10-13] FEAT | pdfkit Faz 4c: yetim alıntı paneli, yeniden bağlama ve serbest etiketler
 
 Konumu bulunamayan alıntılar 'Notlarım' panelinde süzgeç çipi (`orphanCount`) ve satır eylemleriyle (Yeniden bağla/Sil) listelenir. Yeniden bağlama: yan panelden başlar, sayfada yeni metin seçilince "Buraya bağla" ile `bridge.pdf.relinkAnnotation` çağrılır (metin/bağlam/geometri yeni seçimden; etiket, yorum ve serbest etiketler korunur). Serbest etiketler vurgu popover'ında düzenlenir, `bridge.pdf.tags` ile sayılır ve panelde süzülür. `notebookItems` imzası `(labelKey, tag, onlyOrphaned, revision)` oldu. Test yardımcısı `type_text` büyük harf/bosluk/virgül/# yazabiliyor. 680 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz4c-raporu.md`.

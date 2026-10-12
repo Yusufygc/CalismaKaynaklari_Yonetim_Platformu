@@ -1,6 +1,6 @@
 # pdfkit — PDF Okuma ve Çalışma Modülü
 
-Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · Faz 0–1 raporları: `docs/plans/pdfkit-faz0-raporu.md`, `docs/plans/pdfkit-faz1-raporu.md`. Durum: **Faz 4 tamam** (4c: yetim alıntılar ve serbest etiketler); **Faz 4b tamam** (metin katmanı bandı, döndürülmüş sayfa doğrulaması); **Faz 4a tamam** (okuma durumu); **Faz 3 tamam** (okuyucu pdfkit'e geçti, eski yol temizlendi: belge deposu, alıntı alanı, çapa çözümleyici, okuma/yazma yolu, QML, havuz, dışa aktarım); Faz 4 okuma deneyimi, vault sonraki fazlar. Alt faz planı: `docs/plans/pdfkit-faz3-plani.md`.
+Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · Faz 0–1 raporları: `docs/plans/pdfkit-faz0-raporu.md`, `docs/plans/pdfkit-faz1-raporu.md`. Durum: **Faz 5a tamam** (vault not modeli); **Faz 4 tamam** (4c: yetim alıntılar ve serbest etiketler); **Faz 4b tamam** (metin katmanı bandı, döndürülmüş sayfa doğrulaması); **Faz 4a tamam** (okuma durumu); **Faz 3 tamam** (okuyucu pdfkit'e geçti, eski yol temizlendi: belge deposu, alıntı alanı, çapa çözümleyici, okuma/yazma yolu, QML, havuz, dışa aktarım); Faz 4 okuma deneyimi, vault sonraki fazlar. Alt faz planı: `docs/plans/pdfkit-faz3-plani.md`.
 
 ## Sınır kuralları
 
@@ -91,6 +91,17 @@ PDF okuyucu artık alıntı/not/kelimeyi yalnız `bridge.pdf` üzerinden okur ve
 - **Yeniden bağlama akışı:** "Yeniden bağla" → `PdfReaderView.relinkTargetId` set edilir, sayfa alanının üstünde yüzen bilgi bandı çıkar (yerleşimi etkilemez; bkz. 4b çökme kuralı) → kullanıcı sayfada yeni metni seçer → seçim araç çubuğu renk yerine **"Buraya bağla"** gösterir (`PdfSelectionOverlay.relinkTargetId`) → `bridge.pdf.relinkAnnotation(id, seçim)` → `AnnotationCommands.relink`: metin, bağlam (önceki/sonraki), geometri ve `engine_fp` yeni seçimden alınır, durum `ok` olur; **anlam etiketi, yorum ve serbest etiketler korunur**; model artımlı güncellenir (alıntı sayfada belirir). Seçim yoksa hata bildirimi ve yetim korunur. "Vazgeç" ya da kaynak değişimi hedefi sıfırlar.
 - **Serbest etiketler (K10):** vurgu düzenleme popover'ında virgülle ayrılan alan; kayıtta `#` atılır, küçük harfe çevrilir, tekrarlar elenir (`_clean_tags`). `bridge.pdf.tags` = belgedeki etiketler ve kullanım sayıları (çok kullanılandan aza); 'Notlarım' çiplerinde `#etiket (n)` ile süzülür; satırlarda `#etiket` görünür. Obsidian çıktısında `#tag` olacak (Faz 5).
 - **`notebookItems(labelKey, tag, onlyOrphaned, revision)`:** süzgeç (anlam etiketi/serbest etiket/yetim) varken sayfa notları listeden çıkar.
+
+## Obsidian vault: not modeli (Faz 5a)
+
+Faz 5 alt fazları: [pdfkit-faz5-plani](../plans/pdfkit-faz5-plani.md) (5a not modeli, 5b yazıcı + ayarlar, 5c `pkm://` derin bağlantı, 5d kelime/dizin notları). 5a **saf çekirdektir**: dosya ve arayüz yoktur.
+
+- **citekey** (`domain/citekey.py`): `<ilk yazar soyadı><yıl><ilk anlamlı başlık sözcüğü>` küçük harf ASCII (`lecun2015deep`); Türkçe/aksanlı harfler dönüştürülür, yazar yoksa PDF yazarı, o da yoksa `anon`, yıl yoksa `nd`; çakışmada `a`, `b`, … `CitekeyService.ensure` ilk atamada `pdf_vault_notes` tablosuna yazar (migration `a5d1e7c3b920`) ve **sonradan değişmez** (kaynak başlığı düzelse de dosya adı/bağlantılar kararlı).
+- **Not oluşturucu** (`domain/vault_note.py`): `compose_note(mevcut, içerik)` yeni not üretir ya da mevcut dosyayla birleştirir. Frontmatter: yönetilen anahtarlar `pkm_id` (SHA-256'nın ilk 16 hanesi), `citekey`, `title`, `authors`, `year`, `doi`, `status`; ilk yazımda `tags: [paper]`; **yönetilmeyen her satır/anahtar korunur**. Üretilen blok `%% pkm:begin annotations … %%` ile `%% pkm:end annotations %%` arası: `### Alıntılar` (callout türü = anlam etiketi, `general` → `note`; başlıkta sayfa numarası derin bağlantı; `**Yorum:**`; `#etiket`; `^hl-<ULID son 8>` blok kimliği), `### Notlar` (`^nt-…`), `### Kelimeler`. Yetim alıntı en sonda, bağlantısız. Sentinel dışı kullanıcı metni, satır sonu biçimi (CRLF) ve boş satırlar aynen kalır; `%%` dizileri bu blokta `% %` yapılır. Bozuk sentinel (eksik/ters/çift) ya da kapanmamış frontmatter `VaultNoteError` ile **reddedilir, dosyaya dokunulmaz**. Aynı veriyle iki kez birleştirme metni değiştirmez (idempotent).
+- **Derin bağlantı** (`domain/deeplink.py`): `pkm://open?doc=<sha 16>&page=<1 tabanlı>&ann=<ULID>`; ayrıştırıcı dış girdiyi güvenilmez sayar (şema/eylem/parametre kümesi/uzunluk/sayı/ULID doğrulaması; tekrar eden parametre reddedilir).
+- **Port:** `ResourceCatalogPort.describe(resource_id) -> SourceInfo` (başlık, yazarlar, yıl, DOI, durum etiketi, web adresi); uygulama tarafı `ui_qml/pdf_catalog.py`.
+- **K11'den sapma:** üretilen bloğun hash'i DB'de tutulmaz; yazıcı (5b) birleştirilmiş metni mevcut dosya metniyle karşılaştırıp eşitse yazmaz.
+- **Test:** `golden/vault_note.golden` (`.md` değil: `*.md` git'te yok sayılıyor) altın dosya, idempotentlik, kullanıcı metni koruma, CRLF, bozuk girdi reddi, düşmanca metin (`%%`), citekey/derin bağlantı parametrik testleri.
 
 ## Ölçümler ve kararlar
 
