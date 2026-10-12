@@ -1,6 +1,6 @@
 # pdfkit — PDF Okuma ve Çalışma Modülü
 
-Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · Faz 0–1 raporları: `docs/plans/pdfkit-faz0-raporu.md`, `docs/plans/pdfkit-faz1-raporu.md`. Durum: **Faz 3a tamam** (belge deposu, alıntı alanı, çapa çözümleyici, okuma yolu arka ucu); yazma yolu (3b), QML geçişi (3c), birleştirme (3d), vault sonraki fazlar. Alt faz planı: `docs/plans/pdfkit-faz3-plani.md`.
+Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · Faz 0–1 raporları: `docs/plans/pdfkit-faz0-raporu.md`, `docs/plans/pdfkit-faz1-raporu.md`. Durum: **Faz 3b tamam** (belge deposu, alıntı alanı, çapa çözümleyici, okuma ve yazma yolu arka ucu); QML geçişi (3c), birleştirme (3d), vault sonraki fazlar. Alt faz planı: `docs/plans/pdfkit-faz3-plani.md`.
 
 ## Sınır kuralları
 
@@ -39,6 +39,17 @@ Arayüz değişmedi; `bridge.pdf` mevcut yolun yanında ek olarak bulunur (3c'de
 - **`DocumentSession`** (`pdfkit/ui/session.py`): `QPdfDocument`'i açar, bekleyen (eski) kayıtların bağlamını tamamlar (`backfill_context`), alıntıları modele yükler. **Geometri tembel ve kalıcı:** `request_geometry(page)` poligonu olmayan ya da farklı `engine_fp`'li alıntıları hesaplar, veritabanına yazar (belge başına bir kez); hesaplama 8'erli dilimlerle (`GEOMETRY_CHUNK`, ≈45 ms/dilim) olay döngüsüne yayılır, belge kapanınca bekleyen dilimler iptal olur. `close()` Windows dosya kilidi için `close()` + `deleteLater()` kullanır.
 - **`PdfBridge`** (`pdfkit/ui/bridge.py`, `bridge.pdf`): `annotations` (kalıcı model), `currentDocument` (`resourceId`, `documentId`, `fileUrl`, `pageCount`, `hasTextLayer`), `labels`, `openDocument(resourceId)`, `closeDocument()`, `pageModel(page)` (QML'e `CppOwnership` ile verilir), `ensureGeometry(page)`.
 - **Ölçüm** (`scripts/bench_pdf.py --pdfkit`, gerçek 15 sayfalık PDF): 1000 alıntılı belge açma **94 ms** (eski yolda `serialize` 3375 ms); 25 alıntı 7 ms; tüm sayfa modelleri 15 ms. Eski, geometrisiz kayıtların ilk açılış maliyeti alıntı başına ≈5 ms'dir (1000 alıntı ≈4,8 sn toplam, tek seferlik ve dilimli; tek dilim ≈45 ms).
+
+## Yazma yolu arka ucu (Faz 3b)
+
+Arayüz değişmedi; `bridge.pdf` yazma slotları eski `bridge.annotations` ile yan yana çalışır (3c'de QML yeniye geçer).
+
+- **`AnnotationCommands`** (`pdfkit/ui/commands.py`): açık belgede yazma işlemleri. Servise yazar, modeli **yalnız etkilenen satır** için günceller, bildirim gönderir. UI sınırında hata yakalanır: `PdfkitError` mesajıyla, beklenmeyen hata genel mesajla (`messages.OPERATION_FAILED`) bildirilir ve loglanır; başarısız işlem `0`/`False` döner.
+- **Alıntı ekleme:** QML'in gönderdiği seçim haritası (`{page, fromX, fromY, toX, toY}`, sayfa noktası uzayı) `DocumentSession.resolve_selection` ile Qt seçimine çevrilir; geometri **seçimden hazır** alınır (`segment_from_selection`), ek `getSelectionAtIndex` hesabı yoktur. Önceki/sonraki bağlam (≤128 karakter) sayfa metninden çıkarılıp saklanır. **Aynı metin tekrar alıntılanırsa yeni kayıt oluşmaz**, anlam etiketi güncellenir (kullanıcı farklı renge tıkladıysa). Etiket değişince açık renk silinir, renk etiketten türer.
+- **Slotlar (`bridge.pdf`):** `addHighlight(selection, labelKey)`, `setLabel`, `setComment`, `setTags`, `deleteAnnotation`, `deleteAnnotations(ids)`, `addNote(page, x, y, text)`, `updateNote`, `deleteNote`, `addTerm(selection, translation)`, `deleteTerm`; modeller `annotations`, `notes`, `pageModel(page)`, `notePageModel(page)`; `terms` (liste özelliği, `termsChanged`). Sinyaller: `notification(kind, text)` (kök `QmlBridge` toast kanalına bağlı), `contentChanged(resourceId)` (başarılı her yazmadan sonra; Bilgi Havuzu, çekmece ve dışa aktarım 3d'de buna bağlanacak).
+- **Kelime:** seçilen metin, geçtiği cümleyle (`pdfkit/domain/sentences.py::extract_sentence`; eski `utils.text_utils.extract_sentence` buna yönlenir) ve konum+geometriyle `pdf_terms`'e yazılır (`unanchored` olan eski kelimelerin aksine).
+- **Modeller:** ortak taban `_IncrementalModel` (sıralı, kimlikle erişimli, satır düzeyi sinyaller); `AnnotationListModel`, `NoteListModel`; `PageFilterModel` ikisinde de çalışır.
+- **Ölçüm** (`scripts/bench_pdf.py --pdfkit`, gerçek PDF): tek alıntı ekleme **≈6–7 ms** (1000 alıntı varken de; eski yolda 100–3450 ms), hedef ≤16 ms.
 
 ## Ölçümler ve kararlar
 

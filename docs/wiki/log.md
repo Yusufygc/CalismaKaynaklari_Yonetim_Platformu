@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-12] FEAT | pdfkit Faz 3b: yazma yolu arka ucu
+
+`bridge.pdf` yazma slotları: seçimden alıntı (geometri hazır, aynı metin tekrar alıntılanırsa etiket güncellenir), etiket/yorum/etiketler, tekli ve toplu silme, sayfa notu, konumlu ve cümle bağlamlı kelime. Model yalnız etkilenen satır için güncellenir; hata UI sınırında bildirilir. Ortak `_IncrementalModel` tabanı, `NoteListModel`; `extract_sentence` pdfkit'e taşındı. Ölçüm: tek alıntı ekleme ≈6–7 ms (1000 alıntıda da). Arayüz değişmedi. 635 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz3b-raporu.md`.
+
+---
+
 ## [2026-10-12] FEAT | pdfkit Faz 3a: okuma yolu arka ucu (bridge.pdf)
 
 Faz 3 dört alt faza bölündü (`docs/plans/pdfkit-faz3-plani.md`). 3a: `AnnotationListModel` (artımlı Qt modeli), `PageFilterModel`, `DocumentSession` (belge açma, bağlam tamamlama, tembel ve kalıcı dilimli geometri), `PdfBridge` (`bridge.pdf`). Arayüz değişmedi. Ölçüm: 1000 alıntılı belge açma 94 ms (eski `serialize` 3375 ms), tek geometri dilimi ≈45 ms. 624 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz3a-raporu.md`.
