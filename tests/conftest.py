@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QApplication
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
+import pdfkit.infra.orm  # noqa: F401  (pdf_* tablolari Base.metadata'ya kayitli olsun)
 from models import Base
 from utils.db_utils import register_sqlite_functions
 

@@ -18,6 +18,7 @@ if str(_PROJECT_ROOT) not in sys.path:
 import models.category  # noqa: E402,F401
 import models.tag  # noqa: E402,F401
 import models.resource  # noqa: E402,F401
+import pdfkit.infra.orm  # noqa: E402,F401
 from models.base import Base  # noqa: E402
 from core.config import settings  # noqa: E402
 

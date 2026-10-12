@@ -14,6 +14,7 @@ from sqlalchemy.orm import sessionmaker, Session
 import models.category  # noqa: F401
 import models.tag  # noqa: F401
 import models.resource  # noqa: F401
+import pdfkit.infra.orm  # noqa: F401
 from core.config import settings
 from core.logger import log
 from core.paths import resource_path

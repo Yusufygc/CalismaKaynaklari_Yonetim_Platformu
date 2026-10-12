@@ -9,3 +9,4 @@ python-dotenv==1.2.3
 trafilatura==2.2.0
 lxml_html_clean==0.4.5
 pypdf==6.19.0
+pypdfium2==5.14.0
