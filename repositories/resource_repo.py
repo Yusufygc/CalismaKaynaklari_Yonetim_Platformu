@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Iterable
 
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload, selectinload

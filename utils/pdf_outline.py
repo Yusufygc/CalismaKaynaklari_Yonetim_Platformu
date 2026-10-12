@@ -28,6 +28,8 @@ def read_outline(pdf_path: Path) -> list[dict]:
                 try:
                     page = reader.get_destination_page_number(node)
                 except Exception:
+                    # Cozumlenemeyen yer imi atlanir; anahatin geri kalani yine de listelenir.
+                    log.debug("PDF yer imi hedefi cozumlenemedi: %r (%s)", title, pdf_path)
                     continue
                 if title and isinstance(page, int) and 0 <= page < page_count:
                     items.append({"title": title, "level": level, "page": page})

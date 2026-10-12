@@ -1,7 +1,7 @@
 """PDF okuyucunun sayfa katmanları (seçim araç çubuğu + kelime popover'ı, alıntı düzenleme popover'ı, not katmanı)
 gerçek fare/klavye ile: PdfPageArea bileşenlere bölündükten sonra da uçtan uca çalıştıklarını doğrular."""
 import pytest
-from PySide6.QtCore import QMetaObject, QObject, QPoint, QPointF, Qt
+from PySide6.QtCore import QObject, QPoint, QPointF, Qt
 from PySide6.QtTest import QTest
 
 from tests.pdf_factory import write_text_pdf

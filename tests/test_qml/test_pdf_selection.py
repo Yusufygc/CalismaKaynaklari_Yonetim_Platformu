@@ -4,7 +4,6 @@ Onceden yalnizca `*Hybrid*.pdf` adli gercek bir dosya varsa calisan (fiilen hep 
 dayaniyordu; artik tests/pdf_factory.py ile uretilen deterministik PDF kullanilir.
 """
 import pytest
-from PySide6.QtCore import QPointF
 from PySide6.QtPdf import QPdfDocument
 
 from tests.pdf_factory import write_text_pdf

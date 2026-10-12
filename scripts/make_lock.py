@@ -2,7 +2,6 @@
 
 Kullanim (proje kokunden, guncel venv ile): .venv/Scripts/python.exe scripts/make_lock.py
 Once `pip install -U -r requirements.txt` ve testleri calistirin; sonra `pip check`."""
-import re
 import sys
 from importlib import metadata
 

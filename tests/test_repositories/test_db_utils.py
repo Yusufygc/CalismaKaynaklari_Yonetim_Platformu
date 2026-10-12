@@ -1,7 +1,6 @@
 from sqlalchemy import create_engine, inspect, text
 
 from models.base import Base
-from models.category import Category
 from utils import db_utils
 
 _APP_TABLES = {

@@ -1,7 +1,7 @@
 """Kaynak cekmecesi (InspectorDrawer + alt bilesenleri) gercek fare/klavye ile: pin, favori, durum, not, silme, kapatma."""
 import pytest
 
-from tests.test_qml.qml_harness import SyncThreadPool, click, find_item, find_text, focus, open_window, pump, type_text
+from tests.test_qml.qml_harness import SyncThreadPool, click, find_item, find_text, open_window, pump, type_text
 from ui_qml.bridge import QmlBridge
 
 
