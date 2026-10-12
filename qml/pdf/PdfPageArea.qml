@@ -9,6 +9,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Pdf
 import QtQuick.Shapes
+import "../components"
 import "../theme"
 
 Item {

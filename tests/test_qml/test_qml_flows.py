@@ -17,6 +17,7 @@ from tests.test_qml.qml_harness import (
     focus,
     open_window,
     pump,
+    reader_document,
     type_text,
     white_page_box,
 )
@@ -204,7 +205,7 @@ def test_pdf_reader_drag_selection_highlights_exactly_the_selected_word(qapp, br
         QMetaObject.invokeMethod(page_area, "zoomIn")
     pump(qapp, 60)
 
-    doc = bridge.ctx.pdf_files.load_document(bridge.reader.currentReaderResource["pdfFileUrl"])
+    doc = reader_document(bridge)
     page_w = doc.pagePointSize(0).width()
     x_left, x_right, y_top = white_page_box(window)
     scale = (x_right - x_left) / page_w

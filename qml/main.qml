@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Window
 import "theme"
 import "components"
+import "pdf"
 import "views"
 
 ApplicationWindow {

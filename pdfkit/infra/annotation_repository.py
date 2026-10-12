@@ -1,8 +1,11 @@
-from sqlalchemy import select, text
+from sqlalchemy import delete, select, text
 from sqlalchemy.orm import Session
 
 from pdfkit.domain.annotations import Annotation, PageNote, Segment, Term
 from pdfkit.infra.orm import PdfAnnotationRow, PdfPageNoteRow, PdfTermRow
+
+
+_DELETE_CHUNK = 500
 
 
 def segments_to_json(segments: list[Segment]) -> list[dict]:
@@ -168,3 +171,15 @@ class AnnotationRepository:
     def delete(self, row: object) -> None:
         self._session.delete(row)
         self._session.flush()
+
+    def delete_annotations(self, annotation_ids: list[int]) -> int:
+        """Alintilari tek `DELETE` ile siler (satir satir yuklemeden); olmayan kimlikler atlanir, silinen sayisi doner.
+        SQLite degisken siniri icin parcalar halinde calisir."""
+        removed = 0
+        unique = list(dict.fromkeys(annotation_ids))
+        for start in range(0, len(unique), _DELETE_CHUNK):
+            chunk = unique[start:start + _DELETE_CHUNK]
+            removed += self._session.execute(
+                delete(PdfAnnotationRow).where(PdfAnnotationRow.id.in_(chunk))
+            ).rowcount
+        return removed

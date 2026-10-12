@@ -2,7 +2,8 @@
 import re
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QPoint, Qt
+from PySide6.QtCore import QObject, QPoint, Qt, QUrl
+from PySide6.QtPdf import QPdfDocument
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtTest import QTest
 
@@ -129,3 +130,11 @@ def drag(app, window, x0: int, x1: int, y: int) -> None:
         QTest.qWait(30)
     QTest.mouseRelease(window, Qt.LeftButton, Qt.NoModifier, end)
     QTest.qWait(100)
+
+
+def reader_document(bridge) -> QPdfDocument:
+    """Testin kendi `QPdfDocument`'i: okuyucuda acik PDF'in sayfa boyutu ve metin indeksleri icin."""
+    url = bridge.reader.currentReaderResource["pdfFileUrl"]
+    doc = QPdfDocument()
+    doc.load(QUrl(url).toLocalFile())
+    return doc

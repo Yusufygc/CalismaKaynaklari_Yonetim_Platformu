@@ -165,16 +165,7 @@ class AnnotationService:
     def delete_highlights(self, annotation_ids: list[int]) -> int:
         """Birden cok alintiyi tek islemde siler; silinen sayisini dondurur (olmayan kimlikler atlanir)."""
 
-        def change() -> int:
-            count = 0
-            for annotation_id in annotation_ids:
-                row = self._repo.get_annotation(annotation_id)
-                if row is not None:
-                    self._repo.delete(row)
-                    count += 1
-            return count
-
-        return self._write(change)
+        return self._write(lambda: self._repo.delete_annotations(annotation_ids))
 
     def relink(
         self, annotation_id: int, segments: list[Segment], quote_exact: str,

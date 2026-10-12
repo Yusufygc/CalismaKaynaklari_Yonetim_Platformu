@@ -82,6 +82,15 @@ def test_delete_and_bulk_delete(annotations, resource_with_document):
         annotations.delete_highlight(ids[0])
 
 
+def test_bulk_delete_skips_duplicates_and_missing_ids(annotations, resource_with_document):
+    _r, document, _p = resource_with_document
+    ids = [annotations.create_highlight(document.id, f"metin {i} parca", [_segment(f"metin {i} parca")]).id for i in range(6)]
+
+    assert annotations.delete_highlights(ids[:4] + ids[:2] + [999_999]) == 4  # tekrarlar ve olmayan kimlik sayilmaz
+
+    assert [a.id for a in annotations.list_highlights(document.id)] == ids[4:]
+
+
 def test_highlights_are_listed_in_page_order(annotations, resource_with_document):
     _r, document, _p = resource_with_document
     for page in (5, 1, 3):

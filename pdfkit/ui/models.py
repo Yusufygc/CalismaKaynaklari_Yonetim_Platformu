@@ -16,6 +16,7 @@ from pdfkit.domain.annotations import Annotation, PageNote
 from pdfkit.domain.labels import effective_color, name_for_label
 
 _NO_PAGE = 1 << 30
+BULK_RESET_THRESHOLD = 16  # bu kadardan fazla oge birlikte silinirse tek model sifirlamasi
 
 
 class _IncrementalModel(QAbstractListModel):
@@ -87,6 +88,21 @@ class _IncrementalModel(QAbstractListModel):
         self.endRemoveRows()
         self.countChanged.emit()
         return True
+
+    def remove_many(self, item_ids: list[int]) -> int:
+        """Birden cok ogeyi siler. Az sayida ise tek tek (QML satir animasyonlari/kaydirma korunur); cok ise tek
+        model sifirlamasi: her satir silmesi tum sayfa suzgeclerine ve gorunur delegelere ulasir, toplu silmede
+        bu toplam maliyet donma esigini asar."""
+        doomed = {i for i in item_ids if i in self._by_id}
+        if len(doomed) <= BULK_RESET_THRESHOLD:
+            return sum(1 for item_id in doomed if self.remove(item_id))
+        self.beginResetModel()
+        self._rows = [r for r in self._rows if r.item_id not in doomed]
+        self._keys = [r.sort_key for r in self._rows]
+        self._by_id = {r.item_id: r for r in self._rows}
+        self.endResetModel()
+        self.countChanged.emit()
+        return len(doomed)
 
     # ---- PageFilterModel icin hizli erisim ----
     def row_pages(self, source_row: int) -> list[int]:

@@ -53,8 +53,7 @@ def test_qml_bridge_import_local_pdf_copies_and_creates_resource(local_pdf_env):
 
 def test_qml_bridge_delete_resource_removes_copied_local_pdf(local_pdf_env):
     """Yerel PDF kaynagi silinince kopyalanan dosya da diskten kalkmali,
-    QPdfDocument onbellegi de temizlenmeli -- aksi halde her import/delete
-    dongusunde disk/RAM sizintisi birikiyordu (bkz. code review bulgusu)."""
+    depo kaydi da kalkmali -- aksi halde her import/delete dongusunde disk sizintisi birikiyordu."""
     bridge, storage_dir, original = local_pdf_env
     bridge.library.importLocalPdf(original.as_uri())
 
@@ -62,16 +61,11 @@ def test_qml_bridge_delete_resource_removes_copied_local_pdf(local_pdf_env):
     copied_path = list((storage_dir / "store").rglob("*.pdf"))[0]
     assert copied_path.exists()
 
-    # Onbellege gercek bir QPdfDocument koymaya gerek yok -- sadece anahtarin
-    # (url) silme sonrasi temizlendigini dogrulamak icin sahte bir deger yeterli.
-    bridge.ctx.pdf_files._document_cache[resource.url] = object()
-
     bridge.library.deleteResource(resource.id)
 
     assert not copied_path.exists()  # silinmedi, karantinaya alindi (30 gun saklanir)
     assert len(list((storage_dir / ".trash").glob("*.pdf"))) == 1
     assert bridge.ctx.pdf_library.documents().find_by_sha(copied_path.parent.name) is None
-    assert resource.url not in bridge.ctx.pdf_files._document_cache
 
 
 def _add_web_pdf_resource(bridge, url="https://arxiv.org/pdf/1706.03762"):

@@ -1,4 +1,4 @@
-"""Yerel PDF dosyalari: URL cozumleme, QPdfDocument onbellegi/geometri, web PDF indirme durumu, temizlik.
+"""Yerel PDF dosyalari: URL cozumleme, web PDF indirme durumu, temizlik.
 
 Reader (okuyucu), Library (kaynak silme/duzenleme) ve serilestirici ortak kullanir; bu yuzden
 kopya/durum tek yerde tutulur. Kaynak guncelleme gibi is kurallari burada DEGIL, indirme
@@ -7,13 +7,11 @@ sonucunu isleyen `ReaderBridge`'dedir.
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QObject, QPointF, QTimer, QUrl, Signal
-from PySide6.QtPdf import QPdfDocument
+from PySide6.QtCore import QObject, QTimer, QUrl, Signal
 
 from core.logger import log
 from core.paths import pdf_storage_dir
 from models import Resource
-from utils.text_utils import sanitize_utf8
 
 if TYPE_CHECKING:
     from ui_qml.context import BridgeContext
@@ -21,15 +19,11 @@ if TYPE_CHECKING:
 
 class PdfFileManager(QObject):
     downloadFinished = Signal(int, object)  # kaynak id, yerel dosya yolu (str) | None
-    documentReleased = Signal(str)  # onbellekten dusen dosya URL'si (anahat onbellegi gibi turevler temizlensin)
+    documentReleased = Signal(str)  # silinen kaynagin dosya URL'si (anahat onbellegi gibi turevler temizlensin)
 
     def __init__(self, ctx: "BridgeContext", parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._ctx = ctx
-        # Yerel PDF geometrisi (highlight_geometry) icin QPdfDocument onbellegi -- her alinti/not
-        # islemi sonrasi kaynak serilestirildiginde ayni dosyayi tekrar tekrar diskten yuklemeyi
-        # (native nesne olusturup yok etmeyi) onler.
-        self._document_cache: dict[str, QPdfDocument] = {}
         # Web PDF'lerinin yerel indirme durumu.
         self._downloads_in_progress: set[int] = set()
         self._download_failed: set[int] = set()
@@ -104,75 +98,14 @@ class PdfFileManager(QObject):
         self.downloadFinished.emit(resource_id, str(path) if path else None)
 
     # ------------------------------------------------------------------ #
-    # QPdfDocument onbellegi ve geometri
-    # ------------------------------------------------------------------ #
-
-    def load_document(self, file_url: str) -> QPdfDocument | None:
-        """Belgeyi yukler ve onbellekler (belge basina bir kez). UI thread'inde kalir: QPdfDocument bir QObject'tir
-        ve geometri/secim ayni nesneyi kullanir. Olculdu: 3000 sayfa / 63 MB PDF'te load ~35 ms (PDFium sayfalari
-        tembel cozer), yani donma esiginin altinda -- worker'a tasimaya gerek yok."""
-        cached = self._document_cache.get(file_url)
-        if cached is not None:
-            return cached
-        local_path = QUrl(file_url).toLocalFile() or file_url
-        doc = QPdfDocument()
-        doc.load(local_path)
-        if doc.status() != QPdfDocument.Status.Ready:
-            return None
-        self._document_cache[file_url] = doc
-        return doc
-
-    def select_text(self, file_url: str, selection: dict):
-        """QML'in gonderdigi secim ({page, fromX, fromY, toX, toY}; page-point uzayinda) icin
-        `(doc, page, QPdfSelection)` doner; belge/secim gecersizse ya da bossa None.
-
-        QML'den `QPdfSelection` donen metotlar (getSelection/getSelectionAtIndex) cagrilamiyor --
-        "Unknown method return type: QPdfSelection" (calisma zamaninda dogrulandi). Bu yuzden secim
-        noktalari Python'a tasinip QPdfDocument islemleri burada yapiliyor.
-        """
-        doc = self.load_document(file_url)
-        if doc is None:
-            return None
-        page = int(selection["page"])
-        pdf_selection = doc.getSelection(
-            page,
-            QPointF(selection["fromX"], selection["fromY"]),
-            QPointF(selection["toX"], selection["toY"]),
-        )
-        if not pdf_selection.isValid() or not sanitize_utf8(pdf_selection.text()).strip():
-            return None
-        return doc, page, pdf_selection
-
-    @staticmethod
-    def highlight_geometry(
-        doc: QPdfDocument, page: int, start_index: int, length: int
-    ) -> tuple[list, list] | None:
-        selection = doc.getSelectionAtIndex(page, start_index, length)
-        if not selection.isValid():
-            return None
-        polygons = [[[point.x(), point.y()] for point in polygon] for polygon in selection.bounds()]
-        rect = selection.boundingRectangle()
-        return polygons, [rect.x(), rect.y(), rect.width(), rect.height()]
-
-    # ------------------------------------------------------------------ #
     # Temizlik
     # ------------------------------------------------------------------ #
 
     def cleanup_local_pdf(self, url: str) -> None:
-        """Kaynak silinince ilgili QPdfDocument onbellek girdisini ve --
-        sadece bizim kopyaladigimiz (pdf_storage_dir icindeki) dosyayi --
-        diskten temizler. Kullanicinin kendi dosyalarina asla dokunmaz."""
+        """Kaynak silinince okuyucu turevlerini temizler ve -- sadece bizim kopyaladigimiz (pdf_storage_dir
+        icindeki) dosyayi -- diskten kaldirir. Kullanicinin kendi dosyalarina asla dokunmaz. Acik belgeyi
+        pdfkit `DocumentSession` yonetir (kaynak silinirken kapanir)."""
         self.documentReleased.emit(url)
-        cached_doc = self._document_cache.pop(url, None)
-        if cached_doc is not None and hasattr(cached_doc, "close"):
-            # Windows'ta QPdfDocument dosyayi kilitler (WinError 32): close() tek
-            # basina yetmez, nesne yok edilmeli. deleteLater() olay dongusune
-            # birakilir -- QCoreApplication.sendPostedEvents(None, DeferredDelete)
-            # ile zorla flush etmek QML nesnelerini guvenli olmayan anda silip
-            # uygulamayi cokertiyordu (segfault, canli dogrulandi).
-            cached_doc.close()
-            cached_doc.deleteLater()
-            del cached_doc
         if not (url.startswith("file://") and url.lower().endswith(".pdf")):
             return
         local_path = Path(QUrl(url).toLocalFile() or url)

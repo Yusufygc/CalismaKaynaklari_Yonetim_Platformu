@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import "../components"
 import "../theme"
 
 // PDF sayfasında metin seçilince beliren yüzen araç çubuğu (5 renkli alıntı kaydetme + "Kelime Havuzuna Ekle")

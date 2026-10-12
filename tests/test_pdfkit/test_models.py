@@ -2,7 +2,7 @@ import pytest
 from PySide6.QtCore import QModelIndex
 
 from pdfkit.domain.annotations import STATUS_OK, Annotation, Segment
-from pdfkit.ui.models import AnnotationListModel, PageFilterModel
+from pdfkit.ui.models import BULK_RESET_THRESHOLD, AnnotationListModel, PageFilterModel
 
 SQUARE = [(10.0, 20.0), (50.0, 20.0), (50.0, 30.0), (10.0, 30.0)]
 
@@ -163,3 +163,28 @@ def test_note_model_exposes_roles_sorts_by_page_and_supports_page_filter(qapp):
     model.upsert(note(1, 4, text="guncel"))
     assert model.note(1).text == "guncel" and model.note(99) is None
     assert model.remove(2) and model.count == 2 and not model.remove(2)
+
+
+def test_removing_a_few_items_emits_row_removals_and_missing_ids_are_ignored(model):
+    model.set_annotations([_annotation(i, start=i * 10) for i in range(1, 6)])
+    recorder = Recorder(model)
+
+    assert model.remove_many([2, 4, 999]) == 2
+
+    assert [e[0] for e in recorder.events] == ["removed", "removed"]
+    assert [_value(model, r, "annotationId") for r in range(model.rowCount())] == [1, 3, 5]
+
+
+def test_removing_many_items_resets_the_model_once_and_keeps_order(model):
+    total = BULK_RESET_THRESHOLD * 3
+    model.set_annotations([_annotation(i, start=i * 10) for i in range(1, total + 1)])
+    page_filter = PageFilterModel(model, 0)
+    recorder = Recorder(model)
+
+    removed = model.remove_many(list(range(1, total + 1, 2)))  # tek numaralilar
+
+    assert removed == total // 2
+    assert recorder.events == [("reset",)]
+    assert [_value(model, r, "annotationId") for r in range(model.rowCount())] == list(range(2, total + 1, 2))
+    assert model.count == total // 2 and page_filter.rowCount() == total // 2
+    assert model.remove(2) and model.rowCount() == total // 2 - 1  # dizinler sifirlamadan sonra tutarli

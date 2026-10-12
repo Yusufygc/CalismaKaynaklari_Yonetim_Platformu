@@ -3,13 +3,10 @@
 Kullanim (proje kokunden):
     .venv/Scripts/python.exe scripts/bench_pdf.py [--pages 15] [--annotations 25,100,300] [--pdf gercek.pdf] [--json cikti.json]
 
-`--pdfkit` ile pdfkit yolu da olculur (belge acma, tembel geometri, sayfa modeli).
-
 Olcer (UI thread'inde gecen sure -- donma bu sureden dogar):
-  - QPdfDocument.load
-  - kaynak serilestirme (`ResourceSerializer.serialize`): alinti geometrisi dahil
-  - tek alinti ekleme sonrasi gereken is (`AnnotationsBridge._save_highlight`)
-  - pypdf tam metin cikarimi (arka plan isi; sayfa basina sure)
+  - QPdfDocument.load ve tam metin cikarimi (arka plan isi; sayfa basina sure)
+  - pdfkit: kayitli geometriyle belge acma, tum sayfa modelleri, tek alinti ekleme, toplu silme
+  - pdfkit: eski (geometrisiz) kayitlar icin ilk acilis maliyeti (dilimli, tek seferlik)
 
 Sentetik PDF `build_pdf` ile uretilir: sabit tohum, yogun metin, ASCII Turkce. Gercek bir makale PDF'iyle
 olcmek icin `--pdf` verilir (gomulu yazi tipli gercek PDF'ler sentetikten 2-20 kat agirdir).
@@ -83,18 +80,14 @@ def best_ms(fn, repeat: int = 3) -> float:
     return best * 1000
 
 
-def run(pages: int, annotation_counts: list[int], source_pdf: Path | None = None) -> dict:
+def run(pages: int, source_pdf: Path | None = None) -> dict:
+    """Taban olcumler: belge yukleme ve tam metin cikarimi (arka plan isi)."""
     from PySide6.QtPdf import QPdfDocument
     from PySide6.QtWidgets import QApplication
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
 
-    from models import Base
     from services.article_extraction_service import _extract_pdf_html
-    from services.schemas import HighlightPosition
-    from ui_qml.bridge import QmlBridge
 
-    results: dict = {"pages": pages, "serialize": [], "add_one": []}
+    results: dict = {}
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:  # Windows: acik QPdfDocument dosyayi kilitler
         pdf = Path(tmp) / "bench.pdf"
         pdf.write_bytes(source_pdf.read_bytes() if source_pdf else build_pdf(pages))
@@ -102,41 +95,16 @@ def run(pages: int, annotation_counts: list[int], source_pdf: Path | None = None
         results["source"] = "gercek" if source_pdf else "sentetik"
 
         _app = QApplication.instance() or QApplication([])
-        engine = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(engine)
-        bridge = QmlBridge(sessionmaker(bind=engine)())
-
         doc = QPdfDocument()
         results["load_ms"] = round(best_ms(lambda: QPdfDocument().load(str(pdf))), 1)
         doc.load(str(pdf))
         results["pages"] = doc.pageCount()
-        texts = [doc.getSelectionAtIndex(p, 0, 1_000_000).text() for p in range(doc.pageCount())]
-
-        resource = bridge.controllers.resources.add_resource({"title": "Bench", "url": pdf.as_uri(), "extra_metadata": {}})
-        total = 0
-        for target in annotation_counts:
-            while total < target:
-                page = total % doc.pageCount()
-                start = (total // doc.pageCount() * 150) % max(1, len(texts[page]) - 200)
-                bridge.controllers.highlights.create_highlight(
-                    resource.id, texts[page][start:start + 120], "#22C55E", HighlightPosition(page, start, 120)
-                )
-                total += 1
-            ms = best_ms(lambda: bridge.ctx.serializer.serialize(bridge.controllers.resources.get_resource(resource.id)))
-            results["serialize"].append({"annotations": target, "ms": round(ms, 1)})
-            add_repeats = 2
-            ms_add = best_ms(
-                lambda: bridge.annotations._save_highlight(resource.id, "x" * 20, "#22C55E", HighlightPosition(0, 10, 20)),
-                repeat=add_repeats,
-            )
-            results["add_one"].append({"annotations": target, "ms": round(ms_add, 1)})
-            total += add_repeats  # her tekrar bir alinti ekler
 
         data = pdf.read_bytes()
         start = time.perf_counter()
         _extract_pdf_html(data)
         elapsed = time.perf_counter() - start
-        results["pypdf_ms_per_page"] = round(1000 * elapsed / results["pages"], 1)
+        results["extract_ms_per_page"] = round(1000 * elapsed / results["pages"], 1)
     return results
 
 
@@ -224,6 +192,12 @@ def run_pdfkit(pages: int, annotation_counts: list[int], source_pdf: Path | None
                 bridge.addHighlight(selection, "finding")
                 timings.append((time.perf_counter() - begun) * 1000)
             add_ms = sorted(timings)[len(timings) // 2]
+            for page in range(qdoc.pageCount()):
+                bridge.pageModel(page)  # acik sayfa suzgecleri: silme her birine ulasir
+            doomed = [existing.id for existing in service.list_highlights(document.id)][::2]
+            begun = time.perf_counter()
+            bridge.deleteAnnotations(doomed)
+            delete_ms = (time.perf_counter() - begun) * 1000
             bridge.closeDocument()
 
             for existing in service.list_highlights(document.id):
@@ -240,7 +214,8 @@ def run_pdfkit(pages: int, annotation_counts: list[int], source_pdf: Path | None
             cold.close()
             results.append(
                 {"annotations": count, "open_ms": round(open_ms, 1), "page_models_ms": round(page_ms, 1),
-                 "first_open_geometry_ms": round(cold_ms, 1), "first_slice_ms": round(first_slice_ms, 1), "computed": computed, "add_ms": round(add_ms, 1)}
+                 "first_open_geometry_ms": round(cold_ms, 1), "first_slice_ms": round(first_slice_ms, 1), "computed": computed, "add_ms": round(add_ms, 1),
+                 "bulk_delete": len(doomed), "bulk_delete_ms": round(delete_ms, 1)}
             )
     return results
 
@@ -250,25 +225,21 @@ def main() -> None:
     parser.add_argument("--pages", type=int, default=15)
     parser.add_argument("--annotations", default="25,100,300")
     parser.add_argument("--pdf", type=Path, help="Sentetik yerine bu PDF ile olc")
-    parser.add_argument("--pdfkit", action="store_true", help="pdfkit yolunu da olc")
     parser.add_argument("--json", help="Sonucu bu dosyaya JSON olarak yaz")
     args = parser.parse_args()
 
-    results = run(args.pages, [int(x) for x in args.annotations.split(",")], args.pdf)
+    results = run(args.pages, args.pdf)
     print(f"PDF ({results['source']}): {results['pages']} sayfa, {results['pdf_kb']} KB · QPdfDocument.load: {results['load_ms']} ms")
-    print(f"pypdf tam metin: {results['pypdf_ms_per_page']} ms/sayfa")
-    print(f"{'alinti':>8} {'serialize ms':>14} {'tek ekleme ms':>15}")
-    for ser, add in zip(results["serialize"], results["add_one"]):
-        print(f"{ser['annotations']:>8} {ser['ms']:>14} {add['ms']:>15}")
-    if args.pdfkit:
-        pdfkit_results = run_pdfkit(args.pages, [int(x) for x in args.annotations.split(",")], args.pdf)
-        results["pdfkit"] = pdfkit_results
-        print(f"{'pdfkit':>8} {'acilis ms':>12} {'ekleme ms':>11} {'sayfa modelleri ms':>20} {'ilk acilis toplam ms':>22} {'ilk dilim ms':>14}")
-        for item in pdfkit_results:
-            print(
-                f"{item['annotations']:>8} {item['open_ms']:>12} {item['add_ms']:>11} {item['page_models_ms']:>20} "
-                f"{item['first_open_geometry_ms']:>22} {item['first_slice_ms']:>14}"
-            )
+    print(f"tam metin cikarimi (pypdfium2): {results['extract_ms_per_page']} ms/sayfa")
+    pdfkit_results = run_pdfkit(args.pages, [int(x) for x in args.annotations.split(",")], args.pdf)
+    results["pdfkit"] = pdfkit_results
+    print(f"{'pdfkit':>8} {'acilis ms':>12} {'ekleme ms':>11} {'sayfa modelleri ms':>20} {'ilk acilis toplam ms':>22} {'ilk dilim ms':>14} {'toplu silme ms':>16}")
+    for item in pdfkit_results:
+        print(
+            f"{item['annotations']:>8} {item['open_ms']:>12} {item['add_ms']:>11} {item['page_models_ms']:>20} "
+            f"{item['first_open_geometry_ms']:>22} {item['first_slice_ms']:>14} "
+            f"{item['bulk_delete_ms']:>10} ({item['bulk_delete']})"
+        )
     if args.json:
         Path(args.json).write_text(json.dumps(results, indent=2), encoding="utf-8")
 

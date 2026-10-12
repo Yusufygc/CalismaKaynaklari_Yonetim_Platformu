@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Pdf
+import "../components"
 import "../theme"
 
 // Native PDF okuyucunun sol paneli: sayfa küçük resimleri, anahat (içindekiler)

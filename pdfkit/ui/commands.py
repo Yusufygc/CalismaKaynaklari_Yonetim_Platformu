@@ -83,8 +83,7 @@ class AnnotationCommands:
     def delete_many(self, annotation_ids: list[int]) -> int:
         def run() -> int:
             count = self._library.annotations().delete_highlights(annotation_ids)
-            for annotation_id in annotation_ids:
-                self._session.annotations_model.remove(annotation_id)
+            self._session.annotations_model.remove_many(annotation_ids)
             if count:
                 self._notify("info", messages.HIGHLIGHTS_DELETED_FMT.format(count=count))
             return count

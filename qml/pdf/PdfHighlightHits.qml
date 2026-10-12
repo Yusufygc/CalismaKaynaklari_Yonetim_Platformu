@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import "../components"
 import "../theme"
 
 // Kalıcı alıntılara tıklama alanları (yorum köşe işareti dahil) ve tıklanınca açılan düzenleme popover'ı

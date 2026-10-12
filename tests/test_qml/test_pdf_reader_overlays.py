@@ -14,6 +14,7 @@ from tests.test_qml.qml_harness import (
     focus,
     open_window,
     pump,
+    reader_document,
     type_text,
     walk,
     white_page_box,
@@ -77,7 +78,7 @@ def reader(qapp, session, tmp_path, monkeypatch):
     engine, window = open_window(qapp, bridge, "showcase", width=1400, height=900)
     bridge.reader.openReader(resource.id)
     pump(qapp, 150)
-    doc = bridge.ctx.pdf_files.load_document(bridge.reader.currentReaderResource["pdfFileUrl"])
+    doc = reader_document(bridge)
     x_left, x_right, y_top = white_page_box(window)
     scale = (x_right - x_left) / doc.pagePointSize(0).width()
     page_text = doc.getSelectionAtIndex(0, 0, 100000).text()
