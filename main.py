@@ -17,7 +17,7 @@ from services.pdf_storage_service import PdfStorageService
 from ui_qml.bridge import QmlBridge
 from ui_qml.context import Controllers
 from ui_qml.image_provider import IconImageProvider
-from utils.db_utils import get_session, init_db
+from utils.db_utils import get_session, init_db, snapshot_database_daily
 
 
 def _install_global_exception_hook() -> None:
@@ -64,6 +64,7 @@ def main() -> None:
     log.info("Uygulama baslatiliyor (QML Arayuzu)...")
 
     init_db()
+    snapshot_database_daily()
     session = get_session()
     controllers = Controllers.build(session)
     # Onceki oturumda Windows dosya kilidi yuzunden silinememis PDF'leri temizle.

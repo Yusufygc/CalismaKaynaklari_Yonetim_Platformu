@@ -126,10 +126,8 @@ def _prune_backups(db_file: Path, keep: int = _BACKUP_KEEP) -> None:
         old.unlink(missing_ok=True)
 
 
-def _backup_before_migration(db_file: Path, revision: str) -> Path:
-    """Migration oncesi tutarli bir yedek alir (SQLite backup API: WAL dosyasini da kapsar)."""
-    stamp = datetime.now(timezone.utc).astimezone().strftime("%Y%m%d-%H%M%S")
-    destination = db_file.with_name(f"{db_file.name}.bak-{stamp}-{revision}")
+def _sqlite_backup(db_file: Path, destination: Path) -> None:
+    """Tutarli SQLite kopyasi (backup API: WAL dosyasini da kapsar)."""
     source = sqlite3.connect(db_file)
     try:
         target_conn = sqlite3.connect(destination)
@@ -139,8 +137,42 @@ def _backup_before_migration(db_file: Path, revision: str) -> Path:
             target_conn.close()
     finally:
         source.close()
+
+
+def _backup_before_migration(db_file: Path, revision: str) -> Path:
+    """Migration oncesi tutarli bir yedek alir (SQLite backup API: WAL dosyasini da kapsar)."""
+    stamp = datetime.now(timezone.utc).astimezone().strftime("%Y%m%d-%H%M%S")
+    destination = db_file.with_name(f"{db_file.name}.bak-{stamp}-{revision}")
+    _sqlite_backup(db_file, destination)
     _prune_backups(db_file)
     log.info("Migration oncesi veritabani yedeklendi: %s", destination.name)
+    return destination
+
+
+_DAILY_KEEP = 7
+
+
+def snapshot_database_daily(target: Engine | None = None, keep: int = _DAILY_KEEP) -> Path | None:
+    """Gunde en fazla bir kez `<db>.daily-YYYYMMDD` anlik goruntusu alir, son `keep` tanesini tutar.
+
+    Bellek ici/dosyasi olmayan veritabaninda ya da bugunku goruntu zaten varsa None doner. Yedek alinamazsa
+    uygulama acilisi engellenmez (hata loglanir)."""
+    db_file = _sqlite_file(target or engine)
+    if db_file is None:
+        return None
+    today = datetime.now(timezone.utc).astimezone().strftime("%Y%m%d")
+    destination = db_file.with_name(f"{db_file.name}.daily-{today}")
+    if destination.exists():
+        return None
+    try:
+        _sqlite_backup(db_file, destination)
+    except (sqlite3.Error, OSError) as exc:
+        log.warning("Gunluk veritabani goruntusu alinamadi: %s", exc)
+        destination.unlink(missing_ok=True)
+        return None
+    for old in sorted(db_file.parent.glob(f"{db_file.name}.daily-*"))[:-keep]:
+        old.unlink(missing_ok=True)
+    log.info("Gunluk veritabani goruntusu alindi: %s", destination.name)
     return destination
 
 
