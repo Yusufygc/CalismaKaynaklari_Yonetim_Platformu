@@ -122,8 +122,8 @@ def test_qml_only_reaches_business_members_through_sub_bridges(qapp, session):
     root_used = {first for (first, second) in _qml_bridge_usage() if second == "" or not isinstance(getattr(bridge, first, None), QObject)}
 
     shell = {"isDarkTheme", "currentView", "isSimpleMode", "toggleTheme", "setSimpleMode", "setCurrentView",
-             "notificationEmitted", "isDarkThemeChanged", "currentViewChanged", "isSimpleModeChanged"}
-    children = {"library", "reader", "annotations", "pdf", "citations", "market", "discovery", "searches", "settings"}
+             "notificationEmitted", "windowActivationRequested", "isDarkThemeChanged", "currentViewChanged", "isSimpleModeChanged"}
+    children = {"library", "reader", "annotations", "pdf", "citations", "market", "discovery", "searches", "settings", "vault"}
 
     assert root_used - shell - children == set()
 

@@ -47,6 +47,26 @@ Item {
                 cursorShape: Qt.PointingHandCursor
             }
 
+            // Derin baglantiyla (Obsidian) acilan alinti kisa sure cerceveyle vurgulanir.
+            Rectangle {
+                id: focusFrame
+                objectName: "focusFrame"
+                visible: bridge.pdf.focusedAnnotationId === highlightHitArea.annotationId
+                anchors.fill: parent
+                anchors.margins: -4
+                radius: 4
+                color: "transparent"
+                border.width: 2
+                border.color: Theme.accent
+
+                SequentialAnimation on opacity {
+                    running: focusFrame.visible
+                    loops: Animation.Infinite
+                    NumberAnimation { from: 1.0; to: 0.25; duration: 400 }
+                    NumberAnimation { from: 0.25; to: 1.0; duration: 400 }
+                }
+            }
+
             // Yorumu olan alintilarin kose isareti
             Rectangle {
                 visible: highlightHitArea.comment !== ""

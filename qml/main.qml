@@ -17,6 +17,18 @@ ApplicationWindow {
     title: "PKM — Kaynak Yönetim Platformu"
     color: Theme.bgBase
 
+    // Derin baglanti ya da ikinci uygulama ornegi: pencereyi one getir.
+    Connections {
+        target: bridge
+        function onWindowActivationRequested() {
+            window.show()
+            if (window.visibility === Window.Minimized)
+                window.showNormal()
+            window.raise()
+            window.requestActivate()
+        }
+    }
+
     // Bridge'den tema durumunu reaktif senkronize et
     Connections {
         target: bridge

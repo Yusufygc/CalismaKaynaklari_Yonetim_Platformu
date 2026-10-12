@@ -42,6 +42,19 @@ Item {
     // Kaldığı yerden devam: belge hazır olunca (QML belgesi + pdfkit oturumu) kayıtlı sayfa/konum/zoom'a gidilir.
     // Geri yükleme bitip yerleşene kadar konum kaydı kapalıdır (eski kayıt sayfa 0 ile ezilmesin).
     property int restoredResourceId: 0
+    property int appliedJumpToken: 0
+
+    // Derin baglanti (pkm://open?...) hedefi: belge hazir ve kaldigi yer geri yuklenmisse hedef sayfa/konuma gidilir
+    // (kayitli okuma durumundan once gelir). `bridge.pdf.jumpTarget` her istekte yeni `token` tasir.
+    function applyJump() {
+        const target = bridge.pdf.jumpTarget
+        if (target.token === undefined || target.token === appliedJumpToken)
+            return
+        if (pdfDoc.status !== PdfDocument.Ready || restoredResourceId !== resourceId || resourceId === 0)
+            return
+        appliedJumpToken = target.token
+        pageArea.goToLocation(target.page, Qt.point(target.x, target.y), 0)
+    }
     property bool textLayerBannerDismissed: false
 
     // Yetim alintiyi yeniden baglama: yan panelden baslar, sayfada yeni metin secilince biter (bkz. PdfSelectionOverlay).
@@ -58,9 +71,14 @@ Item {
             return
         restoredResourceId = resourceId
         const state = bridge.pdf.readingState
-        if (state.hasState)
+        // Bekleyen derin baglanti hedefi varsa kayitli konuma hic gidilmez: iki atlama ust uste binerse sayfa alani
+        // yerlesimi (asenkron) ikincisini bozuyor.
+        const jump = bridge.pdf.jumpTarget
+        const jumpPending = jump.token !== undefined && jump.token !== appliedJumpToken
+        if (state.hasState && !jumpPending)
             pageArea.restoreView(state.page, state.x, state.y, state.zoom)
         trackSettleTimer.restart()
+        applyJump()
     }
     Timer {
         id: trackSettleTimer
@@ -73,6 +91,7 @@ Item {
     }
     Connections {
         target: bridge.pdf
+        function onJumpTargetChanged() { root.applyJump() }
         function onCurrentDocumentChanged() {
             const document = bridge.pdf.currentDocument
             if (document.documentId !== undefined) {

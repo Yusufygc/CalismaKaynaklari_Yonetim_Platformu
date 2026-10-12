@@ -36,6 +36,13 @@ class DocumentRepository:
         row = self._session.scalar(select(PdfDocumentRow).where(PdfDocumentRow.sha256 == sha256))
         return _to_domain(row) if row else None
 
+    def find_by_sha_prefix(self, prefix: str, limit: int = 2) -> list[Document]:
+        """SHA-256'si `prefix` ile baslayan belgeler (en cok `limit`; 2 yeterli: tekil mi belirsiz mi)."""
+        rows = self._session.scalars(
+            select(PdfDocumentRow).where(PdfDocumentRow.sha256.startswith(prefix, autoescape=True)).limit(limit)
+        )
+        return [_to_domain(row) for row in rows]
+
     def get_for_resource(self, resource_id: int) -> Document | None:
         row = self._session.scalar(
             select(PdfDocumentRow)

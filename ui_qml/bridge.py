@@ -13,6 +13,7 @@ from ui_qml.bridges.searches_bridge import SearchesBridge
 from ui_qml.bridges.settings_bridge import SettingsBridge
 from ui_qml.bridges.vault_bridge import VaultBridge
 from ui_qml.context import BridgeContext, Controllers
+from ui_qml.deep_links import DeepLinkRouter
 from ui_qml.saved_search_state import SavedSearchState
 
 
@@ -41,6 +42,7 @@ class QmlBridge(QObject):
     currentViewChanged = Signal(str)
     isSimpleModeChanged = Signal(bool)
     notificationEmitted = Signal(str, str)  # type (info/error), message
+    windowActivationRequested = Signal()  # derin baglanti / ikinci ornek: pencere one getirilsin
 
     def __init__(
         self,
@@ -74,6 +76,8 @@ class QmlBridge(QObject):
         self._pdf.contentChanged.connect(self._on_pdf_content_changed)
         self._pdf.readingProgressChanged.connect(lambda _resource_id: self._library.refresh_progress())
         self._vault = VaultBridge(self._ctx, self)
+        self.deep_links = DeepLinkRouter(self, self._ctx, self)
+        self.deep_links.activationRequested.connect(self.windowActivationRequested)
         # Alinti/not/kelime ya da kaynak kunyesi (baslik, durum) degisince vault notu yeniden uretilir (1,5 sn birlesik).
         self._pdf.contentChanged.connect(self._ctx.vault_sync.mark_resource)
         event_bus.resource_updated.connect(self._ctx.vault_sync.mark_resource)

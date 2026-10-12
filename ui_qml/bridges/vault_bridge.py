@@ -3,6 +3,7 @@ from pathlib import Path
 from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 
 from core.logger import log
+from core.protocol_registration import ProtocolRegistration
 from pdfkit.api import SyncReport, VaultUnavailableError
 from ui_qml.context import BridgeContext
 
@@ -14,10 +15,14 @@ class VaultBridge(QObject):
     (`VaultSync`); burasi yalnizca ayari saklar ve kullaniciya bildirir."""
 
     statusChanged = Signal()
+    protocolChanged = Signal()
 
-    def __init__(self, ctx: BridgeContext, parent: QObject | None = None) -> None:
+    def __init__(
+        self, ctx: BridgeContext, parent: QObject | None = None, registration: ProtocolRegistration | None = None
+    ) -> None:
         super().__init__(parent)
         self._ctx = ctx
+        self._registration = registration or ProtocolRegistration()
         self._sync = ctx.vault_sync
         self._unavailable = ""  # kayitli klasor acilista kullanilamadiysa nedeni
         self._manual_sync = False
@@ -33,6 +38,32 @@ class VaultBridge(QObject):
         if not status["enabled"] and saved:
             return {**status, "path": saved, "state": "error", "message": self._unavailable}
         return status
+
+    @Property(bool, constant=True)
+    def protocolSupported(self) -> bool:
+        """`pkm://` baglanti kaydi bu isletim sisteminde destekleniyor mu (Windows)?"""
+        return self._registration.supported
+
+    @Property(bool, notify=protocolChanged)
+    def protocolRegistered(self) -> bool:
+        """`pkm://` baglantilari su an bu uygulamaya mi gidiyor? (Eski/tasinmis yola isaret eden kayit: hayir.)"""
+        return self._registration.is_registered()
+
+    @Slot()
+    def registerProtocol(self) -> None:
+        try:
+            self._registration.register()
+        except OSError as exc:
+            log.warning("pkm:// kaydi yapilamadi: %s", exc)
+            self._ctx.notify.error("Bağlantı kaydı yapılamadı.")
+            return
+        self.protocolChanged.emit()
+        self._ctx.notify.info("pkm:// bağlantıları artık bu uygulamayla açılacak.")
+
+    @Slot()
+    def unregisterProtocol(self) -> None:
+        self._registration.unregister()
+        self.protocolChanged.emit()
 
     @Slot(str)
     def chooseVault(self, folder: str) -> None:

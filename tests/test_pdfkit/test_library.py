@@ -242,3 +242,32 @@ def test_maintenance_copies_legacy_annotations_once_adoption_has_finished(qapp, 
     document = library.documents().document_for_resource(resource_id)
     (copied,) = library.annotations().list_highlights(document.id)
     assert copied.quote_exact == "Hizli kahverengi" and copied.legacy_id is not None
+
+
+def test_documents_are_found_by_sha_prefix_only_when_unambiguous(pdf_library, session, pdf_store, tmp_path):
+    from models import Resource
+    from pdfkit.app.documents import DocumentService
+    from pdfkit.app.importing import prepare_pdf
+    from tests.pdf_factory import write_outline_pdf
+
+    documents = []
+    for name in ("a", "b"):
+        prepared = prepare_pdf(write_outline_pdf(tmp_path / f"{name}.pdf", [name.upper()]), pdf_store)
+        resource = Resource(title=name, url=pdf_store.absolute(prepared.stored.rel_path).as_uri())
+        session.add(resource)
+        session.commit()
+        documents.append(DocumentService(session, pdf_store).register(prepared, resource.id, "local"))
+    service = pdf_library.documents()
+    first, second = documents
+
+    assert service.find_by_sha_prefix(first.sha256[:16]) == first
+    assert service.find_by_sha_prefix(first.sha256) == first
+    assert service.find_by_sha_prefix("0" * 16) is None
+    shared = ""
+    for left, right in zip(first.sha256, second.sha256):
+        if left != right:
+            break
+        shared += left
+    if shared:  # ortak onek varsa belirsiz sayilir
+        assert service.find_by_sha_prefix(shared) is None
+    assert service.find_by_sha_prefix("%") is None and service.find_by_sha_prefix("_") is None  # LIKE jokerleri kacirilir

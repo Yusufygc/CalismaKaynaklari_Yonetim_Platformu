@@ -34,6 +34,11 @@ class DocumentService:
     def find_by_sha(self, sha256: str) -> Document | None:
         return self._repo.get_by_sha(sha256)
 
+    def find_by_sha_prefix(self, prefix: str) -> Document | None:
+        """Derin baglantidaki kisaltilmis SHA-256 ile belge; yok ya da belirsizse (birden cok eslesme) None."""
+        found = self._repo.find_by_sha_prefix(prefix)
+        return found[0] if len(found) == 1 else None
+
     def document_for_resource(self, resource_id: int) -> Document | None:
         return self._repo.get_for_resource(resource_id)
 

@@ -1,7 +1,15 @@
 """pdfkit'in dis dunyaya acik tek yuzeyi. Uygulamanin geri kalani paketin icine dogrudan erismez."""
 from pdfkit.app.ports import LegacyPdf, ResourceCatalogPort
 from pdfkit.domain.annotations import Annotation, PageNote, Term
-from pdfkit.domain.errors import DownloadError, NotAPdfError, PdfkitError, TooLargeError, VaultUnavailableError
+from pdfkit.domain.deeplink import OpenLink, build_open_link, parse_open_link
+from pdfkit.domain.errors import (
+    DownloadError,
+    InvalidLinkError,
+    NotAPdfError,
+    PdfkitError,
+    TooLargeError,
+    VaultUnavailableError,
+)
 from pdfkit.domain.labels import effective_color, name_for_label
 from pdfkit.domain.models import Document, PdfInspection, SourceInfo
 from pdfkit.infra.text import extract_page_texts
@@ -14,8 +22,10 @@ __all__ = [
     "Document",
     "DownloadError",
     "ImportOutcome",
+    "InvalidLinkError",
     "LegacyPdf",
     "NotAPdfError",
+    "OpenLink",
     "PageNote",
     "PdfBridge",
     "PdfInspection",
@@ -29,7 +39,9 @@ __all__ = [
     "TooLargeError",
     "VaultSync",
     "VaultUnavailableError",
+    "build_open_link",
     "effective_color",
     "extract_page_texts",
     "name_for_label",
+    "parse_open_link",
 ]

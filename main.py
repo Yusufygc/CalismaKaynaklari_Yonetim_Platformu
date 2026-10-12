@@ -6,16 +6,18 @@ from pathlib import Path
 if not getattr(sys, "frozen", False):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from PySide6.QtCore import QThreadPool
+from PySide6.QtCore import QThreadPool, QTimer
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 
 from core.logger import log
 from core.paths import pdf_storage_dir
+from core.single_instance import SingleInstance, default_name, send_message
 from services.pdf_storage_service import PdfStorageService
 from ui_qml.bridge import QmlBridge
 from ui_qml.context import Controllers
+from ui_qml.deep_links import ACTIVATE_MESSAGE, extract_link_arg
 from ui_qml.image_provider import IconImageProvider
 from utils.db_utils import get_session, init_db, snapshot_database_daily
 
@@ -63,6 +65,16 @@ def main() -> None:
     app = _create_application()
     log.info("Uygulama baslatiliyor (QML Arayuzu)...")
 
+    # Tek ornek: ikinci baslatma (ornegin Obsidian'daki bir pkm:// baglantisi) calisan ornege iletilip kapanir; bu ayni
+    # SQLite dosyasinin iki surecte birlikte acilmasini da onler.
+    link = extract_link_arg(sys.argv)
+    if send_message(default_name(), link or ACTIVATE_MESSAGE):
+        log.info("Uygulama zaten calisiyor; istek calisan ornege iletildi.")
+        sys.exit(0)
+    instance = SingleInstance()
+    if not instance.listen():
+        log.warning("Tek ornek sunucusu baslatilamadi: %s", instance.name)
+
     init_db()
     snapshot_database_daily()
     session = get_session()
@@ -81,8 +93,12 @@ def main() -> None:
         sys.exit(-1)
 
     log.info("QML Arayuzu basariyla calisiyor.")
+    instance.messageReceived.connect(bridge.deep_links.handle_message)
     bridge.run_startup_tasks()
+    if link:  # uygulama bir pkm:// baglantisiyla acildi: pencere ve veri hazir olduktan sonra ac
+        QTimer.singleShot(0, lambda: bridge.deep_links.open_link(link))
     exit_code = app.exec()
+    instance.close()
 
     # Pencere kapanirken hala calisan bir arka plan worker'i (scrape/extract/
     # market-search) varsa, onu bitene kadar bekle -- aksi halde worker daha

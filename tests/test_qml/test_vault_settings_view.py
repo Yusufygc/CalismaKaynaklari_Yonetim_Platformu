@@ -45,3 +45,26 @@ def test_tab_reflects_a_chosen_folder_and_the_sync_button_rewrites_a_deleted_not
     pump(qapp, 40)
     assert find_named(window, "vaultStateText").property("text") == "Eşitleme kapalı" and len(_note_files(vault)) == 1
     assert engine.captured_warnings == []
+
+
+def test_protocol_section_is_hidden_when_unsupported_and_toggles_when_supported(env, qapp):
+    from tests.test_qml.test_vault_bridge import _FakeRegistration
+
+    bridge, _resource, _vault, _toasts, _tmp = env
+    engine, window = _open_vault_tab(qapp, bridge)
+    assert find_named(window, "registerProtocolButton") is None or not find_named(window, "registerProtocolButton").property("visible")
+    del engine, window
+
+    bridge.vault._registration = _FakeRegistration()
+    engine, window = _open_vault_tab(qapp, bridge)
+    assert "Kapalı" in find_named(window, "protocolStateText").property("text")
+
+    click(qapp, window, find_named(window, "registerProtocolButton"))
+    pump(qapp, 40)
+
+    assert "Etkin" in find_named(window, "protocolStateText").property("text")
+    assert find_named(window, "unregisterProtocolButton").property("visible")
+    click(qapp, window, find_named(window, "unregisterProtocolButton"))
+    pump(qapp, 40)
+    assert "Kapalı" in find_named(window, "protocolStateText").property("text")
+    assert engine.captured_warnings == []

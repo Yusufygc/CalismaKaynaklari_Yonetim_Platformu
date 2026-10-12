@@ -11,6 +11,8 @@ from pdfkit.ui.session import DocumentSession
 
 
 _READING_SAVE_DELAY_MS = 1000
+_FOCUS_HIGHLIGHT_MS = 2500  # derin baglantiyla acilan alintinin vurgu suresi
+_JUMP_MARGIN = 40.0  # hedefin ustunde birakilan bosluk (sayfa noktasi)
 
 
 class PdfBridge(QObject):
@@ -26,6 +28,8 @@ class PdfBridge(QObject):
     termsChanged = Signal()
     notification = Signal(str, str)  # tur (info/error), mesaj
     readingStateChanged = Signal()
+    jumpTargetChanged = Signal()
+    focusedAnnotationChanged = Signal()
     readingProgressChanged = Signal(int)  # kaynak kimligi: okuma durumu yazildi (kart ilerlemesi tazelenir)
     contentChanged = Signal(int)  # kaynak kimligi: alinti/not/kelime degisti (havuz, cekmece, disa aktarim tazelenir)
 
@@ -39,6 +43,14 @@ class PdfBridge(QObject):
         self._header: dict = {}
         self._revision = 0
         self._reading_state: dict = {}
+        self._pending_jump: tuple[int, int, str] | None = None  # (kaynak, sayfa, uid): belge acilinca cozulur
+        self._jump_target: dict = {}
+        self._jump_token = 0
+        self._focused_annotation = 0
+        self._focus_timer = QTimer(self)
+        self._focus_timer.setSingleShot(True)
+        self._focus_timer.setInterval(_FOCUS_HIGHLIGHT_MS)
+        self._focus_timer.timeout.connect(lambda: self._set_focused_annotation(0))
         self._pending_reading: tuple | None = None  # (belge, sayfa, x, y, zoom, gorulen sayfa): gecikmeli yazilmayi bekler
         self._reading_timer = QTimer(self)
         self._reading_timer.setSingleShot(True)
@@ -86,6 +98,63 @@ class PdfBridge(QObject):
         """Belge acilip kapaninca ve her basarili yazmadan sonra artar; `notebookItems` gibi turetilmis
         listelerin QML baglamalarini yeniden degerlendirmek icin kullanilir."""
         return self._revision
+
+    @Property(dict, notify=jumpTargetChanged)
+    def jumpTarget(self) -> dict:
+        """Derin baglantiyla istenen atlama: {token, page, x, y, annotationId}; yoksa {}. `token` her istekte artar
+        (ayni hedefe tekrar atlanabilsin)."""
+        return self._jump_target
+
+    @Property(int, notify=focusedAnnotationChanged)
+    def focusedAnnotationId(self) -> int:
+        """Derin baglantiyla acilan ve kisa sure vurgulanan alinti (0 = yok)."""
+        return self._focused_annotation
+
+    @Slot(int, int, str)
+    def requestJump(self, resource_id: int, page: int, ann_uid: str) -> None:
+        """`resource_id` kaynaginin belgesinde `page` (0 tabanli; -1 = belirtilmedi) sayfasina ya da `ann_uid`
+        kimlikli alinti/nota/kelimeye gitmeyi ister. Belge zaten aciksa hemen, degilse `openDocument` sonrasinda
+        cozulur."""
+        if self._header.get("resourceId") == resource_id:
+            self._resolve_jump(page, ann_uid)
+        else:
+            self._pending_jump = (resource_id, page, ann_uid)
+
+    def _resolve_jump(self, page: int, ann_uid: str) -> None:
+        target = self._locate(page, ann_uid)
+        if target is None:
+            return
+        self._jump_token += 1
+        self._jump_target = {"token": self._jump_token, **target}
+        self.jumpTargetChanged.emit()
+        self._set_focused_annotation(target["annotationId"])
+        if target["annotationId"]:
+            self._focus_timer.start()
+
+    def _locate(self, page: int, ann_uid: str) -> dict | None:
+        """Hedefin sayfasi ve sayfa ici konumu: once alinti, sonra sayfa notu, sonra kelime; bulunamazsa istenen sayfa."""
+        if ann_uid:
+            found = self._model.find_by_uid(ann_uid)
+            if found:
+                annotation, rect = found
+                where = annotation.page if annotation.page is not None else max(page, 0)
+                y = max(rect[1] - _JUMP_MARGIN, 0.0) if rect else 0.0
+                return {"page": where, "x": 0.0, "y": y, "annotationId": annotation.id}
+            note = next((n for n in self._notes.all_notes() if n.uid == ann_uid), None)
+            if note:
+                return {"page": note.page, "x": 0.0, "y": max(note.y - _JUMP_MARGIN, 0.0), "annotationId": 0}
+            term = next((t for t in self._session.terms if t.uid == ann_uid and t.segments), None)
+            if term:
+                return {"page": term.segments[0].page, "x": 0.0, "y": 0.0, "annotationId": 0}
+        if page >= 0:
+            count = self._session.document.page_count if self._session.document else 0
+            return {"page": min(page, max(count - 1, 0)), "x": 0.0, "y": 0.0, "annotationId": 0}
+        return None
+
+    def _set_focused_annotation(self, annotation_id: int) -> None:
+        if annotation_id != self._focused_annotation:
+            self._focused_annotation = annotation_id
+            self.focusedAnnotationChanged.emit()
 
     @Property(int, notify=revisionChanged)
     def orphanCount(self) -> int:
@@ -138,6 +207,11 @@ class PdfBridge(QObject):
         opened = self._session.open(resource_id)
         document = self._session.document
         self._load_reading_state(document.id if opened and document else None)
+        # Atlama hedefi baslik yayilmadan ONCE cozulur: baslik degisince QML kayitli konuma donmeye calisir ve hedefin
+        # varligini bu sinyalden once bilmelidir.
+        pending, self._pending_jump = self._pending_jump, None
+        if opened and pending and pending[0] == resource_id:
+            self._resolve_jump(pending[1], pending[2])
         self._set_header(
             {
                 "resourceId": resource_id,
@@ -155,6 +229,8 @@ class PdfBridge(QObject):
 
     @Slot()
     def closeDocument(self) -> None:
+        # Bekleyen atlama BURADA silinmez: QML kaynak degisiminde kisa sure once kapatip sonra acar (ozellik baglamalari
+        # sirayla guncellenir); atlama hedefi yeni belge acilinca tuketilir.
         self._flush_reading_state()
         self._session.close()
         self._load_reading_state(None)

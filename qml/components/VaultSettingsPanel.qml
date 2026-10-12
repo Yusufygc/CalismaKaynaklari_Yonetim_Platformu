@@ -128,6 +128,61 @@ Column {
         }
     }
 
+    // pkm:// bağlantıları: Obsidian notlarındaki sayfa numarasına tıklayınca uygulamada o alıntıya gidilir.
+    Rectangle {
+        visible: bridge.vault.protocolSupported
+        width: parent.width
+        implicitHeight: linkCol.implicitHeight + 28
+        radius: Theme.radiusMd
+        color: Theme.bgElevated
+        border.width: 1
+        border.color: Theme.borderSubtle
+
+        Column {
+            id: linkCol
+            anchors.fill: parent
+            anchors.margins: 14
+            spacing: 10
+
+            Text {
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: "Obsidian'dan uygulamaya bağlantı"
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSm
+                font.weight: Font.DemiBold
+                color: Theme.textPrimary
+            }
+            Text {
+                objectName: "protocolStateText"
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: bridge.vault.protocolRegistered
+                      ? "Etkin: notlardaki sayfa numaralarına (s. 3) tıklayınca PDF uygulamada ilgili alıntıda açılır."
+                      : "Kapalı: notlardaki sayfa numaraları şu an uygulamayı açmaz. Etkinleştirmek yalnızca bu Windows kullanıcısı için bir kayıt ekler."
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontXs
+                color: Theme.textSecondary
+            }
+            Row {
+                spacing: 8
+                AppButton {
+                    objectName: "registerProtocolButton"
+                    text: bridge.vault.protocolRegistered ? "Kaydı Yenile" : "Bağlantıları Etkinleştir"
+                    variant: bridge.vault.protocolRegistered ? "secondary" : "primary"
+                    onClicked: bridge.vault.registerProtocol()
+                }
+                AppButton {
+                    objectName: "unregisterProtocolButton"
+                    visible: bridge.vault.protocolRegistered
+                    text: "Kaydı Kaldır"
+                    variant: "ghost"
+                    onClicked: bridge.vault.unregisterProtocol()
+                }
+            }
+        }
+    }
+
     Text {
         width: parent.width
         wrapMode: Text.Wrap

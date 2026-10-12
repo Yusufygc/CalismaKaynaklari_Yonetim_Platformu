@@ -223,6 +223,13 @@ class AnnotationListModel(_IncrementalModel):
     def annotations_on_page(self, page: int) -> list[Annotation]:
         return [r.annotation for r in self._rows if page in r.pages]
 
+    def find_by_uid(self, uid: str) -> tuple[Annotation, list] | None:
+        """Kararli kimlikle alinti ve sinirlayici dikdortgeni ([x, y, w, h] ya da []); yoksa None."""
+        for row in self._rows:
+            if row.annotation.uid == uid:
+                return row.annotation, row.bounding_rect
+        return None
+
     def count_with_status(self, status: str) -> int:
         return sum(1 for r in self._rows if r.annotation.status == status)
 

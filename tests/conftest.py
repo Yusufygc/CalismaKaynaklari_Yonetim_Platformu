@@ -20,6 +20,13 @@ def _isolated_user_settings(tmp_path, monkeypatch):
     monkeypatch.setattr("ui_qml.context.default_settings_path", lambda: tmp_path / "user_settings.json")
 
 
+@pytest.fixture(autouse=True)
+def _no_real_registry(monkeypatch):
+    """Testler gercek Windows kayit defterine (pkm:// protokol kaydi) dokunmasin: `winreg` yok sayilir; kayit
+    testleri sahte bir kayit defteri verir."""
+    monkeypatch.setattr("core.protocol_registration._winreg", lambda: None)
+
+
 @pytest.fixture(scope="session")
 def qapp():
     app = QApplication.instance() or QApplication([])

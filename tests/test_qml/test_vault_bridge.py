@@ -128,3 +128,47 @@ def test_saved_vault_is_restored_on_startup_and_a_missing_one_is_reported_but_ke
     status = third.vault.status
     assert not status["enabled"] and status["state"] == "error" and status["path"] == str(vault) and "bulunamadı" in status["message"]
     assert UserSettings(settings_path).get("vault_path") == str(vault)  # ayar silinmedi (disk geri takilabilir)
+
+
+class _FakeRegistration:
+    supported = True
+
+    def __init__(self):
+        self.registered = False
+        self.fail = False
+
+    def is_registered(self):
+        return self.registered
+
+    def register(self):
+        if self.fail:
+            raise OSError("erisim reddedildi")
+        self.registered = True
+
+    def unregister(self):
+        self.registered = False
+
+
+def test_protocol_registration_buttons_follow_the_registry_state_and_report_failures(env):
+    bridge, _resource, _vault, toasts, _tmp = env
+    fake = _FakeRegistration()
+    bridge.vault._registration = fake
+    changes = []
+    bridge.vault.protocolChanged.connect(lambda: changes.append(1))
+
+    assert bridge.vault.protocolSupported is True and bridge.vault.protocolRegistered is False
+    bridge.vault.registerProtocol()
+    assert bridge.vault.protocolRegistered and changes == [1] and toasts[-1][0] == "info"
+
+    bridge.vault.unregisterProtocol()
+    assert not bridge.vault.protocolRegistered and changes == [1, 1]
+
+    fake.fail = True
+    bridge.vault.registerProtocol()
+    assert toasts[-1] == ("error", "Bağlantı kaydı yapılamadı.") and not bridge.vault.protocolRegistered and changes == [1, 1]
+
+
+def test_registration_is_unsupported_off_windows_and_never_touches_a_real_registry_in_tests(env):
+    bridge, *_ = env
+
+    assert bridge.vault.protocolSupported is False  # tests/conftest `winreg`i yok sayar
