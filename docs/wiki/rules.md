@@ -81,7 +81,7 @@ Aşağıdaki maddeler gerçekten yaşanmış hatalardan çıkarıldı; kod yazar
 - Gerçek kullanıcı DB'sine dokunma; geçici/in-memory DB kullan. Kalıcı `skip` bırakma; gerçek dosya gerektiren testler için üretilmiş deterministik PDF (`tests/pdf_factory.py`).
 - QML değişikliğinde yalnız derleme yetmez: gerçek fare/klavye akışı (QTest, offscreen) yaz; hata düzeltmesinde düzeltmeyi geri alınca testin düştüğünü doğrula (mutasyon).
 - Bölme/taşıma refaktöründe önce güvenlik ağı (QML yükleme + sözleşme testi), sonra ekran görüntüsü öncesi/sonrası piksel karşılaştırması.
-- CI: `pytest --cov --cov-fail-under=84` ve `pip-audit`; bağımlılık eklerken `requirements.txt` (doğrudan) + `requirements.lock` (tam, `scripts/make_lock.py`) birlikte güncellenir, kullanılmayan bağımlılık bırakılmaz.
+- CI: `pytest --cov --cov-fail-under=84` ve `pip-audit`; bağımlılık eklerken `requirements.txt` (doğrudan) + `requirements.lock` (tam, `scripts/make_lock.py`) birlikte güncellenir, kullanılmayan bağımlılık bırakılmaz. `requirements.txt` kurulu tam sürüme sabitlenir (`paket==X.Y.Z`); `python-dotenv` (pydantic-settings `env_file`) ve `lxml_html_clean` (trafilatura → justext `lxml.html.clean`) kodda import edilmese de çalışma zamanında gerekir, silinmez.
 
 **Süreç**
 - Denetimde çıkan kalıp: değişiklikler commit'lenmeden birikti (93+ commit'siz dosya). Mantıksal parçalarda, düzenli commit at.

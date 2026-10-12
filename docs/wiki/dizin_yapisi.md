@@ -135,13 +135,13 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │       ├── SettingsView.qml    # Kategori ve etiket yönetimi
 │       └── ArticleMarketView.qml # Makale Market (OpenAlex konu araması)
 │
-├── scripts/                    # Bakım betikleri (make_lock.py: geçişli requirements.lock üretimi)
+├── scripts/                    # Bakım betikleri (make_lock.py: geçişli requirements.lock üretimi; bench_pdf.py: PDF okuyucu performans ölçümü)
 ├── migrations/                 # Alembic veritabanı migrasyonları
 └── tests/                      # Pytest test paketi
     ├── test_controllers/
-    ├── test_qml/               # bridge testleri + QML yükleme/sözleşme (test_qml_load) + gerçek fare akışları (test_qml_flows, qml_harness)
+    ├── test_qml/               # bridge testleri (test_qml_bridge kabuk/CRUD, test_bridge_market, test_bridge_pdf_files, test_bridge_citations_export) + QML yükleme/sözleşme (test_qml_load) + gerçek fare akışları (test_qml_flows, qml_harness); conftest.py gerçek PDF indirmesini kapatır
     ├── test_repositories/
-    ├── test_services/
+    ├── test_services/          # conftest.py (`fake_dns`) + http_fakes.py (FakeResponse/FakeRedirectResponse) servis testlerinde ortak
     └── test_core/
 ```
 

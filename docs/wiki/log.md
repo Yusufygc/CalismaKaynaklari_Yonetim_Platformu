@@ -4,6 +4,24 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-12] REFACTOR | pdfkit Faz 0: yetim PDF karantinası, ölçüm betiği, spike'lar
+
+PDF modülü incelemesi sonrası `docs/plans/pdfkit-plan-2026-10-12.md` planı onaylandı. Faz 0: `PdfStorageService.sweep_orphans` artık silmiyor, `pdfs/.trash/` altına taşıyor (30 gün saklama) ve kaynak listesi boşsa hiçbir şeye dokunmuyor (bkz. [[core_servisler]]). `scripts/bench_pdf.py` eklendi (taban: gerçek 15 sayfalık PDF'te 100 alıntıda serialize 326 ms, 300'de 998 ms). Spike S1: `pypdfium2` pypdf'ten 14–17× hızlı ve GIL'i bırakıyor (UI yavaşlaması 1,00× vs 2,01×). Spike S2: seçimden gelen `bounds()` ile `getSelectionAtIndex` poligonları 643/643 birebir aynı, yani geometri oluşturma anında saklanabilir. Ayrıntı: `docs/plans/pdfkit-faz0-raporu.md`. Kullanıcı kararları: eski PDF testleri silinebilir/yeniden yazılabilir, `pypdfium2` serbest, vault klasörünü kullanıcı uygulama içinden seçecek.
+
+---
+
+## [2026-10-12] FIX | PDF bağlantı şeması allowlist'i + URL doğrulama gevşetildi
+
+Denetim bulguları 1-2. `PdfPageArea.qml` PDF içi bağlantıları artık `bridge.reader.openExternalLink` üzerinden açıyor; yalnız http/https/mailto geçer (bkz. [[qml_arayuz]]). `services/resource_service.py` URL regex'i `urlparse` tabanlı `_is_valid_web_url` ile değişti: `~`, `[]`, `|`, `{}` ve sorgu-only URL'ler artık kaydedilir; `localhost`, `user@host`, geçersiz port, boşluk ve `ftp:/javascript:` reddedilmeye devam eder (bkz. [[core_servisler]]). 509 test geçti. Yeni birim test eklenmedi (test dosyalarına dokunmama talimatı); davranış elle betikle doğrulandı.
+
+---
+
+## [2026-10-12] REFACTOR | Statik analiz görevleri (tasks/) uygulandı
+
+W3-002: 8 kullanılmayan import silindi. W3-001: `export_service` ve `db_utils` saat dilimli (`datetime.now(timezone.utc).astimezone()`; çıktı yerel saat, davranış aynı). W2-001: `utils/pdf_outline.py` yutulan yer imi hatası `log.debug` ile kaydediliyor. W4-001: kullanılmayan `Markdown` kaldırıldı; `python-dotenv` ve `lxml_html_clean` yanlış pozitif (bkz. [[rules]]). W4-002: boş `scratch/` silindi. W4-003: `requirements.txt` kurulu sürüme sabitlendi (`requirements.lock` yeniden üretildi, aynı). W5-001: test harness `pump` içinde `time.sleep` yerine `QTest.qWait`. W6-001: `test_qml_bridge.py` (994 satır) dört dosyaya bölündü (bkz. [[dizin_yapisi]]). W6-002: `search_page` (`_search_params`), `suggest` (`_count_foreign_references`), `_url_tag_names` (`_bare_host`, `_platform_tag_name`), `_parse_html` (`_first_content`), `_youtube_video_id` (`_youtube_path_video_id`) parçalandı; ilgili testler küçük testlere bölündü. W6-003: tekrarlanan test blokları fixture/yardımcıya çıkarıldı. Kapsam dışı bırakılanlar: W0-001 (lisans seçimi sahibine ait), `3997fe50be13_baseline.py` (Alembic üretimi göç), `qml_flows` sürükleme testi ve `pdf_reader_overlays.Reader.__init__` (kullanıcı test dosyalarına dokunmayı durdurdu). Sonuç: 509 test geçti.
+
+---
+
 ## [2026-09-30] FIX | Vitrin kartı: uzun başlıklar karttan taşıp kırpılıyordu
 
 `AppCard.qml` içerik `Column`'u `padding` kullanıyor, çocuklar ise `width: parent.width` alıyordu; padding çocukları kaydırdığı için başlık/açıklama sağ kenardan taşıp kırpılıyordu. Genişlik `parent.width - leftPadding - rightPadding` yapıldı (metin artık `elide` ile "..." bitiyor). Regresyon testi: `test_qml_flows.py::test_showcase_card_title_stays_inside_the_card` (düzeltme olmadan düşer). Ders: `Column`/`Row` `padding` kullanırken çocuk genişliğinden padding düşülür.
