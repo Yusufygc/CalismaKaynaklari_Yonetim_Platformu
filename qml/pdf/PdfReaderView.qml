@@ -41,6 +41,11 @@ Item {
     // Kaldığı yerden devam: belge hazır olunca (QML belgesi + pdfkit oturumu) kayıtlı sayfa/konum/zoom'a gidilir.
     // Geri yükleme bitip yerleşene kadar konum kaydı kapalıdır (eski kayıt sayfa 0 ile ezilmesin).
     property int restoredResourceId: 0
+    property bool textLayerBannerDismissed: false
+    // Son acilan belgenin metin katmani durumu. Okuyucu kapanirken oturum basligi bosalir; bandin yuksekligi o anda
+    // degisirse sayfa alani kapanista yeniden yerlesir (Qt TableView cokmesi gozlendi), bu yuzden deger yalniz yeni
+    // belge acilinca guncellenir.
+    property bool textLayerMissing: false
     function tryRestore() {
         if (resourceId === 0 || restoredResourceId === resourceId || pdfDoc.status !== PdfDocument.Ready)
             return
@@ -63,7 +68,14 @@ Item {
     }
     Connections {
         target: bridge.pdf
-        function onCurrentDocumentChanged() { root.tryRestore() }
+        function onCurrentDocumentChanged() {
+            const document = bridge.pdf.currentDocument
+            if (document.documentId !== undefined) {
+                root.textLayerMissing = document.hasTextLayer === false
+                root.textLayerBannerDismissed = false  // her belge acilisinda bant yeniden gorunur
+            }
+            root.tryRestore()
+        }
     }
     property bool sidePanelOpen: false
     property bool searchOpen: false
@@ -358,11 +370,70 @@ Item {
             }
         }
 
+        // Metin katmanı uyarısı: taranmış (görüntü) PDF'lerde seçim, alıntı, kelime ve arama çalışmaz.
+        Item {
+            id: textLayerBanner
+            objectName: "noTextLayerBanner"
+            readonly property bool shown: root.textLayerMissing && !root.textLayerBannerDismissed
+            width: parent.width
+            height: shown ? 40 : 0
+            visible: shown
+            clip: true
+
+            Rectangle {
+                anchors.fill: parent
+                color: Theme.statusInProgressBg
+            }
+
+            Row {
+                anchors.left: parent.left
+                anchors.leftMargin: 20
+                anchors.right: dismissBannerButton.left
+                anchors.rightMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 10
+
+                AppIcon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    name: "fa5s.exclamation-triangle"
+                    size: 13
+                    color: Theme.statusInProgress
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width - 23
+                    elide: Text.ElideRight
+                    text: "Metin katmanı yok (taranmış PDF): seçim, alıntı ve arama çalışmaz. Sayfa notu eklenebilir."
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSm
+                    color: Theme.textPrimary
+                }
+            }
+
+            AppButton {
+                id: dismissBannerButton
+                anchors.right: parent.right
+                anchors.rightMargin: 16
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Gizle"
+                variant: "ghost"
+                onClicked: root.textLayerBannerDismissed = true
+            }
+
+            Rectangle {
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: 1
+                color: Theme.borderSubtle
+            }
+        }
+
         // PDF Gövdesi (yan panel + sayfalar)
         Item {
             clip: true
             width: parent.width
-            height: parent.height - 56 - searchBar.height
+            height: parent.height - 56 - searchBar.height - textLayerBanner.height
 
             PdfSidePanel {
                 id: sidePanel

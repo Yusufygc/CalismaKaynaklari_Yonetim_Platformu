@@ -11,8 +11,9 @@ def _escape(text: str) -> str:
     return text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
 
 
-def build_text_pdf(lines: list[str] | None = None) -> bytes:
-    """Tek sayfalik (612x792), Helvetica 14pt, her `lines` ogesi ayri satir olan gecerli bir PDF."""
+def build_text_pdf(lines: list[str] | None = None, rotate: int = 0) -> bytes:
+    """Tek sayfalik (612x792), Helvetica 14pt, her `lines` ogesi ayri satir olan gecerli bir PDF. `rotate` sayfanin
+    /Rotate degeridir (0/90/180/270): sayfa goruntulenirken bu kadar saat yonunde doner."""
     lines = lines or DEFAULT_LINES
     content = ["BT", "/F1 14 Tf", "72 700 Td", "20 TL"]
     for i, line in enumerate(lines):
@@ -24,7 +25,8 @@ def build_text_pdf(lines: list[str] | None = None) -> bytes:
         b"<< /Type /Catalog /Pages 2 0 R >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
         b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
-        b"/Resources << /Font << /F1 5 0 R >> >> >>",
+        + (f"/Rotate {rotate} ".encode() if rotate else b"")
+        + b"/Resources << /Font << /F1 5 0 R >> >> >>",
         b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
         b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
     ]
@@ -41,8 +43,8 @@ def build_text_pdf(lines: list[str] | None = None) -> bytes:
     return bytes(out)
 
 
-def write_text_pdf(path: Path, lines: list[str] | None = None) -> Path:
-    path.write_bytes(build_text_pdf(lines))
+def write_text_pdf(path: Path, lines: list[str] | None = None, rotate: int = 0) -> Path:
+    path.write_bytes(build_text_pdf(lines, rotate))
     return path
 
 
