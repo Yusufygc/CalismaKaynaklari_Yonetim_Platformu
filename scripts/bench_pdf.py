@@ -149,7 +149,7 @@ def run_pdfkit(pages: int, annotation_counts: list[int], source_pdf: Path | None
 
     import pdfkit.infra.orm  # noqa: F401
     from models import Base, Resource
-    from pdfkit.api import PdfLibrary
+    from pdfkit.api import PdfBridge, PdfLibrary
     from pdfkit.app.documents import DocumentService
     from pdfkit.app.importing import prepare_pdf
     from pdfkit.domain.annotations import Segment
@@ -212,6 +212,20 @@ def run_pdfkit(pages: int, annotation_counts: list[int], source_pdf: Path | None
             page_ms = best_ms(lambda: [session.page_model(p).rowCount() for p in range(qdoc.pageCount())], repeat=1)
             session.close()
 
+            bridge = PdfBridge(library)
+            bridge.openDocument(resource.id)
+            timings = []
+            for offset in range(5):  # her olcum farkli bir metin: ayni secim tekrarinda etiket guncellenir, ekleme olmaz
+                start = len(texts[0]) // 3 + offset * 40
+                rect = qdoc.getSelectionAtIndex(0, start, 12).boundingRectangle()
+                y = rect.y() + rect.height() / 2
+                selection = {"page": 0, "fromX": rect.x() + 1, "fromY": y, "toX": rect.right() + 1, "toY": y}
+                begun = time.perf_counter()
+                bridge.addHighlight(selection, "finding")
+                timings.append((time.perf_counter() - begun) * 1000)
+            add_ms = sorted(timings)[len(timings) // 2]
+            bridge.closeDocument()
+
             for existing in service.list_highlights(document.id):
                 service.delete_highlight(existing.id)
             seed(count, with_geometry=False)
@@ -226,7 +240,7 @@ def run_pdfkit(pages: int, annotation_counts: list[int], source_pdf: Path | None
             cold.close()
             results.append(
                 {"annotations": count, "open_ms": round(open_ms, 1), "page_models_ms": round(page_ms, 1),
-                 "first_open_geometry_ms": round(cold_ms, 1), "first_slice_ms": round(first_slice_ms, 1), "computed": computed}
+                 "first_open_geometry_ms": round(cold_ms, 1), "first_slice_ms": round(first_slice_ms, 1), "computed": computed, "add_ms": round(add_ms, 1)}
             )
     return results
 
@@ -249,10 +263,10 @@ def main() -> None:
     if args.pdfkit:
         pdfkit_results = run_pdfkit(args.pages, [int(x) for x in args.annotations.split(",")], args.pdf)
         results["pdfkit"] = pdfkit_results
-        print(f"{'pdfkit':>8} {'acilis ms':>12} {'sayfa modelleri ms':>20} {'ilk acilis toplam ms':>22} {'ilk dilim ms':>14}")
+        print(f"{'pdfkit':>8} {'acilis ms':>12} {'ekleme ms':>11} {'sayfa modelleri ms':>20} {'ilk acilis toplam ms':>22} {'ilk dilim ms':>14}")
         for item in pdfkit_results:
             print(
-                f"{item['annotations']:>8} {item['open_ms']:>12} {item['page_models_ms']:>20} "
+                f"{item['annotations']:>8} {item['open_ms']:>12} {item['add_ms']:>11} {item['page_models_ms']:>20} "
                 f"{item['first_open_geometry_ms']:>22} {item['first_slice_ms']:>14}"
             )
     if args.json:
