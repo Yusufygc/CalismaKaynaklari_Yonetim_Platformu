@@ -1,6 +1,6 @@
 # pdfkit — PDF Okuma ve Çalışma Modülü
 
-Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · Faz 0–1 raporları: `docs/plans/pdfkit-faz0-raporu.md`, `docs/plans/pdfkit-faz1-raporu.md`. Durum: **Faz 4a tamam** (okuma durumu); **Faz 3 tamam** (okuyucu pdfkit'e geçti, eski yol temizlendi: belge deposu, alıntı alanı, çapa çözümleyici, okuma/yazma yolu, QML, havuz, dışa aktarım); Faz 4 okuma deneyimi, vault sonraki fazlar. Alt faz planı: `docs/plans/pdfkit-faz3-plani.md`.
+Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · Faz 0–1 raporları: `docs/plans/pdfkit-faz0-raporu.md`, `docs/plans/pdfkit-faz1-raporu.md`. Durum: **Faz 4b tamam** (metin katmanı bandı, döndürülmüş sayfa doğrulaması); **Faz 4a tamam** (okuma durumu); **Faz 3 tamam** (okuyucu pdfkit'e geçti, eski yol temizlendi: belge deposu, alıntı alanı, çapa çözümleyici, okuma/yazma yolu, QML, havuz, dışa aktarım); Faz 4 okuma deneyimi, vault sonraki fazlar. Alt faz planı: `docs/plans/pdfkit-faz3-plani.md`.
 
 ## Sınır kuralları
 
@@ -79,6 +79,11 @@ PDF okuyucu artık alıntı/not/kelimeyi yalnız `bridge.pdf` üzerinden okur ve
 - **Akış:** `PdfPageArea` sayfa/konum/zoom değişimini 500 ms birleştirip `viewStateChanged` yayar (`trackView` kapalıyken yayılmaz: geri yükleme bitmeden eski kayıt sayfa 0 ile ezilmesin; `PdfReaderView` 700 ms yerleşme sonrası açar). `bridge.pdf.saveReadingState` Python'da 1 sn birleştirir; belge kapanınca, başka belge açılınca ve `aboutToQuit`'te anında yazar. Kaynak değişirken QML `flushViewState()` eski belgenin son konumunu gönderir.
 - **Geri yükleme:** `PdfReaderView.tryRestore()` belge hazır (QML `PdfDocument` + pdfkit oturumu) olunca `bridge.pdf.readingState` ile `pageArea.restoreView(sayfa, x, y, zoom)` çağırır (satır sayısı 0 iken bekleyen atlama mekanizmasını kullanır).
 - **Kart ilerlemesi:** `PdfLibrary.progress_map()` tek `JOIN` ile `{kaynak: oran}`; `ResourceListModel.ReadingProgressRole` (`readingProgress`) — `LibraryBridge.reload()` ve okuma durumu yazılınca (`readingProgressChanged`) `set_progress`, yalnız değişirse `dataChanged`. `AppCard` altta 3 px çubuk gösterir.
+
+## Metin katmanı ve döndürme (Faz 4b)
+
+- **Döndürülmüş sayfalar (`/Rotate` 90/180/270):** Qt koordinatları **görüntülenen (döndürülmüş) uzaydadır**: `pagePointSize` boyutları takas eder, seçim poligonları render ile örtüşür (piksel doğrulaması yapıldı). Tek tuzak: `QPdfSelection.boundingRectangle()` döndürülmüş sayfada **normalize edilmemiş** (negatif genişlik/yükseklik) döner. pdfkit sınırlayıcı dikdörtgeni poligonlardan hesaplar (`AnnotationListModel`), bu yüzden etkilenmez; Qt dikdörtgenini doğrudan kullanan kod `normalized()` çağırmalıdır. Düzeltilecek bir hata bulunmadı; gerçek fare testi (`test_pdf_rotation.py`, 90/180/270) kelimeyi seçip alıntılar, saklanan geometri ve tıklama alanı kelimenin üstünde. Görünüm döndürme (`PdfPageArea.pageRotation`) arayüzde açık değildir; açılırsa koordinat dönüşümü yeniden sınanmalıdır.
+- **Metin katmanı bandı:** `PdfReaderView` içinde `noTextLayerBanner`: belge metin katmanı yoksa (`bridge.pdf.currentDocument.hasTextLayer == false`; kaynak `PdfInspection`) "seçim, alıntı ve arama çalışmaz; sayfa notu eklenebilir" uyarısı; "Gizle" yalnız o belge açılışı için geçerlidir. **Kural:** bandın yüksekliği okuyucu *kapanırken* değişmemeli — `textLayerMissing` yalnız yeni belge açılınca güncellenir; kapanışta oturum başlığı boşalınca bant yüksekliğinin değişmesi sayfa alanını (TableView) yeniden yerleştirip Qt çökmesine yol açtı (testte gözlendi).
 
 ## Ölçümler ve kararlar
 

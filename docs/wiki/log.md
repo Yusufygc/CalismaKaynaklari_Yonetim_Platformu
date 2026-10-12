@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | pdfkit Faz 4b: metin katmanı bandı ve döndürülmüş sayfa doğrulaması
+
+Taranmış (metin katmanı yok) PDF'te okuyucu üstte uyarı bandı gösterir. Döndürülmüş (`/Rotate`) sayfalarda seçim → alıntı → vurgu gerçek fareyle 90/180/270 için sınandı: Qt koordinatları döndürülmüş uzaydadır ve pdfkit poligonlardan sınırlayıcı dikdörtgen hesapladığından düzeltme gerekmedi (Qt'nin `boundingRectangle()` değeri döndürülmüşte normalize edilmemiştir). Test fabrikasına `rotate` parametresi eklendi. Bant yüksekliğinin okuyucu kapanırken değişmesi Qt çökmesi ürettiği için değer yalnız belge açılınca güncellenir. 672 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz4b-raporu.md`.
+
+---
+
 ## [2026-10-13] FEAT | pdfkit Faz 4a: okuma durumu (kaldığın yerden devam, kart ilerlemesi)
 
 Yeni `pdf_reading_state` tablosu (migration `f2c8d4a61b93`), `ReadingService`, `bridge.pdf.readingState/saveReadingState`; okuyucu kapanıp açılınca görünümün üstündeki sayfa, konum ve zoom'a döner (`PdfReaderView.tryRestore`, `PdfPageArea.restoreView/topViewState`). Kayıt QML'de 500 ms, Python'da 1 sn birleştirilir; belge kapanırken/değişirken ve uygulama çıkarken anında yazılır. İlerleme `(max_page+1)/page_count`; kaynak kartlarında `ResourceListModel.readingProgress` rolü ve `AppCard` ilerleme çubuğu (tek sorgu, N+1 yok). Gerçek veri kopyasında gerçek PDF ile doğrulandı. 666 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz4a-raporu.md`.
