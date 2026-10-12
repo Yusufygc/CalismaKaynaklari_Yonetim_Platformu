@@ -1,13 +1,22 @@
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from core.constants.highlight_labels import HIGHLIGHT_LABELS
 from core.constants.strings import AppStrings
 from core.events import event_bus
+from pdfkit.api import PdfkitError
 from services.schemas import HighlightPosition
 from ui_qml.bridges.reader_bridge import ReaderBridge
 from ui_qml.context import BridgeContext
-from ui_qml.serializers import DEFAULT_HIGHLIGHT_COLOR, serialize_pool_highlight, serialize_pool_vocabulary
-from utils.text_utils import extract_sentence, sanitize_utf8
+from ui_qml.serializers import (
+    DEFAULT_HIGHLIGHT_COLOR,
+    serialize_pool_highlight,
+    serialize_pool_pdf_highlight,
+    serialize_pool_pdf_term,
+    serialize_pool_vocabulary,
+)
+
+_REFRESH_DELAY_MS = 150  # Art arda yazmalarda (PDF'te hizli alinti ekleme) havuz tek seferde tazelenir.
+PDF_KEY_PREFIX, HTML_KEY_PREFIX = "pdf:", "html:"
 
 
 def _position_from_map(position: dict | None) -> HighlightPosition | None:
@@ -19,9 +28,22 @@ def _position_from_map(position: dict | None) -> HighlightPosition | None:
     return HighlightPosition(int(page), int(start), int(length))
 
 
+def _split_key(key: str) -> tuple[str, int]:
+    """Bilgi Havuzu anahtari ('pdf:12' / 'html:7') -> (kaynak, kimlik). Gecersizse ('', 0)."""
+    for prefix in (PDF_KEY_PREFIX, HTML_KEY_PREFIX):
+        if str(key).startswith(prefix):
+            try:
+                return prefix, int(str(key)[len(prefix):])
+            except ValueError:
+                break
+    return "", 0
+
+
 class AnnotationsBridge(QObject):
-    """Okuyucudaki kullanici notlari: alintilar (HTML/PDF), kelime havuzu ve PDF sayfa notlari. Acik okuyucu
-    kaynagini tazelemek icin `ReaderBridge.refresh_current`'i kullanir."""
+    """Bilgi Havuzu (kitaplik geneli alinti/kelime listesi) ve HTML makale okuyucusunun alintilari/kelimeleri.
+
+    PDF belgelerinin alinti/not/kelimeleri `PdfBridge`'dedir (pdfkit); havuz her ikisini birlestirir ve her
+    ogeye kaynagini belirten bir `key` ('pdf:<id>' ya da 'html:<id>') verir, silme bu anahtarla yapilir."""
 
     highlightsChanged = Signal()
     vocabularyChanged = Signal()
@@ -32,6 +54,10 @@ class AnnotationsBridge(QObject):
         self._reader = reader
         self._highlights_cache: list[dict] = []
         self._vocabulary_cache: list[dict] = []
+        self._refresh_timer = QTimer(self)
+        self._refresh_timer.setSingleShot(True)
+        self._refresh_timer.setInterval(_REFRESH_DELAY_MS)
+        self._refresh_timer.timeout.connect(self.refresh)
         event_bus.highlight_added.connect(self.reload_highlights)
         event_bus.highlight_deleted.connect(self.reload_highlights)
         event_bus.vocabulary_added.connect(self.reload_vocabulary)
@@ -53,20 +79,26 @@ class AnnotationsBridge(QObject):
         self.reload_highlights()
         self.reload_vocabulary()
 
+    def schedule_refresh(self) -> None:
+        """Havuzu kisa bir gecikmeyle (birlestirerek) tazeler; sik yazma yollarinda UI thread'i bloklamaz."""
+        self._refresh_timer.start()
+
     def reload_highlights(self, _id: int = 0) -> None:
-        self._highlights_cache = [
-            serialize_pool_highlight(h) for h in self._ctx.controllers.highlights.load_all_highlights()
-        ]
+        pdf_entries = self._ctx.pdf_library.annotations().pool_highlights()
+        items = [serialize_pool_highlight(h) for h in self._ctx.controllers.highlights.load_all_highlights()]
+        items += [serialize_pool_pdf_highlight(entry) for entry in pdf_entries]
+        self._highlights_cache = items
         self.highlightsChanged.emit()
 
     def reload_vocabulary(self, _id: int = 0) -> None:
-        self._vocabulary_cache = [
-            serialize_pool_vocabulary(v) for v in self._ctx.controllers.vocabulary.load_all_vocabulary()
-        ]
+        pdf_entries = self._ctx.pdf_library.annotations().pool_terms()
+        items = [serialize_pool_vocabulary(v) for v in self._ctx.controllers.vocabulary.load_all_vocabulary()]
+        items += [serialize_pool_pdf_term(entry) for entry in pdf_entries]
+        self._vocabulary_cache = items
         self.vocabularyChanged.emit()
 
     # ------------------------------------------------------------------ #
-    # Alinti
+    # HTML makale okuyucusu: alinti
     # ------------------------------------------------------------------ #
 
     @Slot(int, str, str)
@@ -81,60 +113,66 @@ class AnnotationsBridge(QObject):
         """HTML okuyucudan alinti ekler. `position` (opsiyonel): {page, startIndex, length}."""
         if not content.strip():
             return
-        self._save_highlight(resource_id, content.strip(), color, _position_from_map(position))
-
-    def _save_highlight(
-        self, resource_id: int, content: str, color: str, position: HighlightPosition | None
-    ) -> None:
-        result = self._ctx.controllers.highlights.create_highlight(resource_id, content, color, position)
+        result = self._ctx.controllers.highlights.create_highlight(
+            resource_id, content.strip(), color, _position_from_map(position)
+        )
         if result is None:
             return  # Hata zaten event_bus.error_occurred uzerinden toast olarak gosterildi
         self.reload_highlights()
         self._reader.refresh_current(resource_id)
         self._ctx.notify.info(AppStrings.NOTIFICATION_HIGHLIGHT_SAVED)
 
-    @Slot(int, str, "QVariantMap", str)
-    def addPdfHighlight(self, resource_id: int, file_url: str, selection: dict, color: str) -> None:
-        """PDF'te secili metni alinti olarak kaydeder. `selection`: {page, fromX, fromY, toX, toY}."""
-        resolved = self._ctx.pdf_files.select_text(file_url, selection)
-        if resolved is None:
+    @Slot(str)
+    def deleteHighlight(self, key: str) -> None:
+        source, item_id = _split_key(key)
+        if source == PDF_KEY_PREFIX:
+            if not self._delete_pdf(lambda service: service.delete_highlight(item_id)):
+                return
+        elif source == HTML_KEY_PREFIX:
+            if not self._ctx.controllers.highlights.delete_highlight(item_id):
+                return
+        else:
             return
-        _doc, page, pdf_selection = resolved
-        start = pdf_selection.startIndex()
-        position = HighlightPosition(page, start, pdf_selection.endIndex() - start)
-        self._save_highlight(resource_id, sanitize_utf8(pdf_selection.text()), color, position)
-
-    @Slot(int, str)
-    def updateHighlightColor(self, highlight_id: int, color: str) -> None:
-        if self._ctx.controllers.highlights.update_highlight_color(highlight_id, color) is None:
-            return
-        self.reload_highlights()
-        self._reader.refresh_current()
-
-    @Slot(int, str)
-    def updateHighlightComment(self, highlight_id: int, comment: str) -> None:
-        if self._ctx.controllers.highlights.update_highlight_comment(highlight_id, comment) is None:
-            return
-        self.reload_highlights()
-        self._reader.refresh_current()
-
-    @Slot(int)
-    def deleteHighlight(self, highlight_id: int) -> None:
-        if not self._ctx.controllers.highlights.delete_highlight(highlight_id):
-            return
-        self.reload_highlights()
-        self._reader.refresh_current()
+        self._after_highlight_delete()
         self._ctx.notify.info(AppStrings.NOTIFICATION_HIGHLIGHT_DELETED)
 
     @Slot("QVariantList")
-    def deleteHighlights(self, highlight_ids: list) -> None:
+    def deleteHighlights(self, keys: list) -> None:
         """Secili alintilari toplu siler (tek yenileme, tek bildirim)."""
-        deleted = self._ctx.controllers.highlights.delete_highlights([int(i) for i in highlight_ids])
+        pdf_ids, html_ids = self._split_keys(keys)
+        deleted = 0
+        if pdf_ids:
+            deleted += self._delete_pdf(lambda service: service.delete_highlights(pdf_ids)) or 0
+        if html_ids:
+            deleted += self._ctx.controllers.highlights.delete_highlights(html_ids) or 0
         if not deleted:
             return
+        self._after_highlight_delete()
+        self._ctx.notify.info(AppStrings.NOTIFICATION_HIGHLIGHTS_DELETED_FMT.format(count=deleted))
+
+    def _after_highlight_delete(self) -> None:
         self.reload_highlights()
         self._reader.refresh_current()
-        self._ctx.notify.info(AppStrings.NOTIFICATION_HIGHLIGHTS_DELETED_FMT.format(count=deleted))
+
+    def _delete_pdf(self, delete):
+        """pdfkit servis silmesini UI sinirinda calistirir; hata kullaniciya bildirilir, basarida sonucu (ya da True) dondurur."""
+        try:
+            result = delete(self._ctx.pdf_library.annotations())
+        except PdfkitError as exc:
+            self._ctx.notify.error(str(exc))
+            return False
+        return True if result is None else result
+
+    @staticmethod
+    def _split_keys(keys: list) -> tuple[list[int], list[int]]:
+        pdf_ids, html_ids = [], []
+        for key in keys:
+            source, item_id = _split_key(key)
+            if source == PDF_KEY_PREFIX:
+                pdf_ids.append(item_id)
+            elif source == HTML_KEY_PREFIX:
+                html_ids.append(item_id)
+        return pdf_ids, html_ids
 
     # ------------------------------------------------------------------ #
     # Kelime
@@ -142,6 +180,7 @@ class AnnotationsBridge(QObject):
 
     @Slot(int, str, str, str)
     def addVocabulary(self, resource_id: int, word: str, translation: str, context_sentence: str = "") -> None:
+        """HTML okuyucudan kelime ekler (PDF'te kelime `bridge.pdf.addTerm` ile eklenir)."""
         if not word.strip() or not translation.strip():
             return
         result = self._ctx.controllers.vocabulary.create_vocabulary(
@@ -152,48 +191,16 @@ class AnnotationsBridge(QObject):
         self.reload_vocabulary()
         self._ctx.notify.info(AppStrings.NOTIFICATION_VOCAB_SAVED_FMT.format(word=word))
 
-    @Slot(int)
-    def deleteVocabulary(self, vocabulary_id: int) -> None:
-        if not self._ctx.controllers.vocabulary.delete_vocabulary(vocabulary_id):
+    @Slot(str)
+    def deleteVocabulary(self, key: str) -> None:
+        source, item_id = _split_key(key)
+        if source == PDF_KEY_PREFIX:
+            if not self._delete_pdf(lambda service: service.delete_term(item_id)):
+                return
+        elif source == HTML_KEY_PREFIX:
+            if not self._ctx.controllers.vocabulary.delete_vocabulary(item_id):
+                return
+        else:
             return
         self.reload_vocabulary()
         self._ctx.notify.info(AppStrings.NOTIFICATION_VOCAB_DELETED)
-
-    @Slot(int, str, "QVariantMap", str)
-    def addPdfVocabulary(self, resource_id: int, file_url: str, selection: dict, translation: str) -> None:
-        """PDF'te secili kelimeyi, gectigi cumleyle (baglam) birlikte kelime havuzuna ekler.
-        `selection`: {page, fromX, fromY, toX, toY} (bkz. `PdfFileManager.select_text`)."""
-        resolved = self._ctx.pdf_files.select_text(file_url, selection)
-        if resolved is None:
-            return
-        doc, page, pdf_selection = resolved
-        word = sanitize_utf8(pdf_selection.text()).strip()
-        page_text = sanitize_utf8(doc.getSelectionAtIndex(page, 0, 1_000_000).text())
-        start = pdf_selection.startIndex()
-        context = extract_sentence(page_text, start, pdf_selection.endIndex() - start)
-        self.addVocabulary(resource_id, " ".join(word.split()), translation, context)
-
-    # ------------------------------------------------------------------ #
-    # PDF notu
-    # ------------------------------------------------------------------ #
-
-    @Slot(int, int, float, float, str)
-    def addPdfNote(self, resource_id: int, page: int, x: float, y: float, text: str) -> None:
-        if not text.strip():
-            return
-        if self._ctx.controllers.pdf_notes.create_note(resource_id, page, x, y, text.strip()) is None:
-            return
-        self._reader.refresh_current(resource_id)
-
-    @Slot(int, str)
-    def updatePdfNote(self, note_id: int, text: str) -> None:
-        if not text.strip():
-            return
-        if self._ctx.controllers.pdf_notes.update_note(note_id, text.strip()) is None:
-            return
-        self._reader.refresh_current()
-
-    @Slot(int)
-    def deletePdfNote(self, note_id: int) -> None:
-        if self._ctx.controllers.pdf_notes.delete_note(note_id):
-            self._reader.refresh_current()

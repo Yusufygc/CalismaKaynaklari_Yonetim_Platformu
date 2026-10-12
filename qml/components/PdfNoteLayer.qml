@@ -9,11 +9,7 @@ Item {
 
     property Item paper            // Sayfa kâğıdı (pageScale, width, height)
     property int pageIndex: 0
-    property var resource
-
-    readonly property var pageNotes: (!resource || !resource.pdfNotes) ? [] : resource.pdfNotes.filter(function(n) {
-        return n.page === pageIndex
-    })
+    property var noteModel         // bridge.pdf.notePageModel(pageIndex): bu sayfanın notları (artımlı)
 
     readonly property bool popoverVisible: newNotePopover.visible || editNotePopover.visible
     // Her popover açılışında artar (bkz. PdfHighlightHits.openCount).
@@ -41,11 +37,15 @@ Item {
 
     // Kalici notlar -- sayfadaki ufak ikon, tiklaninca duzenleme popover'i
     Repeater {
-        model: root.pageNotes
+        model: root.noteModel
         delegate: Rectangle {
-            required property var modelData
-            x: modelData.x * root.paper.pageScale - 10
-            y: modelData.y * root.paper.pageScale - 10
+            id: noteMarker
+            required property int noteId
+            required property real noteX
+            required property real noteY
+            required property string noteText
+            x: noteX * root.paper.pageScale - 10
+            y: noteY * root.paper.pageScale - 10
             width: 20
             height: 20
             radius: 10
@@ -65,8 +65,8 @@ Item {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    editNotePopover.noteId = modelData.id
-                    editNotePopover.noteText = modelData.text
+                    editNotePopover.noteId = noteMarker.noteId
+                    editNotePopover.noteText = noteMarker.noteText
                     editNotePopover.x = Math.max(0, Math.min(
                         parent.x, root.paper.width - editNotePopover.width))
                     editNotePopover.y = Math.max(0, Math.min(
@@ -133,10 +133,9 @@ Item {
                     text: "Kaydet"
                     variant: "primary"
                     onClicked: {
-                        if (newNoteInput.text.trim().length > 0 && root.resource) {
-                            bridge.annotations.addPdfNote(root.resource.id, newNotePopover.pendingPage,
-                                               newNotePopover.pendingX, newNotePopover.pendingY,
-                                               newNoteInput.text.trim())
+                        if (newNoteInput.text.trim().length > 0) {
+                            bridge.pdf.addNote(newNotePopover.pendingPage, newNotePopover.pendingX,
+                                               newNotePopover.pendingY, newNoteInput.text.trim())
                         }
                         newNotePopover.visible = false
                     }
@@ -203,7 +202,7 @@ Item {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            bridge.annotations.deletePdfNote(editNotePopover.noteId)
+                            bridge.pdf.deleteNote(editNotePopover.noteId)
                             editNotePopover.visible = false
                         }
                     }
@@ -213,7 +212,7 @@ Item {
                     variant: "primary"
                     onClicked: {
                         if (editNoteInput.text.trim().length > 0) {
-                            bridge.annotations.updatePdfNote(editNotePopover.noteId, editNoteInput.text.trim())
+                            bridge.pdf.updateNote(editNotePopover.noteId, editNoteInput.text.trim())
                         }
                         editNotePopover.visible = false
                     }

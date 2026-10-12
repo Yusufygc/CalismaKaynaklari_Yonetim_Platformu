@@ -16,7 +16,7 @@ Rectangle {
 
     color: Theme.bgSidebar
     property int activeTab: 0 // 0: Sayfalar, 1: Anahat, 2: Notlarım, 3: Kaynakça
-    property string labelFilter: ""
+    property string labelFilter: ""   // anlam etiketi anahtari (bridge.pdf.labels[].key); "" = tümü
     property string relatedKind: "references" // Kaynakça sekmesi: references | citations
 
     readonly property string paperOpenAlexId: (resource && resource.paper) ? resource.paper.openalexId : ""
@@ -245,13 +245,13 @@ Rectangle {
                     }
 
                     Repeater {
-                        model: bridge.annotations.highlightLabels
+                        model: bridge.pdf.labels
                         AppFilterChip {
                             required property var modelData
-                            text: modelData.label
+                            text: modelData.name
                             dotColor: modelData.color
-                            isSelected: root.labelFilter === modelData.label
-                            onClicked: root.labelFilter = (root.labelFilter === modelData.label ? "" : modelData.label)
+                            isSelected: root.labelFilter === modelData.key
+                            onClicked: root.labelFilter = (root.labelFilter === modelData.key ? "" : modelData.key)
                         }
                     }
                 }
@@ -267,31 +267,9 @@ Rectangle {
                     spacing: 6
                     ScrollBar.vertical: ScrollBar {}
 
-                    model: {
-                        const items = []
-                        const highlights = (root.resource && root.resource.highlights) ? root.resource.highlights : []
-                        for (const h of highlights) {
-                            if (root.labelFilter !== "" && h.label !== root.labelFilter)
-                                continue
-                            const rect = h.boundingRect
-                            items.push({
-                                kind: "highlight", page: h.page, color: h.color, label: h.label,
-                                text: h.content, comment: h.comment,
-                                x: rect ? rect[0] : -1, y: rect ? rect[1] : -1
-                            })
-                        }
-                        if (root.labelFilter === "") {
-                            const notes = (root.resource && root.resource.pdfNotes) ? root.resource.pdfNotes : []
-                            for (const n of notes) {
-                                items.push({
-                                    kind: "note", page: n.page, color: Theme.accent, label: "Not",
-                                    text: n.text, comment: "", x: n.x, y: n.y
-                                })
-                            }
-                        }
-                        items.sort(function(a, b) { return a.page - b.page || a.y - b.y })
-                        return items
-                    }
+                    // Yalniz sekme acikken hesaplanir; `bridge.pdf.revision` degisince (alinti/not eklendi, silindi)
+                    // baglama yeniden degerlendirilir.
+                    model: root.activeTab === 2 ? bridge.pdf.notebookItems(root.labelFilter, bridge.pdf.revision) : []
 
                     delegate: Rectangle {
                         id: noteItem
@@ -309,7 +287,7 @@ Rectangle {
                             anchors.top: parent.top
                             anchors.bottom: parent.bottom
                             width: 3
-                            color: noteItem.modelData.color
+                            color: noteItem.modelData.color !== "" ? noteItem.modelData.color : Theme.accent
                         }
 
                         Column {

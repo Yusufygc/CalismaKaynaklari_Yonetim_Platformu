@@ -11,6 +11,7 @@ from services.export_service import ExportService
 from services.pdf_download_service import looks_like_remote_pdf
 from ui_qml.bridges.library_bridge import LibraryBridge
 from ui_qml.context import BridgeContext
+from ui_qml.export_view import export_view
 from ui_qml.file_export import write_export
 from utils.url_utils import is_safe_external_link
 from workers import PdfOutlineWorker
@@ -213,11 +214,15 @@ class ReaderBridge(QObject):
         resource = self._ctx.controllers.resources.get_resource(resource_id)
         if resource is None:
             return
-        write_export(file_url, ExportService.resource_markdown(resource), self._ctx.notify)
+        view = export_view(resource, self._ctx.pdf_library)
+        write_export(file_url, ExportService.resource_markdown(view), self._ctx.notify)
 
     @Slot(str)
     def exportLibraryMarkdown(self, file_url: str) -> None:
-        resources = self._ctx.controllers.resources.load_resources_with_filters({})
+        resources = [
+            export_view(r, self._ctx.pdf_library)
+            for r in self._ctx.controllers.resources.load_resources_with_filters({})
+        ]
         if not any(ExportService.has_content(r) for r in resources):
             self._ctx.notify.info(AppStrings.NOTIFICATION_EXPORT_EMPTY)
             return

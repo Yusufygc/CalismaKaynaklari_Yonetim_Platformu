@@ -223,15 +223,16 @@ def test_pdf_reader_drag_selection_highlights_exactly_the_selected_word(qapp, br
         QTest.mouseClick(window, Qt.LeftButton, Qt.NoModifier, QPoint(int(scene.x()), int(scene.y())))
         pump(qapp, 30)
 
-    highlights = bridge.controllers.highlights.load_resource_highlights(resource.id)
+    highlights = bridge.ctx.pdf_library.annotations().list_highlights(bridge.pdf.currentDocument["documentId"])
     assert len(highlights) == 3
     for word, h in zip(("tilki", "paragrafin", "kopegin"), sorted(highlights, key=lambda h: h.id)):
         # Sinir karakteri Qt'nin secim kuralina baglidir (+-1 bosluk olabilir); onemli olan konumun metinle tutarliligi.
-        assert word in h.content
-        assert len(h.content.strip()) <= len(word) + 1
-        assert h.page_number == 0
-        assert page_text[h.start_index:h.start_index + h.length].strip() == h.content.strip()  # kalici konum secilen metni gosteriyor
-        assert abs(h.start_index - page_text.index(word)) <= 1
+        segment = h.segments[0]
+        assert word in h.quote_exact
+        assert len(h.quote_exact.strip()) <= len(word) + 1
+        assert segment.page == 0
+        assert page_text[segment.start:segment.end].strip() == h.quote_exact.strip()  # kalici konum secilen metni gosteriyor
+        assert abs(segment.start - page_text.index(word)) <= 1
     assert engine.captured_warnings == []
     del engine
 

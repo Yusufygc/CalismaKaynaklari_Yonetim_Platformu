@@ -156,7 +156,7 @@ def test_qml_bridge_highlights_and_vocabulary(qapp, session, monkeypatch):
     assert bridge.annotations.vocabulary[0]["word"] == "ubiquitous"
 
     # Silme
-    bridge.annotations.deleteHighlight(bridge.annotations.highlights[0]["id"])
+    bridge.annotations.deleteHighlight(bridge.annotations.highlights[0]["key"])
     assert len(bridge.annotations.highlights) == 0
 
 
@@ -183,20 +183,6 @@ def test_qml_bridge_add_highlight_with_pdf_position(qapp, session, monkeypatch):
     assert serialized["page"] == 2
     assert serialized["startIndex"] == 100
     assert serialized["length"] == 30
-
-
-def test_qml_bridge_update_highlight_color(qapp, session, monkeypatch):
-    bridge = QmlBridge(session)
-    monkeypatch.setattr(bridge.library._scraper, "schedule", lambda *args: None)
-
-    bridge.library.saveResource({"title": "Renk Testi", "url": "https://example.com/renk"})
-    res_id = bridge.library.selectedResource["id"]
-    bridge.annotations.addHighlight(res_id, "renk degisecek", "#EAB308")
-    highlight_id = bridge.annotations.highlights[0]["id"]
-
-    bridge.annotations.updateHighlightColor(highlight_id, "#22C55E")
-
-    assert bridge.annotations.highlights[0]["color"] == "#22C55E"
 
 
 def test_qml_bridge_scrape_metadata_merges_instead_of_overwriting(qapp, session):
@@ -261,41 +247,3 @@ def test_qml_bridge_apply_filter_status_and_favorites(qapp, session, monkeypatch
     # Sıfırlama: ALL ve favori değil
     bridge.library.applyFilter("", "0", "0", "ALL", False)
     assert bridge.library.resourcesModel.rowCount() == 2
-
-
-def test_qml_bridge_pdf_note_crud(qapp, session, monkeypatch):
-    bridge = QmlBridge(session)
-    monkeypatch.setattr(bridge.ctx.extractor, "schedule", lambda *args: None)
-
-    bridge.market.saveMarketResult({
-        "title": "PDF Not Testi", "authors": [], "year": None, "citationCount": 0,
-        "url": "https://example.com/x.pdf", "abstract": "",
-    })
-    res_id = bridge.controllers.resources.load_resources_with_filters({})[0].id
-
-    bridge.annotations.addPdfNote(res_id, 3, 120.5, 60.0, "onemli bir not")
-    notes = bridge.controllers.pdf_notes.load_resource_notes(res_id)
-    assert len(notes) == 1
-    assert notes[0].page == 3
-    assert notes[0].note_text == "onemli bir not"
-
-    bridge.reader.openReader(res_id)
-    assert bridge.reader.currentReaderResource["pdfNotes"][0]["text"] == "onemli bir not"
-
-    bridge.annotations.updatePdfNote(notes[0].id, "guncellenmis not")
-    assert bridge.reader.currentReaderResource["pdfNotes"][0]["text"] == "guncellenmis not"
-
-    bridge.annotations.deletePdfNote(notes[0].id)
-    assert bridge.reader.currentReaderResource["pdfNotes"] == []
-
-
-def test_qml_bridge_add_pdf_note_ignores_blank_text(qapp, session, monkeypatch):
-    bridge = QmlBridge(session)
-    monkeypatch.setattr(bridge.library._scraper, "schedule", lambda *args: None)
-
-    bridge.library.saveResource({"title": "Bos Not Testi", "url": "https://example.com/y.pdf"})
-    res_id = bridge.library.selectedResource["id"]
-
-    bridge.annotations.addPdfNote(res_id, 0, 0.0, 0.0, "   ")
-
-    assert bridge.controllers.pdf_notes.load_resource_notes(res_id) == []

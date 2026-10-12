@@ -123,7 +123,7 @@ def test_qml_only_reaches_business_members_through_sub_bridges(qapp, session):
 
     shell = {"isDarkTheme", "currentView", "isSimpleMode", "toggleTheme", "setSimpleMode", "setCurrentView",
              "notificationEmitted", "isDarkThemeChanged", "currentViewChanged", "isSimpleModeChanged"}
-    children = {"library", "reader", "annotations", "citations", "market", "discovery", "searches", "settings"}
+    children = {"library", "reader", "annotations", "pdf", "citations", "market", "discovery", "searches", "settings"}
 
     assert root_used - shell - children == set()
 

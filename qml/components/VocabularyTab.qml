@@ -94,7 +94,7 @@ Item {
                 iconName: "fa5s.trash"
                 iconSize: 11
                 tooltip: "Kelimeyi Sil"
-                onClicked: bridge.annotations.deleteVocabulary(modelData.id)
+                onClicked: bridge.annotations.deleteVocabulary(modelData.key)
             }
         }
 

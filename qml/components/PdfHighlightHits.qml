@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import "../theme"
-import "../js/highlights.js" as Highlights
 
 // Kalıcı alıntılara tıklama alanları (yorum köşe işareti dahil) ve tıklanınca açılan düzenleme popover'ı
 // (renk/anlam değiştir, yorum, sil). Sayfa (`paper`) üzerine bindirilir.
@@ -10,12 +9,7 @@ Item {
 
     property Item paper            // Sayfa kâğıdı (pageScale, width, height)
     property int pageIndex: 0
-    property var resource
-
-    // Bu sayfaya ait konumlu alıntılar (geometri bridge'den gelir).
-    readonly property var pageHighlights: (!resource || !resource.highlights) ? [] : resource.highlights.filter(function(h) {
-        return h.page === pageIndex && h.startIndex >= 0 && h.length > 0 && h.boundsPolygons
-    })
+    property var highlightModel    // bridge.pdf.pageModel(pageIndex): bu sayfanın alıntıları (artımlı)
 
     readonly property bool popoverVisible: editHighlightPopover.visible
     function closeAll() { editHighlightPopover.visible = false }
@@ -33,15 +27,19 @@ Item {
     // yol aciyordu (MouseArea eski girdi sistemi, DragHandler ile
     // ayni alanda oncelik/grab catismasi yaratabiliyor).
     Repeater {
-        model: root.pageHighlights
+        model: root.highlightModel
         delegate: Item {
             id: highlightHitArea
             objectName: "highlightHitArea"
-            required property var modelData
-            x: modelData.boundingRect ? modelData.boundingRect[0] * root.paper.pageScale : 0
-            y: modelData.boundingRect ? modelData.boundingRect[1] * root.paper.pageScale : 0
-            width: modelData.boundingRect ? modelData.boundingRect[2] * root.paper.pageScale : 0
-            height: modelData.boundingRect ? modelData.boundingRect[3] * root.paper.pageScale : 0
+            required property int annotationId
+            required property var boundingRect
+            required property string comment
+            required property string label
+            visible: boundingRect.length === 4
+            x: visible ? boundingRect[0] * root.paper.pageScale : 0
+            y: visible ? boundingRect[1] * root.paper.pageScale : 0
+            width: visible ? boundingRect[2] * root.paper.pageScale : 0
+            height: visible ? boundingRect[3] * root.paper.pageScale : 0
 
             HoverHandler {
                 cursorShape: Qt.PointingHandCursor
@@ -49,7 +47,7 @@ Item {
 
             // Yorumu olan alintilarin kose isareti
             Rectangle {
-                visible: highlightHitArea.modelData.comment !== ""
+                visible: highlightHitArea.comment !== ""
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.topMargin: -6
@@ -68,9 +66,9 @@ Item {
             TapHandler {
                 acceptedDevices: PointerDevice.Mouse | PointerDevice.Stylus | PointerDevice.TouchScreen
                 onTapped: {
-                    editHighlightPopover.highlightId = highlightHitArea.modelData.id
-                    editHighlightPopover.label = highlightHitArea.modelData.label
-                    editCommentInput.text = highlightHitArea.modelData.comment
+                    editHighlightPopover.highlightId = highlightHitArea.annotationId
+                    editHighlightPopover.label = highlightHitArea.label
+                    editCommentInput.text = highlightHitArea.comment
                     editHighlightPopover.x = Math.max(0, Math.min(
                         highlightHitArea.x, root.paper.width - editHighlightPopover.width))
                     editHighlightPopover.y = Math.max(0, Math.min(
@@ -110,13 +108,13 @@ Item {
                 spacing: 8
 
                 Repeater {
-                    model: Theme.highlightPalette
+                    model: bridge.pdf.labels
                     delegate: Rectangle {
-                        required property string modelData
+                        required property var modelData
                         width: 22
                         height: 22
                         radius: 11
-                        color: modelData
+                        color: modelData.color
                         border.width: 1
                         border.color: Theme.swatchBorderLight
 
@@ -125,9 +123,9 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             ToolTip.visible: containsMouse
-                            ToolTip.text: Highlights.labelForColor(parent.modelData, bridge.annotations.highlightLabels)
+                            ToolTip.text: parent.modelData.name
                             onClicked: {
-                                bridge.annotations.updateHighlightColor(editHighlightPopover.highlightId, parent.modelData)
+                                bridge.pdf.setLabel(editHighlightPopover.highlightId, parent.modelData.key)
                                 editHighlightPopover.visible = false
                             }
                         }
@@ -149,7 +147,7 @@ Item {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            bridge.annotations.deleteHighlight(editHighlightPopover.highlightId)
+                            bridge.pdf.deleteAnnotation(editHighlightPopover.highlightId)
                             editHighlightPopover.visible = false
                         }
                     }
@@ -203,7 +201,7 @@ Item {
                     variant: "primary"
                     implicitHeight: 28
                     onClicked: {
-                        bridge.annotations.updateHighlightComment(editHighlightPopover.highlightId, editCommentInput.text)
+                        bridge.pdf.setComment(editHighlightPopover.highlightId, editCommentInput.text)
                         editHighlightPopover.visible = false
                     }
                 }

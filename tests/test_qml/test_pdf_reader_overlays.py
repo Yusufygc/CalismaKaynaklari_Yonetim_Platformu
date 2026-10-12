@@ -50,6 +50,15 @@ class Reader:
         QTest.mouseClick(self.window, Qt.LeftButton, Qt.NoModifier, QPoint(int(scene.x()), int(scene.y())))
         pump(self.app, 30)
 
+    @property
+    def annotations(self):
+        """pdfkit alinti servisi (veritabanindaki gercek kayitlar)."""
+        return self.bridge.ctx.pdf_library.annotations()
+
+    @property
+    def document_id(self):
+        return self.bridge.pdf.currentDocument["documentId"]
+
     def type_into(self, object_name, text):
         focus(self.app, self.window, object_name)
         type_text(self.app, self.window, text)
@@ -86,9 +95,10 @@ def test_vocabulary_popover_saves_word_with_translation_and_sentence_context(rea
     view.type_into("vocabTranslationInput", "fox")
     click(view.app, view.window, find_text(view.window, "Kaydet"))
 
-    (vocab,) = view.bridge.controllers.resources.get_resource(resource.id).vocabulary
+    (vocab,) = view.annotations.list_terms(view.document_id)
     assert vocab.word.strip() == "tilki" and vocab.translation == "fox"
     assert vocab.context_sentence.startswith("Hizli kahverengi tilki")
+    assert vocab.segments[0].polygons  # konumla kaydedilir (eski kelimelerin aksine)
     assert view.visible("newVocabPopover") is None, "kaydedince popover kapanmali"
 
 
@@ -96,7 +106,7 @@ def test_clicking_a_saved_highlight_opens_editor_and_saves_comment(reader):
     view, resource = reader
     view.select("kopegin")
     view.click_first_swatch()
-    (highlight,) = view.bridge.controllers.highlights.load_resource_highlights(resource.id)
+    (highlight,) = view.annotations.list_highlights(view.document_id)
     assert view.visible("editHighlightPopover") is None
 
     hit_area = view.visible("highlightHitArea")
@@ -106,7 +116,7 @@ def test_clicking_a_saved_highlight_opens_editor_and_saves_comment(reader):
     view.type_into("editCommentInput", "onemli")
     click(view.app, view.window, find_text(view.window, "Yorumu Kaydet"))
 
-    (updated,) = view.bridge.controllers.highlights.load_resource_highlights(resource.id)
+    (updated,) = view.annotations.list_highlights(view.document_id)
     assert updated.id == highlight.id and updated.comment == "onemli"
     assert view.visible("editHighlightPopover") is None
 
@@ -124,13 +134,13 @@ def test_note_mode_click_creates_a_page_note_and_marker_edits_it(reader):
     view.type_into("newNoteInput", "not")
     click(view.app, view.window, find_text(view.window, "Kaydet"))
 
-    (note,) = view.bridge.controllers.pdf_notes.load_resource_notes(resource.id)
-    assert note.note_text == "not" and note.page == 0
+    (note,) = view.annotations.list_notes(view.document_id)
+    assert note.text == "not" and note.page == 0
     assert abs(note.x - 250) < 3 and abs(note.y - 450) < 3  # page-point uzayinda (piksel/zoom'dan bagimsiz)
 
     page_area.setProperty("noteMode", False)
     pump(view.app, 20)
-    assert view.bridge.reader.currentReaderResource["pdfNotes"][0]["text"] == "not"
+    assert view.bridge.pdf.notes.count == 1
     assert view.engine.captured_warnings == []
 
 
@@ -153,7 +163,7 @@ def test_clicking_another_highlight_while_editor_is_open_keeps_the_new_editor_op
     for word in ("kopegin", "tilki"):
         view.select(word)
         view.click_first_swatch()
-    ids = {h.id for h in view.bridge.controllers.highlights.load_resource_highlights(resource.id)}
+    ids = {h.id for h in view.annotations.list_highlights(view.document_id)}
     hit_areas = [i for i in walk(view.window.contentItem()) if i.objectName() == "highlightHitArea" and i.isVisible()]
     assert len(hit_areas) == 2
 

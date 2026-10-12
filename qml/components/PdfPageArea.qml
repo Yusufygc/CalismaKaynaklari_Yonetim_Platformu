@@ -17,21 +17,12 @@ Item {
     clip: true
 
     required property PdfDocument document
-    required property var resource
 
     property string selectedText
     property bool noteMode: false
 
-    // Bu sayfaya ait kalici highlight'lar (page/startIndex/length dolu olanlar).
-    function pageHighlights(page) {
-        if (!root.resource || !root.resource.highlights) return []
-        return root.resource.highlights.filter(function(h) {
-            return h.page === page && h.startIndex >= 0 && h.length > 0 && h.boundsPolygons
-        })
-    }
-
-    // Bridge'den gelen duz [[ [x,y], [x,y], ... ], ...] veriyi PathMultiline.paths
-    // icin QPolygonF listesine (Qt.point dizileri) cevirir.
+    // Alinti modelinden (bridge.pdf) gelen duz [[ [x,y], [x,y], ... ], ...] poligon verisini
+    // PathMultiline.paths icin QPolygonF listesine (Qt.point dizileri) cevirir.
     function polygonsFromPoints(boundsPolygons) {
         if (!boundsPolygons) return []
         return boundsPolygons.map(function(poly) {
@@ -168,6 +159,19 @@ Item {
             color: "transparent"
             property alias selection: selection
 
+            // Bu sayfanin alinti/not gorunumleri (bridge.pdf; kalici modelin sayfa filtresi). Artimli guncellenir:
+            // baska sayfadaki ya da tek bir alintideki degisiklik bu katmanlari yeniden kurmaz.
+            readonly property var highlightModel: bridge.pdf.pageModel(index)
+            readonly property var noteModel: bridge.pdf.notePageModel(index)
+
+            // Gorunen sayfanin eksik geometrisi (eski kayitlar) dilimler halinde hesaplanir ve kalici yazilir.
+            Component.onCompleted: bridge.pdf.ensureGeometry(index)
+            onIndexChanged: bridge.pdf.ensureGeometry(index)
+            Connections {
+                target: bridge.pdf
+                function onCurrentDocumentChanged() { bridge.pdf.ensureGeometry(pageHolder.index) }
+            }
+
             Rectangle {
                 id: paper
                 width: image.width
@@ -204,16 +208,17 @@ Item {
 
                 // Kalici highlight'lar: her biri kendi Shape'i. Onceden Instantiator + Shape.data.push(object)
                 // kullaniliyordu; nesneler Shape'e devredildikten sonra Instantiator tarafindan yikilinca
-                // sarkan isaretci kaliyor, currentReaderResourceChanged sirasinda native cokme (segfault)
-                // olusuyordu (fare simulasyonuyla yeniden uretildi).
+                // sarkan isaretci kaliyor, native cokme (segfault) olusuyordu (fare simulasyonuyla yeniden
+                // uretildi). Simdi Repeater + artimli model: yalniz eklenen/silinen alintinin Shape'i degisir.
                 Repeater {
-                    model: root.pageHighlights(pageHolder.index)
+                    model: pageHolder.highlightModel
                     delegate: Shape {
                         id: highlightShape
-                        required property var modelData
-                        readonly property color baseColor: modelData.color
+                        required property string color
+                        required property var polygons
+                        readonly property color baseColor: color
                         anchors.fill: parent
-                        visible: image.status === Image.Ready
+                        visible: image.status === Image.Ready && polygons.length > 0
 
                         ShapePath {
                             strokeWidth: -1
@@ -222,7 +227,7 @@ Item {
                                                highlightShape.baseColor.b, 0.35)
                             scale: Qt.size(paper.pageScale, paper.pageScale)
                             PathMultiline {
-                                paths: root.polygonsFromPoints(highlightShape.modelData.boundsPolygons)
+                                paths: root.polygonsFromPoints(highlightShape.polygons)
                             }
                         }
                     }
@@ -382,21 +387,20 @@ Item {
                     pdfSelection: selection
                     paper: paper
                     pageIndex: pageHolder.index
-                    resource: root.resource
                 }
 
                 PdfHighlightHits {
                     id: hitLayer
                     paper: paper
                     pageIndex: pageHolder.index
-                    resource: root.resource
+                    highlightModel: pageHolder.highlightModel
                 }
 
                 PdfNoteLayer {
                     id: noteLayer
                     paper: paper
                     pageIndex: pageHolder.index
-                    resource: root.resource
+                    noteModel: pageHolder.noteModel
                 }
 
                 TapHandler {

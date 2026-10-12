@@ -17,6 +17,20 @@ Item {
         if (resource && resource.pdfFileUrl)
             lastPdfUrl = resource.pdfFileUrl
     }
+
+    // pdfkit belge oturumu: okuyucu kaynağı değişince açılır, kaynak boşalınca (okuyucu kapanınca) kapanır.
+    // Alıntı/not/kelime modelleri `bridge.pdf` üzerinden gelir; kaynak sözlüğü yalnız başlık/durum içindir.
+    readonly property int resourceId: resource && resource.id ? resource.id : 0
+    readonly property string resourcePdfUrl: resource && resource.pdfFileUrl ? resource.pdfFileUrl : ""
+    function syncDocument() {
+        if (resourceId > 0 && resourcePdfUrl !== "")
+            bridge.pdf.openDocument(resourceId)
+        else
+            bridge.pdf.closeDocument()
+    }
+    onResourceIdChanged: syncDocument()
+    onResourcePdfUrlChanged: syncDocument()
+    Component.onCompleted: syncDocument()
     property bool sidePanelOpen: false
     property bool searchOpen: false
 
@@ -338,7 +352,6 @@ Item {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 document: pdfDoc
-                resource: root.resource ?? ({})
             }
 
             Column {

@@ -21,14 +21,14 @@ def _resource_with_highlights(bridge, count):
 
 def test_delete_highlights_removes_selected_reloads_once_and_notifies(bridge):
     _resource_with_highlights(bridge, 4)
-    ids = [h["id"] for h in bridge.annotations.highlights]
+    ids = [h["key"] for h in bridge.annotations.highlights]
     notes, reloads = [], []
     bridge.notificationEmitted.connect(lambda kind, msg: notes.append((kind, msg)))
     bridge.annotations.highlightsChanged.connect(lambda: reloads.append(1))
 
     bridge.annotations.deleteHighlights(ids[:3])
 
-    assert [h["id"] for h in bridge.annotations.highlights] == [ids[3]]
+    assert [h["key"] for h in bridge.annotations.highlights] == [ids[3]]
     assert notes == [("info", "3 alıntı silindi.")]
     assert len(reloads) >= 1
 
@@ -48,6 +48,6 @@ def test_delete_highlights_refreshes_open_reader(bridge):
     bridge.reader.openReader(resource.id)
     assert len(bridge.reader.currentReaderResource["highlights"]) == 2
 
-    bridge.annotations.deleteHighlights([h["id"] for h in bridge.annotations.highlights])
+    bridge.annotations.deleteHighlights([h["key"] for h in bridge.annotations.highlights])
 
     assert bridge.reader.currentReaderResource["highlights"] == []

@@ -1,18 +1,16 @@
 import QtQuick
 import QtQuick.Controls
 import "../theme"
-import "../js/highlights.js" as Highlights
 
 // PDF sayfasında metin seçilince beliren yüzen araç çubuğu (5 renkli alıntı kaydetme + "Kelime Havuzuna Ekle")
 // ve kelime çevirisi popover'ı. Sayfa (`paper`) üzerine bindirilir; seçim `pdfSelection` (PdfSelection) ile gelir.
-// Alıntı/kelime kaydı `bridge.annotations.addPdfHighlight/addPdfVocabulary` ile yapılır (seçim page-point haritası).
+// Alıntı/kelime kaydı `bridge.pdf.addHighlight/addTerm` ile yapılır (seçim page-point haritası).
 Item {
     id: root
 
     property var pdfSelection      // PdfSelection (hold/text/from/to/clear())
     property Item paper            // Sayfa kâğıdı (pageScale, width, height)
     property int pageIndex: 0
-    property var resource
 
     readonly property bool popoverVisible: newVocabPopover.visible
     function closeVocabulary() { newVocabPopover.visible = false }
@@ -61,7 +59,7 @@ Item {
         readonly property point pointFrom: Qt.point(capturedFrom.x / safeScale, capturedFrom.y / safeScale)
         readonly property point pointTo: Qt.point(capturedTo.x / safeScale, capturedTo.y / safeScale)
 
-        // bridge.annotations.addPdfHighlight / addPdfVocabulary'nin bekledigi secim haritasi (page-point uzayinda)
+        // bridge.pdf.addHighlight / addTerm'in bekledigi secim haritasi (page-point uzayinda)
         function selectionMap(page) {
             return { page: page, fromX: pointFrom.x, fromY: pointFrom.y, toX: pointTo.x, toY: pointTo.y }
         }
@@ -83,13 +81,13 @@ Item {
             spacing: 8
 
             Repeater {
-                model: Theme.highlightPalette
+                model: bridge.pdf.labels
                 delegate: Rectangle {
-                    required property string modelData
+                    required property var modelData
                     width: 22
                     height: 22
                     radius: 11
-                    color: modelData
+                    color: modelData.color
                     border.width: 1
                     border.color: Theme.swatchBorderLight
 
@@ -98,14 +96,11 @@ Item {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         ToolTip.visible: containsMouse
-                        ToolTip.text: Highlights.labelForColor(parent.modelData, bridge.annotations.highlightLabels)
+                        ToolTip.text: parent.modelData.name
                         onClicked: {
-                            if (newHighlightToolbar.capturedText.trim().length > 0 && root.resource) {
-                                bridge.annotations.addPdfHighlight(
-                                    root.resource.id, root.resource.pdfFileUrl,
-                                    newHighlightToolbar.selectionMap(root.pageIndex),
-                                    parent.modelData
-                                )
+                            if (newHighlightToolbar.capturedText.trim().length > 0) {
+                                bridge.pdf.addHighlight(
+                                    newHighlightToolbar.selectionMap(root.pageIndex), parent.modelData.key)
                             }
                             root.pdfSelection.clear()
                         }
@@ -136,8 +131,7 @@ Item {
     }
 
     // Secili kelimeyi/ifadeyi Bilgi Havuzu'na (kelime listesi) ekleme
-    // popover'i -- HTML okuyucudaki "Kelime Havuzuna Ekle" ozelligiyle
-    // ayni: bridge.annotations.addVocabulary(resourceId, word, translation).
+    // popover'i: bridge.pdf.addTerm(secim, anlam) -- kelime, gectigi cumle ve konumuyla kaydedilir.
     Rectangle {
         id: newVocabPopover
         objectName: "newVocabPopover"
@@ -222,14 +216,8 @@ Item {
                     implicitHeight: 28
                     enabledState: vocabTranslationInput.text.trim().length > 0
                     onClicked: {
-                        if (root.resource) {
-                            // Secim noktalariyla gonderilir: gectigi cumle baglam olarak da kaydedilir.
-                            bridge.annotations.addPdfVocabulary(
-                                root.resource.id, root.resource.pdfFileUrl,
-                                newHighlightToolbar.selectionMap(root.pageIndex),
-                                vocabTranslationInput.text.trim()
-                            )
-                        }
+                        // Secim noktalariyla gonderilir: gectigi cumle baglam olarak da kaydedilir.
+                        bridge.pdf.addTerm(newHighlightToolbar.selectionMap(root.pageIndex), vocabTranslationInput.text.trim())
                         newVocabPopover.visible = false
                         root.pdfSelection.clear()
                     }

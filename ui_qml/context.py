@@ -96,4 +96,4 @@ class BridgeContext:
         self.pdf_library.downloadFinished.connect(self.pdf_files.on_download_finished)
         self.extractor = FullTextExtractor(self)
         self.library_index = LibraryIndexCache(controllers.resources)
-        self.serializer = ResourceSerializer(self.pdf_files)
+        self.serializer = ResourceSerializer(self.pdf_files, self.pdf_library)

@@ -12,21 +12,21 @@ Item {
     property string labelFilter: ""   // "" = tümü
     signal labelFilterRequested(string label)
 
-    // Alıntılar: toplu silme için seçim (id -> true; değişince yeniden atanır ki bağlamalar tazelensin)
+    // Alıntılar: toplu silme için seçim (anahtar -> true; anahtar 'pdf:<id>' ya da 'html:<id>'; değişince yeniden atanır ki bağlamalar tazelensin)
     property var selectedIds: ({})
     readonly property int selectedCount: Object.keys(selectedIds).length
 
-    function toggleSelected(id) {
+    function toggleSelected(key) {
         const next = Object.assign({}, root.selectedIds)
-        if (next[id]) delete next[id]
-        else next[id] = true
+        if (next[key]) delete next[key]
+        else next[key] = true
         root.selectedIds = next
     }
 
     function selectAllVisible() {
         const next = {}
         const list = highlightsList.model
-        for (let i = 0; i < list.length; i++) next[list[i].id] = true
+        for (let i = 0; i < list.length; i++) next[list[i].key] = true
         root.selectedIds = next
     }
 
@@ -35,7 +35,7 @@ Item {
     }
 
     function deleteSelected() {
-        bridge.annotations.deleteHighlights(Object.keys(root.selectedIds).map(Number))
+        bridge.annotations.deleteHighlights(Object.keys(root.selectedIds))
         root.clearSelection()
     }
 
@@ -178,7 +178,7 @@ Item {
             // Toplu silme seçim kutusu
             Rectangle {
                 id: hlCheckBox
-                readonly property bool checked: root.selectedIds[modelData.id] === true
+                readonly property bool checked: root.selectedIds[modelData.key] === true
                 x: 16
                 y: 14
                 width: 18
@@ -200,7 +200,7 @@ Item {
                     anchors.fill: parent
                     anchors.margins: -4
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.toggleSelected(modelData.id)
+                    onClicked: root.toggleSelected(modelData.key)
                 }
             }
 
@@ -298,7 +298,7 @@ Item {
                         iconName: "fa5s.trash"
                         iconSize: 11
                         tooltip: "Alıntıyı Sil"
-                        onClicked: bridge.annotations.deleteHighlight(modelData.id)
+                        onClicked: bridge.annotations.deleteHighlight(modelData.key)
                     }
                 }
             }
