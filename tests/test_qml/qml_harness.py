@@ -1,6 +1,5 @@
 """QML testleri icin ortak yardimcilar: motor kurulumu, sahne gezme, gercek fare/klavye olaylari."""
 import re
-import time
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QPoint, Qt
@@ -22,7 +21,7 @@ class SyncThreadPool:
 def pump(app, cycles: int = 30) -> None:
     for _ in range(cycles):
         app.processEvents()
-        time.sleep(0.005)
+        QTest.qWait(5)  # olay dongusu islenirken gercek zaman akar (animasyon/zamanlayicilar)
 
 
 def make_engine(bridge) -> QQmlApplicationEngine:
