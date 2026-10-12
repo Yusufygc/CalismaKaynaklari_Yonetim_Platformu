@@ -4,40 +4,18 @@ import pytest
 import requests
 
 from services.scraper_service import ScraperService
+from tests.test_services.http_fakes import FakeRedirectResponse, FakeResponse
+
+pytestmark = pytest.mark.usefixtures("fake_dns")
 
 
-@pytest.fixture(autouse=True)
-def _fake_dns(monkeypatch):
-    """DNS cozumlemesini sahteler: testler gercek ag/DNS'e bagimli olmasin."""
-
-    def _fake_getaddrinfo(host, *args, **kwargs):
-        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))]
-
+def _extract_metadata(monkeypatch, html: str) -> dict:
+    """`requests.get`i verilen HTML'i donduren sahteyle degistirip ornek sayfanin metadatasini cikarir."""
     monkeypatch.setattr(
-        "core.net_utils.socket.getaddrinfo", _fake_getaddrinfo
+        "services.scraper_service.requests.get",
+        lambda *args, **kwargs: FakeResponse(html),
     )
-
-
-class _Response:
-    is_redirect = False
-
-    def __init__(self, text: str, url: str = "https://example.com/page") -> None:
-        self.text = text
-        self.url = url
-        self.headers: dict = {}
-
-    def raise_for_status(self) -> None:
-        return None
-
-
-class _RedirectResponse:
-    is_redirect = True
-
-    def __init__(self, location: str) -> None:
-        self.headers = {"Location": location}
-
-    def raise_for_status(self) -> None:
-        return None
+    return ScraperService().extract_metadata("https://example.com/page")
 
 
 def test_extract_metadata_from_open_graph_html(monkeypatch):
@@ -52,12 +30,7 @@ def test_extract_metadata_from_open_graph_html(monkeypatch):
     </html>
     """
 
-    monkeypatch.setattr(
-        "services.scraper_service.requests.get",
-        lambda *args, **kwargs: _Response(html),
-    )
-
-    metadata = ScraperService().extract_metadata("https://example.com/page")
+    metadata = _extract_metadata(monkeypatch, html)
 
     assert metadata == {
         "og_title": "OG Title",
@@ -80,12 +53,7 @@ def test_extract_metadata_uses_twitter_card_and_canonical(monkeypatch):
     </html>
     """
 
-    monkeypatch.setattr(
-        "services.scraper_service.requests.get",
-        lambda *args, **kwargs: _Response(html),
-    )
-
-    metadata = ScraperService().extract_metadata("https://example.com/page")
+    metadata = _extract_metadata(monkeypatch, html)
 
     assert metadata == {
         "og_title": "Twitter Title",
@@ -121,7 +89,7 @@ def test_extract_metadata_returns_empty_dict_on_request_error(monkeypatch):
 def test_extract_metadata_returns_empty_dict_for_html_without_metadata(monkeypatch):
     monkeypatch.setattr(
         "services.scraper_service.requests.get",
-        lambda *args, **kwargs: _Response("<html><head></head></html>"),
+        lambda *args, **kwargs: FakeResponse("<html><head></head></html>"),
     )
 
     assert ScraperService().extract_metadata("https://example.com") == {}
@@ -157,7 +125,7 @@ def test_extract_metadata_blocks_redirect_to_internal_address(monkeypatch):
     def _fake_get(url, *args, **kwargs):
         calls.append(url)
         if url == "https://external.example/start":
-            return _RedirectResponse("http://internal.example/secret")
+            return FakeRedirectResponse("http://internal.example/secret")
         raise AssertionError("yonlendirme hedefi tekrar dogrulanmadan istek atildi")
 
     def _fake_getaddrinfo(host, *a, **k):
@@ -175,7 +143,7 @@ def test_extract_metadata_blocks_redirect_to_internal_address(monkeypatch):
 def test_extract_metadata_stops_after_max_redirects(monkeypatch):
     def _fake_get(url, *args, **kwargs):
         n = int(url.rsplit("/", 1)[-1])
-        return _RedirectResponse(f"https://external.example/{n + 1}")
+        return FakeRedirectResponse(f"https://external.example/{n + 1}")
 
     monkeypatch.setattr("services.scraper_service.requests.get", _fake_get)
 

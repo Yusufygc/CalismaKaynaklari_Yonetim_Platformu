@@ -20,18 +20,28 @@ def _resource():
     return r
 
 
-def test_resource_markdown_structure_and_grouping():
+def test_resource_markdown_header_and_citation():
     md = ExportService.resource_markdown(_resource())
 
     assert md.startswith("# Attention Is All You Need")
     assert "> Vaswani, A., & Shazeer, N. (2017). Attention Is All You Need. NeurIPS." in md
     assert "> Bağlantı: https://arxiv.org/pdf/1706.03762" in md
+
+
+def test_resource_markdown_highlight_grouping_and_order():
+    md = ExportService.resource_markdown(_resource())
+
     # Etiket sirasi: Yontem, sonra Bulgu (paletteki sira Yontem'den once Bulgu'dur)
     assert md.index("### Bulgu / Sonuç (1)") < md.index("### Yöntem (2)")
     # Yontem grubu icinde sayfa sirasi
     assert md.index("ilk sayfa alintisi") < md.index("self-attention relates positions")
     assert "- “self-attention relates positions” (s. 2)" in md
     assert "  - Yorum: Yontem bolumune" in md
+
+
+def test_resource_markdown_notes_vocabulary_and_personal_notes():
+    md = ExportService.resource_markdown(_resource())
+
     assert "- s. 3: Bunu tekrar oku" in md
     assert "- **attention**: dikkat — _We use attention layers._" in md
     assert "## Kişisel Notlar" in md and "Tezin 3. bolumunde kullan." in md

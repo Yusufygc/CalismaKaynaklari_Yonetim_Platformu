@@ -1,8 +1,12 @@
+import pytest
+
 from models import Resource, ResourceStatus, Category, Tag
 from ui_qml.models.resource_list_model import ResourceListModel
 
 
-def test_resource_list_model_roles_and_data(qapp):
+@pytest.fixture()
+def model_with_resource(qapp):
+    """Tam dolu tek kaynakli model; (model, ilk satir indeksi) dondurur."""
     model = ResourceListModel()
     assert model.rowCount() == 0
 
@@ -26,13 +30,22 @@ def test_resource_list_model_roles_and_data(qapp):
 
     model.set_resources([res])
     assert model.rowCount() == 1
+    return model, model.index(0, 0)
 
-    idx = model.index(0, 0)
+
+def test_resource_list_model_identity_and_category_roles(model_with_resource):
+    model, idx = model_with_resource
+
     assert model.data(idx, ResourceListModel.IdRole) == 100
     assert model.data(idx, ResourceListModel.TitleRole) == "Yapay Zeka Makalesi"
     assert model.data(idx, ResourceListModel.DomainRole) == "example.com"
     assert model.data(idx, ResourceListModel.CategoryNameRole) == "Teknoloji"
     assert model.data(idx, ResourceListModel.CategoryColorRole) == "#6366F1"
+
+
+def test_resource_list_model_state_roles(model_with_resource):
+    model, idx = model_with_resource
+
     assert model.data(idx, ResourceListModel.StatusRole) == "IN_PROGRESS"
     assert model.data(idx, ResourceListModel.IsPinnedRole) is True
     assert model.data(idx, ResourceListModel.IsFavoriteRole) is True

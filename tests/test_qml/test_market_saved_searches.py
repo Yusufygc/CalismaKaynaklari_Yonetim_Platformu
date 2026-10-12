@@ -71,7 +71,14 @@ def test_save_search_duplicate_shows_error(bridge, monkeypatch):
     assert notes[-1] == ("error", "Bu arama zaten kayitli.")
 
 
-def test_run_saved_search_applies_form_marks_seen_and_tags_saves(bridge, monkeypatch):
+def _saved_resource_tag_names(bridge, title):
+    resource = next(r for r in bridge.controllers.resources.load_resources_with_filters({}) if r.title == title)
+    return [t.name for t in resource.tags]
+
+
+@pytest.fixture()
+def pending_saved_search(bridge, monkeypatch):
+    """'gan' aramasi 'tez' etiketiyle kayitli ve 3 yeni sonucu bekliyor; (bridge, arama_id) dondurur."""
     _stub_search(monkeypatch, ("a",))
     bridge.market.searchArticles("gan")
     bridge.searches.saveSearch("gan", {"openAccess": True}, "tez")
@@ -79,6 +86,11 @@ def test_run_saved_search_applies_form_marks_seen_and_tags_saves(bridge, monkeyp
     bridge.controllers.saved_searches.record_saved_search_check(search_id, 3)
     assert bridge.searches.savedSearches[0]["newCount"] == 3
     _stub_search(monkeypatch, ("a", "b", "c"))
+    return bridge, search_id
+
+
+def test_run_saved_search_applies_form_and_marks_seen(pending_saved_search):
+    bridge, search_id = pending_saved_search
     applied = []
     bridge.searches.savedSearchApplied.connect(lambda topic, filters: applied.append((topic, dict(filters))))
 
@@ -89,15 +101,25 @@ def test_run_saved_search_applies_form_marks_seen_and_tags_saves(bridge, monkeyp
     assert bridge.searches.savedSearches[0]["newCount"] == 0
     assert bridge.controllers.saved_searches.load_saved_searches()[0].seen_ids == ["a", "b", "c"]
 
+
+def test_saving_result_during_saved_search_adds_its_tag(pending_saved_search):
+    bridge, search_id = pending_saved_search
+    bridge.searches.runSavedSearch(search_id)
+
     bridge.market.saveMarketResult({"title": "Kayit", "url": "https://x.org/k"})
-    saved = next(r for r in bridge.controllers.resources.load_resources_with_filters({}) if r.title == "Kayit")
-    assert "tez" in [t.name for t in saved.tags]
+
+    assert "tez" in _saved_resource_tag_names(bridge, "Kayit")
+
+
+def test_manual_search_drops_saved_search_context_and_tag(pending_saved_search):
+    bridge, search_id = pending_saved_search
+    bridge.searches.runSavedSearch(search_id)
 
     bridge.market.searchArticles("baska")  # elle yeni arama: kayitli arama baglami birakilir
     assert bridge.searches.activeSavedSearchId == 0
     bridge.market.saveMarketResult({"title": "Kayit2", "url": "https://y.org/k"})
-    other = next(r for r in bridge.controllers.resources.load_resources_with_filters({}) if r.title == "Kayit2")
-    assert "tez" not in [t.name for t in other.tags]
+
+    assert "tez" not in _saved_resource_tag_names(bridge, "Kayit2")
 
 
 def test_delete_saved_search_clears_active(bridge, monkeypatch):

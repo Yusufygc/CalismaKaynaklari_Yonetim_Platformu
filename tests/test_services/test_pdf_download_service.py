@@ -4,13 +4,7 @@ import pytest
 
 from services.pdf_download_service import PdfDownloadService, looks_like_remote_pdf
 
-
-@pytest.fixture(autouse=True)
-def _fake_dns(monkeypatch):
-    monkeypatch.setattr(
-        "core.net_utils.socket.getaddrinfo",
-        lambda host, *a, **k: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))],
-    )
+pytestmark = pytest.mark.usefixtures("fake_dns")
 
 
 class _Response:

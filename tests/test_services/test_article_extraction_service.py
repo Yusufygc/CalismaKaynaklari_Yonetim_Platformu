@@ -3,45 +3,15 @@ import socket
 import pytest
 
 from services.article_extraction_service import ArticleExtractionService
+from tests.test_services.http_fakes import FakeRedirectResponse, FakeResponse
 
-
-@pytest.fixture(autouse=True)
-def _fake_dns(monkeypatch):
-    """DNS cozumlemesini sahteler: testler gercek ag/DNS'e bagimli olmasin."""
-
-    def _fake_getaddrinfo(host, *args, **kwargs):
-        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))]
-
-    monkeypatch.setattr("core.net_utils.socket.getaddrinfo", _fake_getaddrinfo)
-
-
-class _Response:
-    is_redirect = False
-
-    def __init__(self, text: str = "", content: bytes = b"", url: str = "https://example.com/article") -> None:
-        self.text = text
-        self.content = content if content else text.encode("utf-8")
-        self.url = url
-        self.headers: dict = {}
-
-    def raise_for_status(self) -> None:
-        return None
-
-
-class _RedirectResponse:
-    is_redirect = True
-
-    def __init__(self, location: str) -> None:
-        self.headers = {"Location": location}
-
-    def raise_for_status(self) -> None:
-        return None
+pytestmark = pytest.mark.usefixtures("fake_dns")
 
 
 def test_extract_full_text_returns_extracted_html(monkeypatch):
     monkeypatch.setattr(
         "services.article_extraction_service.requests.get",
-        lambda *args, **kwargs: _Response("<html><body><h1>B</h1><p>Metin</p></body></html>"),
+        lambda *args, **kwargs: FakeResponse("<html><body><h1>B</h1><p>Metin</p></body></html>"),
     )
     monkeypatch.setattr(
         "services.article_extraction_service.trafilatura.extract",
@@ -62,7 +32,7 @@ def test_extract_full_text_requests_html_output(monkeypatch):
 
     monkeypatch.setattr(
         "services.article_extraction_service.requests.get",
-        lambda *args, **kwargs: _Response("<html><body><p>x</p></body></html>"),
+        lambda *args, **kwargs: FakeResponse("<html><body><p>x</p></body></html>"),
     )
     monkeypatch.setattr("services.article_extraction_service.trafilatura.extract", _fake_extract)
 
@@ -77,7 +47,7 @@ def test_extract_full_text_passes_configured_timeout(monkeypatch):
 
     def _fake_get(url, **kwargs):
         captured.update(kwargs)
-        return _Response("<html><body><p>x</p></body></html>")
+        return FakeResponse("<html><body><p>x</p></body></html>")
 
     monkeypatch.setattr("services.article_extraction_service.requests.get", _fake_get)
     monkeypatch.setattr(
@@ -93,7 +63,7 @@ def test_extract_full_text_passes_configured_timeout(monkeypatch):
 def test_extract_full_text_returns_none_on_http_error(monkeypatch):
     import requests
 
-    class _FailingResponse(_Response):
+    class _FailingResponse(FakeResponse):
         def raise_for_status(self):
             raise requests.HTTPError("404")
 
@@ -133,8 +103,8 @@ def test_extract_full_text_follows_redirect_and_rechecks_ssrf(monkeypatch):
     def _fake_get(url, **kwargs):
         calls.append(url)
         if url == "https://example.com/start":
-            return _RedirectResponse("https://example.com/final")
-        return _Response("<html><body><p>x</p></body></html>", url=url)
+            return FakeRedirectResponse("https://example.com/final")
+        return FakeResponse("<html><body><p>x</p></body></html>", url=url)
 
     monkeypatch.setattr("services.article_extraction_service.requests.get", _fake_get)
     monkeypatch.setattr(
@@ -163,7 +133,7 @@ def test_extract_full_text_extracts_pdf_pages_with_page_numbers(monkeypatch):
     monkeypatch.setattr("services.article_extraction_service.PdfReader", _FakeReader)
     monkeypatch.setattr(
         "services.article_extraction_service.requests.get",
-        lambda *args, **kwargs: _Response(content=b"%PDF-1.4 fake pdf bytes"),
+        lambda *args, **kwargs: FakeResponse(content=b"%PDF-1.4 fake pdf bytes"),
     )
 
     result = ArticleExtractionService().extract_full_text("https://example.com/paper.pdf")
@@ -186,7 +156,7 @@ def test_extract_full_text_detects_pdf_from_url_extension(monkeypatch):
     monkeypatch.setattr("services.article_extraction_service.PdfReader", _FakeReader)
     monkeypatch.setattr(
         "services.article_extraction_service.requests.get",
-        lambda *args, **kwargs: _Response(
+        lambda *args, **kwargs: FakeResponse(
             content=b"not-actually-pdf-bytes-but-url-ends-in-pdf",
             url="https://example.com/paper.pdf",
         ),
@@ -247,7 +217,7 @@ def test_extract_full_text_sanitizes_lone_surrogates_from_broken_pdf_fonts(monke
     monkeypatch.setattr("services.article_extraction_service.PdfReader", _FakeReader)
     monkeypatch.setattr(
         "services.article_extraction_service.requests.get",
-        lambda *args, **kwargs: _Response(content=b"%PDF-1.4 fake pdf bytes"),
+        lambda *args, **kwargs: FakeResponse(content=b"%PDF-1.4 fake pdf bytes"),
     )
 
     result = ArticleExtractionService().extract_full_text("https://example.com/paper.pdf")
