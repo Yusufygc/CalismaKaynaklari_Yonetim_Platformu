@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | pdfkit Faz 5d: kütüphane dizini, kelime defteri, serbest etiketler
+
+Vault'a `Papers/_Index.md` (kütüphane dizini) ve `Papers/_Kelimeler.md` (kelime defteri) özet notları eklendi (`domain/vault_summary.py`, `VaultWriter.write_summary`, `VaultSync` önbelleği; önbellek tam değilken özet yazılmaz, boş özet oluşturulmaz, bloğun dışı kullanıcıya aittir). Serbest etiketler Bilgi Havuzu'nda chip + süzgeç olarak ve Markdown dışa aktarmada `Etiketler:` satırı olarak göründü. `core/single_instance.py` gönderim sonucu düzeltildi (`waitForBytesWritten` veriyi gönderse bile False dönebiliyordu → ikinci uygulama örneği başlayabilirdi). 851 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz5d-raporu.md`.
+
+---
+
 ## [2026-10-13] FEAT | pdfkit Faz 5c: pkm:// derin bağlantı (tek örnek, atlama, Windows kaydı)
 
 Obsidian'daki `pkm://open?doc=&page=&ann=` bağlantısı uygulamayı açar/öne getirir, PDF'i açıp alıntıya gider ve çerçeveler. Tek örnek (`core/single_instance.py`; ardışık hızlı istemcilerde "meşgul" için yeniden deneme), `extract_link_arg` + `main.py` iletme, `DeepLinkRouter` (katı doğrulama, belirsiz belge reddi), `PdfBridge.requestJump/jumpTarget` (hedef başlık yayılmadan önce çözülür; bekleyen hedef kayıtlı konumu geçer), `focusFrame`, isteğe bağlı HKCU kaydı (Ayarlar > Obsidian). Testler gerçek kayıt defterine dokunamaz. Gerçek veri kopyasında iki ayrı süreçle doğrulandı. 824 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz5c-raporu.md`.
