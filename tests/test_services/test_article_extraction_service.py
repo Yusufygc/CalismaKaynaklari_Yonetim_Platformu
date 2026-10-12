@@ -3,6 +3,7 @@ import socket
 import pytest
 
 from services.article_extraction_service import ArticleExtractionService
+from tests.pdf_factory import build_text_pdf, write_text_pdf
 from tests.test_services.http_fakes import FakeRedirectResponse, FakeResponse
 
 pytestmark = pytest.mark.usefixtures("fake_dns")
@@ -119,21 +120,9 @@ def test_extract_full_text_follows_redirect_and_rechecks_ssrf(monkeypatch):
 
 
 def test_extract_full_text_extracts_pdf_pages_with_page_numbers(monkeypatch):
-    class _FakePage:
-        def __init__(self, text: str) -> None:
-            self._text = text
-
-        def extract_text(self) -> str:
-            return self._text
-
-    class _FakeReader:
-        def __init__(self, _stream) -> None:
-            self.pages = [_FakePage("Birinci   sayfa   metni."), _FakePage("")]
-
-    monkeypatch.setattr("services.article_extraction_service.PdfReader", _FakeReader)
     monkeypatch.setattr(
         "services.article_extraction_service.requests.get",
-        lambda *args, **kwargs: FakeResponse(content=b"%PDF-1.4 fake pdf bytes"),
+        lambda *args, **kwargs: FakeResponse(content=build_text_pdf(["Birinci   sayfa   metni."])),
     )
 
     result = ArticleExtractionService().extract_full_text("https://example.com/paper.pdf")
@@ -141,19 +130,8 @@ def test_extract_full_text_extracts_pdf_pages_with_page_numbers(monkeypatch):
     assert result == "<h3>Sayfa 1</h3><p>Birinci sayfa metni.</p>"
 
 
-def test_extract_full_text_detects_pdf_from_url_extension(monkeypatch):
-    captured = {}
-
-    class _FakePage:
-        def extract_text(self) -> str:
-            return "Metin"
-
-    class _FakeReader:
-        def __init__(self, _stream) -> None:
-            captured["used"] = True
-            self.pages = [_FakePage()]
-
-    monkeypatch.setattr("services.article_extraction_service.PdfReader", _FakeReader)
+def test_extract_full_text_treats_pdf_extension_as_pdf_not_html(monkeypatch):
+    """`.pdf` uzantili URL trafilatura'ya (HTML) verilmez; bozuk icerik sessizce None olur."""
     monkeypatch.setattr(
         "services.article_extraction_service.requests.get",
         lambda *args, **kwargs: FakeResponse(
@@ -162,31 +140,20 @@ def test_extract_full_text_detects_pdf_from_url_extension(monkeypatch):
         ),
     )
 
-    ArticleExtractionService().extract_full_text("https://example.com/paper.pdf")
+    def _must_not_run(*args, **kwargs):
+        raise AssertionError("PDF URL'si HTML olarak islenmemeli")
 
-    assert captured.get("used") is True
+    monkeypatch.setattr("services.article_extraction_service.trafilatura.extract", _must_not_run)
+
+    assert ArticleExtractionService().extract_full_text("https://example.com/paper.pdf") is None
 
 
 def test_extract_full_text_reads_local_pdf_without_network(tmp_path, monkeypatch):
-    class _FakePage:
-        def __init__(self, text: str) -> None:
-            self._text = text
-
-        def extract_text(self) -> str:
-            return self._text
-
-    class _FakeReader:
-        def __init__(self, _stream) -> None:
-            self.pages = [_FakePage("Yerel sayfa metni.")]
-
     def _refuse_network_call(*args, **kwargs):
         raise AssertionError("Yerel PDF icin ag istegi atilmamali")
 
-    monkeypatch.setattr("services.article_extraction_service.PdfReader", _FakeReader)
     monkeypatch.setattr("services.article_extraction_service.requests.get", _refuse_network_call)
-
-    pdf_path = tmp_path / "makale.pdf"
-    pdf_path.write_bytes(b"%PDF-1.4 fake local pdf bytes")
+    pdf_path = write_text_pdf(tmp_path / "makale.pdf", ["Yerel sayfa metni."])
 
     result = ArticleExtractionService().extract_full_text(pdf_path.as_uri())
 
@@ -202,19 +169,12 @@ def test_extract_full_text_returns_none_when_local_pdf_missing(tmp_path):
 
 
 def test_extract_full_text_sanitizes_lone_surrogates_from_broken_pdf_fonts(monkeypatch):
-    """Bozuk CMap'li subset fontlar (akademik PDF'lerdeki matematik semboller)
-    pypdf'te tek-basina UTF-16 surrogate kod noktasi uretebiliyor -- bu SQLite'a
-    yazilirken UnicodeEncodeError ile cokuyordu (bkz. utils/text_utils.py)."""
-
-    class _FakePage:
-        def extract_text(self) -> str:
-            return "bozuk font " + chr(0xD835) + " sembolu"
-
-    class _FakeReader:
-        def __init__(self, _stream) -> None:
-            self.pages = [_FakePage()]
-
-    monkeypatch.setattr("services.article_extraction_service.PdfReader", _FakeReader)
+    """Bozuk CMap'li subset fontlar (akademik PDF'lerdeki matematik semboller) tek-basina UTF-16 surrogate kod
+    noktasi uretebiliyor -- bu SQLite'a yazilirken UnicodeEncodeError ile cokuyordu (bkz. utils/text_utils.py)."""
+    monkeypatch.setattr(
+        "services.article_extraction_service.extract_page_texts",
+        lambda content: ["bozuk font " + chr(0xD835) + " sembolu"],
+    )
     monkeypatch.setattr(
         "services.article_extraction_service.requests.get",
         lambda *args, **kwargs: FakeResponse(content=b"%PDF-1.4 fake pdf bytes"),

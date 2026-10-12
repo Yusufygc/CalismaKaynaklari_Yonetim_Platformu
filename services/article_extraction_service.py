@@ -1,15 +1,14 @@
 import html
-from io import BytesIO
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
 import requests
 import trafilatura
-from pypdf import PdfReader
 
 from core.logger import log
 from core.net_utils import is_blocked_host, safe_http_get
+from pdfkit.api import extract_page_texts
 from utils.text_utils import sanitize_utf8
 
 _TIMEOUT_SECONDS = 10
@@ -35,10 +34,9 @@ def _extract_pdf_html(content: bytes) -> str | None:
     sayilmiyor -- tum sayfa metni tek paragrafta normalize ediliyor. PDF'ten
     guvenilir paragraf tespiti zor oldugu icin bilincli bir basitlestirme.
     """
-    reader = PdfReader(BytesIO(content))
     parts = []
-    for i, page in enumerate(reader.pages, start=1):
-        text = sanitize_utf8(" ".join((page.extract_text() or "").split()))
+    for i, raw in enumerate(extract_page_texts(content), start=1):
+        text = sanitize_utf8(" ".join(raw.split()))
         if text:
             parts.append(f"<h3>Sayfa {i}</h3><p>{html.escape(text)}</p>")
     return "".join(parts) or None
@@ -50,7 +48,7 @@ class ArticleExtractionService:
 
     ScraperService'ten ayri tutulur: ScraperService hafif og:meta scraping
     yapar, burada ya trafilatura'nin boilerplate-temizleme sezgiseli ya da
-    (PDF'lerde) pypdf calisir -- farkli sorumluluk, farkli hata modu (None doner).
+    (PDF'lerde) pypdfium2 calisir -- farkli sorumluluk, farkli hata modu (None doner).
     """
 
     def extract_full_text(self, url: str) -> str | None:
@@ -58,7 +56,7 @@ class ArticleExtractionService:
 
         HTML kaynaklarda gercek yapi korunur (h1/p/blockquote/strong/i,
         `output_format="html"`). URL dogrudan bir PDF'e isaret ediyorsa
-        (dosya imzasi veya `.pdf` uzantisi) pypdf ile sayfa-numarali HTML
+        (dosya imzasi veya `.pdf` uzantisi) pypdfium2 ile sayfa-numarali HTML
         uretilir (bkz. `_extract_pdf_html`).
 
         `file://` URI'leri (yerel PDF ice aktarimlari) icin ag/SSRF mantigina
