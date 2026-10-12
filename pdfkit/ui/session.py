@@ -1,8 +1,8 @@
+from collections import OrderedDict
 from dataclasses import replace
 from functools import partial
 
 from PySide6.QtCore import QObject, QPointF, QTimer
-from PySide6.QtQml import QQmlEngine
 from PySide6.QtPdf import QPdfDocument, QPdfSelection
 
 from core.logger import log
@@ -15,6 +15,7 @@ from pdfkit.ui.models import AnnotationListModel, NoteListModel, PageFilterModel
 from pdfkit.ui.pdf_text import QtPageTextProvider, current_engine_fp
 
 
+MAX_PAGE_MODELS = 64  # Sayfa filtreleri her kaynak degisiminde degerlendirilir; kullanilmayanlar atilir.
 GEOMETRY_CHUNK = 8  # Tek seferde hesaplanan alinti sayisi (~5 ms/alinti): her dilim bir kareyi bloklamaz.
 
 
@@ -39,8 +40,8 @@ class DocumentSession(QObject):
         self._document: Document | None = None
         self._qdoc: QPdfDocument | None = None
         self._provider: QtPageTextProvider | None = None
-        self._page_models: dict[int, PageFilterModel] = {}
-        self._note_page_models: dict[int, PageFilterModel] = {}
+        self._page_models: OrderedDict[int, PageFilterModel] = OrderedDict()
+        self._note_page_models: OrderedDict[int, PageFilterModel] = OrderedDict()
         self._geometry_failed: set[int] = set()
         self._generation = 0  # open/close ile artar; eski belgenin bekleyen dilimleri kendini iptal eder
 
@@ -106,8 +107,6 @@ class DocumentSession(QObject):
         self._model.clear()
         self._notes_model.clear()
         self._terms = []
-        self._page_models.clear()
-        self._note_page_models.clear()
         if self._qdoc is not None:
             # Windows'ta QPdfDocument dosyayi kilitler: close() + deleteLater() (zorla flush guvenli degil).
             self._qdoc.close()
@@ -115,20 +114,27 @@ class DocumentSession(QObject):
         self._document = self._qdoc = self._provider = None
 
     def page_model(self, page: int) -> PageFilterModel:
-        model = self._page_models.get(page)
-        if model is None:
-            model = PageFilterModel(self._model, page, self)
-            QQmlEngine.setObjectOwnership(model, QQmlEngine.ObjectOwnership.CppOwnership)  # QML'in GC'si silmesin
-            self._page_models[page] = model
+        return self._cached_page_model(self._page_models, self._model, self, page)
+
+    @staticmethod
+    def _cached_page_model(
+        cache: "OrderedDict[int, PageFilterModel]", source, owner: QObject, page: int
+    ) -> PageFilterModel:
+        """Sayfa filtreleri kalici kaynak modele bagli oldugundan belge degisiminde de gecerlidir; LRU ile
+        sinirlanir (atilan filtre `deleteLater` ile silinir, QML tarafindaki referans bosalir)."""
+        model = cache.get(page)
+        if model is not None:
+            cache.move_to_end(page)
+            return model
+        model = PageFilterModel(source, page, owner)  # ebeveyni olan nesneyi QML'in GC'si silmez
+        cache[page] = model
+        if len(cache) > MAX_PAGE_MODELS:
+            _evicted_page, evicted = cache.popitem(last=False)
+            evicted.deleteLater()
         return model
 
     def note_page_model(self, page: int) -> PageFilterModel:
-        model = self._note_page_models.get(page)
-        if model is None:
-            model = PageFilterModel(self._notes_model, page, self)
-            QQmlEngine.setObjectOwnership(model, QQmlEngine.ObjectOwnership.CppOwnership)
-            self._note_page_models[page] = model
-        return model
+        return self._cached_page_model(self._note_page_models, self._notes_model, self, page)
 
     def resolve_selection(self, selection: dict) -> tuple[int, QPdfSelection] | None:
         """QML'in gonderdigi secim haritasini ({page, fromX, fromY, toX, toY}; sayfa noktasi uzayinda) Qt

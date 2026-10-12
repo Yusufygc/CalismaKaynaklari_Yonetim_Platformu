@@ -35,6 +35,22 @@ T = TypeVar("T")
 
 
 @dataclass(frozen=True)
+class PoolHighlight:
+    """Bilgi Havuzu satiri: alinti + hangi kaynaga ait oldugu."""
+
+    annotation: Annotation
+    resource_id: int
+    resource_title: str
+
+
+@dataclass(frozen=True)
+class PoolTerm:
+    term: Term
+    resource_id: int
+    resource_title: str
+
+
+@dataclass(frozen=True)
 class BackfillReport:
     resolved: int  # konumu dogrulanan (baglami cikarilan) alinti
     moved: int  # bunlardan konumu degisen
@@ -95,6 +111,23 @@ class AnnotationService:
 
     def list_highlights(self, document_id: int) -> list[Annotation]:
         return [annotation_from_row(row) for row in self._repo.annotations_for_document(document_id)]
+
+    def pool_highlights(self) -> list[PoolHighlight]:
+        """Tum belgelerin alintilari, ait olduklari kaynakla birlikte (kitaplik geneli liste)."""
+        owners = self._repo.resources_by_document()
+        return [
+            PoolHighlight(annotation_from_row(row), resource_id, title)
+            for row in self._repo.all_annotation_rows()
+            for resource_id, title in owners.get(row.document_id, [])
+        ]
+
+    def pool_terms(self) -> list[PoolTerm]:
+        owners = self._repo.resources_by_document()
+        return [
+            PoolTerm(term_from_row(row), resource_id, title)
+            for row in self._repo.all_term_rows()
+            for resource_id, title in owners.get(row.document_id, [])
+        ]
 
     def get_highlight(self, annotation_id: int) -> Annotation:
         return annotation_from_row(self._annotation_row(annotation_id))

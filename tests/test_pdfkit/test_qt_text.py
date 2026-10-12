@@ -63,7 +63,7 @@ def test_backfill_verifies_position_extracts_context_and_recovers_shifted_or_los
     _legacy(session, resource.id, "Hizli kahverengi tilki", real, 22)  # konum dogru
     _legacy(session, resource.id, "tembel kopegin ustunden", text.index("tembel") + 9, 23)  # eski motorun kaymis indeksi
     _legacy(session, resource.id, "bu metin belgede hic yok", 5, 24)  # kayip
-    LegacyAnnotationImporter(session).run()
+    LegacyAnnotationImporter(session).migrate()
 
     report = annotations.backfill_context(document.id, QtPageTextProvider(qdoc), current_engine_fp())
 

@@ -56,7 +56,7 @@ def test_open_loads_annotations_and_completes_context_of_pending_legacy_rows(
     text = _page_text(path)
     start = text.index("Hizli kahverengi tilki")
     _legacy_highlight(session, resource.id, "Hizli kahverengi tilki", start, 22)
-    LegacyAnnotationImporter(session).run()
+    LegacyAnnotationImporter(session).migrate()
     pdf_session, model = session_under_test
 
     assert pdf_session.open(resource.id)

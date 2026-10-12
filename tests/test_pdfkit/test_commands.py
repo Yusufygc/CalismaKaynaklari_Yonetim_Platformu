@@ -177,3 +177,22 @@ def test_adding_a_highlight_stays_fast_with_a_thousand_existing_annotations(open
 
     assert bridge.annotations.count == 1001
     assert elapsed_ms < 64, f"alinti ekleme {elapsed_ms:.1f} ms"
+
+
+def test_notebook_items_merge_highlights_and_notes_sorted_by_page_and_filtered_by_label(opened):
+    bridge, _document, reader, _notes, _changed = opened
+    revisions = []
+    bridge.revisionChanged.connect(lambda: revisions.append(bridge.revision))
+    bridge.addHighlight(selection_of(reader, "kopegin"), "method")
+    bridge.addHighlight(selection_of(reader, "tilki"), "finding")
+    bridge.addNote(0, 5.0, 5.0, "ust not")
+    bridge.addNote(2, 5.0, 5.0, "sonraki sayfa")
+
+    everything = bridge.notebookItems("", bridge.revision)
+    methods_only = bridge.notebookItems("method", bridge.revision)
+
+    assert [(i["kind"], i["page"]) for i in everything] == [("note", 0), ("highlight", 0), ("highlight", 0), ("note", 2)]
+    assert [i["text"] for i in everything if i["kind"] == "highlight"][0].strip().startswith("tilki")
+    assert everything[0]["color"] == "" and everything[1]["color"] in {"#22C55E", "#06B6D4"} and everything[1]["y"] >= 0
+    assert [i["label"] for i in methods_only] == ["Yöntem"]  # etiket filtresi notlari da disarida birakir
+    assert revisions == sorted(revisions) and len(set(revisions)) == len(revisions) >= 4  # her yazma revizyonu artirir

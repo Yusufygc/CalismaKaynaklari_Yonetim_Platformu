@@ -207,6 +207,10 @@ class AnnotationListModel(_IncrementalModel):
     def annotations_on_page(self, page: int) -> list[Annotation]:
         return [r.annotation for r in self._rows if page in r.pages]
 
+    def rows_with_rect(self) -> list[tuple[Annotation, list]]:
+        """Tum alintilar ve sinirlayici dikdortgenleri ([x, y, w, h] ya da []), model sirasiyla."""
+        return [(r.annotation, r.bounding_rect) for r in self._rows]
+
 
 @dataclass
 class _NoteRow:
@@ -242,10 +246,10 @@ class NoteListModel(_IncrementalModel):
         return {
             self.IdRole: b"noteId",
             self.UidRole: b"uid",
-            self.PageRole: b"page",
-            self.XRole: b"x",
-            self.YRole: b"y",
-            self.TextRole: b"text",
+            self.PageRole: b"notePage",
+            self.XRole: b"noteX",
+            self.YRole: b"noteY",
+            self.TextRole: b"noteText",
         }
 
     def data(self, index: QModelIndex, role: int = Qt.DisplayRole):
@@ -270,6 +274,9 @@ class NoteListModel(_IncrementalModel):
     def note(self, note_id: int) -> PageNote | None:
         row = self._by_id.get(note_id)
         return row.note if row else None
+
+    def all_notes(self) -> list[PageNote]:
+        return [r.note for r in self._rows]
 
 
 class PageFilterModel(QSortFilterProxyModel):

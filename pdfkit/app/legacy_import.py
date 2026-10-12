@@ -1,9 +1,10 @@
-"""Eski `highlights` / `pdf_notes` / `vocabulary` tablolarindaki PDF kayitlarini pdfkit tablolarina kopyalar.
+"""Eski `highlights` / `pdf_notes` / `vocabulary` tablolarindaki PDF kayitlarini pdfkit tablolarina tasir.
 
-GECICI kopru (Faz 8'e kadar): arayuz Faz 3'te pdfkit'e gecene dek eski tablolar canli veri kaynagidir. Bu yuzden
-kopyalama tekrar calistirilabilir (idempotent) ve eski tablodaki degisiklikleri (yorum, renk, silme) yansitir;
-`legacy_id` bos olan (pdfkit'te dogrudan olusturulmus) kayitlara dokunmaz. Eski tablolar silinmez. Yalnizca PDF
-belgesine baglanmis kaynaklarin kayitlari kopyalanir; HTML makale alintilari eski tabloda kalir.
+Arayuz pdfkit'e gectigi icin PDF belgesine bagli kaynaklarin kayitlari artik yalnizca pdfkit tablolarinda
+yasar: `migrate()` once kopyalar (ve eski satirda sonradan yapilan yorum/renk degisikliklerini yansitir), sonra
+kopyasi olusan eski satirlari SILER. Tekrar calistirmak guvenlidir (kopyasi olanlar yeniden eklenmez). PDF
+belgesi olmayan kaynaklarin (HTML makaleler) kayitlari eski tablolarda kalir. Geri donus: gunluk veritabani
+goruntusu (`utils.db_utils.snapshot_database_daily`) ve migration oncesi yedek.
 """
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -35,10 +36,10 @@ _TERMS = text(
 
 
 @dataclass(frozen=True)
-class LegacyImportReport:
-    added: int
-    updated: int
-    removed: int
+class LegacyMigrationReport:
+    copied: int  # pdfkit'e yeni kopyalanan
+    updated: int  # kopyasi onceden var olup eski satirdan guncellenen
+    removed: int  # kopyasi olusup eski tablodan silinen
 
 
 def _timestamp(value: object) -> datetime:
@@ -53,28 +54,39 @@ class LegacyAnnotationImporter:
         self._session = session
         self._repo = AnnotationRepository(session)
 
-    def run(self, delete_missing: bool = True) -> LegacyImportReport:
-        """Kopyalar/gunceller (ve `delete_missing` ise eski tabloda artik olmayanlari siler); tek islemde commit."""
-        added = updated = removed = 0
+    def migrate(self) -> LegacyMigrationReport:
+        """Kopyala/guncelle, sonra kopyasi olan eski satirlari sil; tek islemde commit."""
+        copied = updated = 0
         try:
             for sync in (self._sync_highlights, self._sync_notes, self._sync_terms):
-                a, u, r = sync(delete_missing)
-                added, updated, removed = added + a, updated + u, removed + r
+                a, u = sync()
+                copied, updated = copied + a, updated + u
+            removed = self._delete_migrated_originals()
             self._session.commit()
         except Exception:
             self._session.rollback()
-            log.exception("Eski PDF kayitlari pdfkit'e kopyalanamadi.")
+            log.exception("Eski PDF kayitlari pdfkit'e tasinamadi.")
             raise
-        if added or updated or removed:
-            log.info("Eski PDF kayitlari esitlendi: +%d ~%d -%d", added, updated, removed)
-        return LegacyImportReport(added, updated, removed)
+        if copied or updated or removed:
+            log.info("Eski PDF kayitlari pdfkit'e tasindi: +%d ~%d -%d", copied, updated, removed)
+        return LegacyMigrationReport(copied, updated, removed)
 
-    def _sync_highlights(self, delete_missing: bool) -> tuple[int, int, int]:
+    def _delete_migrated_originals(self) -> int:
+        removed = 0
+        for table, ids in (
+            ("highlights", self._repo.legacy_annotation_ids()),
+            ("pdf_notes", self._repo.legacy_note_ids()),
+            ("vocabulary", self._repo.legacy_term_ids()),
+        ):
+            for legacy_id in ids:
+                removed += self._session.execute(text(f"DELETE FROM {table} WHERE id = :id"), {"id": legacy_id}).rowcount
+        return removed
+
+    def _sync_highlights(self) -> tuple[int, int]:
         existing = self._repo.legacy_annotation_ids()
-        seen, added, updated = set(), 0, 0
+        added, updated = 0, 0
         for row in self._session.execute(_HIGHLIGHTS):
             legacy_id, document_id, content, page, color, start, length, comment, created = row
-            seen.add(legacy_id)
             quote = sanitize_text(content).strip()
             if not quote:
                 continue
@@ -94,14 +106,12 @@ class LegacyAnnotationImporter:
                 )
             )
             added += 1
-        removed = self._remove_missing(existing, seen, self._repo.get_annotation) if delete_missing else 0
-        return added, updated, removed
+        return added, updated
 
-    def _sync_notes(self, delete_missing: bool) -> tuple[int, int, int]:
+    def _sync_notes(self) -> tuple[int, int]:
         existing = self._repo.legacy_note_ids()
-        seen, added, updated = set(), 0, 0
+        added, updated = 0, 0
         for legacy_id, document_id, page, x, y, note_text, created in self._session.execute(_NOTES):
-            seen.add(legacy_id)
             body = sanitize_text(note_text).strip()
             if legacy_id in existing:
                 target = self._repo.get_note(existing[legacy_id])
@@ -115,14 +125,12 @@ class LegacyAnnotationImporter:
                 )
             )
             added += 1
-        removed = self._remove_missing(existing, seen, self._repo.get_note) if delete_missing else 0
-        return added, updated, removed
+        return added, updated
 
-    def _sync_terms(self, delete_missing: bool) -> tuple[int, int, int]:
+    def _sync_terms(self) -> tuple[int, int]:
         existing = self._repo.legacy_term_ids()
-        seen, added, updated = set(), 0, 0
+        added, updated = 0, 0
         for legacy_id, document_id, word, translation, sentence, mastery, created in self._session.execute(_TERMS):
-            seen.add(legacy_id)
             if legacy_id in existing:
                 target = self._repo.get_term(existing[legacy_id])
                 clean = sanitize_text(translation)
@@ -138,15 +146,4 @@ class LegacyAnnotationImporter:
                 )
             )
             added += 1
-        removed = self._remove_missing(existing, seen, self._repo.get_term) if delete_missing else 0
-        return added, updated, removed
-
-    def _remove_missing(self, existing: dict[int, int], seen: set[int], getter) -> int:
-        removed = 0
-        for legacy_id, new_id in existing.items():
-            if legacy_id not in seen:
-                row = getter(new_id)
-                if row is not None:
-                    self._repo.delete(row)
-                    removed += 1
-        return removed
+        return added, updated

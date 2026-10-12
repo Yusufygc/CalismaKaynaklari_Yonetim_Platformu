@@ -155,7 +155,7 @@ def test_note_model_exposes_roles_sorts_by_page_and_supports_page_filter(qapp):
     roles = {bytes(name).decode(): role for role, name in model.roleNames().items()}
 
     assert [model.data(model.index(r), roles["noteId"]) for r in range(3)] == [2, 1, 3]
-    assert (model.data(model.index(0), roles["x"]), model.data(model.index(0), roles["text"])) == (1.5, "not")
+    assert (model.data(model.index(0), roles["noteX"]), model.data(model.index(0), roles["noteText"])) == (1.5, "not")
     assert model.data(model.index(9), roles["noteId"]) is None
     view = PageFilterModel(model, 4)
     assert view.rowCount() == 2

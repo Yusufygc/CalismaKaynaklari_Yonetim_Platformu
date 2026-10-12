@@ -1,6 +1,6 @@
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
-from pdfkit.domain.labels import LABELS
+from pdfkit.domain.labels import LABELS, effective_color, name_for_label
 from pdfkit.ui.commands import AnnotationCommands
 from pdfkit.ui.library import PdfLibrary
 from pdfkit.ui.models import AnnotationListModel, NoteListModel
@@ -16,6 +16,7 @@ class PdfBridge(QObject):
     islemleri modeli artimli gunceller; kullaniciya bildirim `notification` sinyaliyle gider."""
 
     currentDocumentChanged = Signal()
+    revisionChanged = Signal()
     termsChanged = Signal()
     notification = Signal(str, str)  # tur (info/error), mesaj
     contentChanged = Signal(int)  # kaynak kimligi: alinti/not/kelime degisti (havuz, cekmece, disa aktarim tazelenir)
@@ -28,6 +29,7 @@ class PdfBridge(QObject):
         self._session = DocumentSession(library, self._model, self._notes, self)
         self._commands = AnnotationCommands(self._session, library, self.notification.emit)
         self._header: dict = {}
+        self._revision = 0
 
     # ------------------------------------------------------------------ #
     # Okuma
@@ -57,6 +59,38 @@ class PdfBridge(QObject):
             for t in self._session.terms
         ]
 
+    @Property(int, notify=revisionChanged)
+    def revision(self) -> int:
+        """Belge acilip kapaninca ve her basarili yazmadan sonra artar; `notebookItems` gibi turetilmis
+        listelerin QML baglamalarini yeniden degerlendirmek icin kullanilir."""
+        return self._revision
+
+    @Slot(str, int, result="QVariantList")
+    def notebookItems(self, label_key: str, _revision: int = 0) -> list:
+        """Yan paneldeki 'Notlarim' listesi: alintilar (istenirse tek etikete gore) ve sayfa notlari, sayfa/konum
+        sirali. `_revision` kullanilmaz; QML baglamasinin `revision` degisince yeniden calismasi icin gecilir."""
+        items = []
+        for annotation, rect in self._model.rows_with_rect():
+            if label_key and annotation.label_key != label_key:
+                continue
+            items.append(
+                {
+                    "kind": "highlight", "id": annotation.id, "page": annotation.page if annotation.page is not None else -1,
+                    "color": effective_color(annotation.label_key, annotation.color),
+                    "label": name_for_label(annotation.label_key), "text": annotation.quote_exact,
+                    "comment": annotation.comment or "", "status": annotation.status,
+                    "x": rect[0] if rect else -1, "y": rect[1] if rect else -1,
+                }
+            )
+        if not label_key:
+            items += [
+                {"kind": "note", "id": n.id, "page": n.page, "color": "", "label": "Not", "text": n.text,
+                 "comment": "", "status": "ok", "x": n.x, "y": n.y}
+                for n in self._notes.all_notes()
+            ]
+        items.sort(key=lambda item: (item["page"], item["y"]))
+        return items
+
     @Property(list, constant=True)
     def labels(self) -> list:
         return [{"key": label.key, "name": label.name, "color": label.color} for label in LABELS]
@@ -77,6 +111,7 @@ class PdfBridge(QObject):
             else {}
         )
         self.termsChanged.emit()
+        self._bump_revision()
         return opened
 
     @Slot()
@@ -84,6 +119,7 @@ class PdfBridge(QObject):
         self._session.close()
         self._set_header({})
         self.termsChanged.emit()
+        self._bump_revision()
 
     @Slot(int, result=QObject)
     def pageModel(self, page: int) -> QObject:
@@ -168,8 +204,13 @@ class PdfBridge(QObject):
     def _changed(self, result):
         """Basarili (sifir olmayan / True) yazma sonrasi `contentChanged` yayar; sonucu aynen dondurur."""
         if result and self._header:
+            self._bump_revision()
             self.contentChanged.emit(self._header["resourceId"])
         return result
+
+    def _bump_revision(self) -> None:
+        self._revision += 1
+        self.revisionChanged.emit()
 
     def _set_header(self, header: dict) -> None:
         if header != self._header:

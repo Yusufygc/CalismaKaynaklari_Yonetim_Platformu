@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from pdfkit.domain.annotations import Annotation, PageNote, Segment, Term
@@ -99,6 +99,25 @@ class AnnotationRepository:
             select(PdfAnnotationRow.legacy_id, PdfAnnotationRow.id).where(PdfAnnotationRow.legacy_id.is_not(None))
         )
         return {legacy: new for legacy, new in rows}
+
+    def resources_by_document(self) -> dict[int, list[tuple[int, str]]]:
+        """belge id -> [(kaynak id, kaynak basligi)] (Bilgi Havuzu icin; ayni belge birden cok kaynakta olabilir)."""
+        rows = self._session.execute(
+            text(
+                "SELECT l.document_id, r.id, r.title FROM pdf_resource_documents l "
+                "JOIN resources r ON r.id = l.resource_id ORDER BY r.id"
+            )
+        )
+        grouped: dict[int, list[tuple[int, str]]] = {}
+        for document_id, resource_id, title in rows:
+            grouped.setdefault(document_id, []).append((resource_id, title))
+        return grouped
+
+    def all_annotation_rows(self) -> list[PdfAnnotationRow]:
+        return list(self._session.scalars(select(PdfAnnotationRow).order_by(PdfAnnotationRow.id)))
+
+    def all_term_rows(self) -> list[PdfTermRow]:
+        return list(self._session.scalars(select(PdfTermRow).order_by(PdfTermRow.id)))
 
     # ---- sayfa notlari ----
     def add_note(self, row: PdfPageNoteRow) -> PageNote:

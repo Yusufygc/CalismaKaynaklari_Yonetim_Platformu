@@ -12,10 +12,11 @@ from sqlalchemy.orm import Session
 from core.logger import log
 from pdfkit.app.annotations import AnnotationService
 from pdfkit.app.documents import DocumentService
-from pdfkit.app.legacy_import import LegacyAnnotationImporter, LegacyImportReport
+from pdfkit.app.legacy_import import LegacyAnnotationImporter, LegacyMigrationReport
 from pdfkit.app.importing import prepare_pdf, prepare_remote_pdf
 from pdfkit.app.ports import LegacyPdf, ResourceCatalogPort
 from pdfkit.domain.errors import NotAPdfError
+from pdfkit.domain.annotations import Annotation, PageNote, Term
 from pdfkit.domain.models import Document, PdfInspection, PreparedPdf
 from pdfkit.infra.downloader import Fetch
 from pdfkit.infra.file_store import FileStore
@@ -23,6 +24,16 @@ from pdfkit.ui.workers import CallWorker, submit
 
 _MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024
 _ADOPT_CHUNK = 5  # her olay dongusu turunda islenen eski PDF sayisi (UI donmasin)
+
+
+@dataclass(frozen=True)
+class ResourceAnnotations:
+    """Bir kaynagin PDF belgesine ait alinti, not ve kelimeleri (cekmece ozeti, disa aktarim icin)."""
+
+    document: Document
+    highlights: list[Annotation]
+    notes: list[PageNote]
+    terms: list[Term]
 
 
 @dataclass(frozen=True)
@@ -76,6 +87,16 @@ class PdfLibrary(QObject):
 
     def annotations(self) -> AnnotationService:
         return AnnotationService(self._session)
+
+    def annotations_of(self, resource_id: int) -> ResourceAnnotations | None:
+        """Kaynagin PDF belgesi yoksa None (HTML makaleler); varsa alinti/not/kelimeler (geometri hesaplanmaz)."""
+        document = self.documents().document_for_resource(resource_id)
+        if document is None:
+            return None
+        service = self.annotations()
+        return ResourceAnnotations(
+            document, service.list_highlights(document.id), service.list_notes(document.id), service.list_terms(document.id)
+        )
 
     def _run(self, fn: Callable[[], Any], callback: Callable[[Any, Exception | None], None]) -> None:
         submit(self._thread_pool(), CallWorker(fn, callback), self._dispatch)
@@ -236,21 +257,21 @@ class PdfLibrary(QObject):
             log.warning("%d PDF belgesi kilitli, sonraki acilista yeniden denenecek.", report.pending)
 
     def start_maintenance(self) -> None:
-        """Acilista: cop toplama + eski PDF'leri depoya alma (bitince eski alinti/not/kelime kopyalanir)."""
+        """Acilista: cop toplama + eski PDF'leri depoya alma (bitince eski alinti/not/kelime pdfkit'e tasinir)."""
         self.collect_garbage()
         self.adopt_legacy()
 
     # ------------------------------------------------------------------ #
-    # Eski alinti / not / kelime kayitlarinin kopyalanmasi
+    # Eski alinti / not / kelime kayitlarinin tasinmasi
     # ------------------------------------------------------------------ #
 
-    def import_legacy_annotations(self, delete_missing: bool = True) -> LegacyImportReport:
-        """Eski tablolardaki PDF kayitlarini pdfkit tablolarina esitler (bkz. `LegacyAnnotationImporter`)."""
-        return LegacyAnnotationImporter(self._session).run(delete_missing)
+    def migrate_legacy_annotations(self) -> LegacyMigrationReport:
+        """Eski tablolardaki PDF kayitlarini pdfkit'e tasir ve eski satirlari siler (bkz. `LegacyAnnotationImporter`)."""
+        return LegacyAnnotationImporter(self._session).migrate()
 
     def _after_adoption(self, _adopted: int) -> None:
         try:
-            self.import_legacy_annotations()
+            self.migrate_legacy_annotations()
         except Exception:  # Acilisi engellemez; hata zaten loglandi, sonraki acilista yeniden denenir.
             log.warning("Eski PDF kayitlarinin kopyalanmasi atlandi.")
 
