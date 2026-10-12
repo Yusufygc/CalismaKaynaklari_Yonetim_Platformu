@@ -14,6 +14,14 @@ class Suggestion:
     cited_by_library: int  # Kutuphanede bu esere atif yapan makale sayisi
 
 
+def _count_foreign_references(references: dict[str, list[str]], owned: set[str]) -> Counter[str]:
+    """Her kaynagin atif listesinden kutuphanede olmayanlari sayar (kaynak basina bir kez)."""
+    counts: Counter[str] = Counter()
+    for refs in references.values():
+        counts.update(set(refs) - owned)
+    return counts
+
+
 class ReadingSuggestionService:
     """"Okumadigin ortak referanslar": kutuphane makalelerinin referanslarini sayar, en cok
     atif alanlari (kutuphanede olmayanlar) onerir. Iki OpenAlex istegi yeter: kaynak
@@ -36,11 +44,7 @@ class ReadingSuggestionService:
         if min_frequency is None:
             min_frequency = 1 if len(sources) < 3 else 2
 
-        references = self._market.referenced_work_ids(sources)
-        owned = set(sources)
-        counts: Counter[str] = Counter()
-        for refs in references.values():
-            counts.update(set(refs) - owned)
+        counts = _count_foreign_references(self._market.referenced_work_ids(sources), set(sources))
 
         # Yalnizca esik ustundekiler; ayrintilar tek istekte (en cok atif alan adaylar).
         candidates = [wid for wid, n in counts.most_common() if n >= min_frequency][: limit * 2]

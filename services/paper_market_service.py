@@ -205,6 +205,22 @@ def _to_paper_result(work: dict) -> PaperResult | None:
     )
 
 
+def _search_params(topic: str, kind: str, filters: MarketFilters | None, page: int) -> dict:
+    """Sekme icin OpenAlex sorgu parametreleri; gecersiz sekmede ValueError."""
+    if kind not in MARKET_SORTS:
+        raise ValueError(f"Gecersiz sekme: {kind}")
+    params: dict = {"per-page": _PER_PAGE, "page": max(1, page)}
+    if topic:  # Yazar aramasinda konu bos olabilir (yalnizca `author.id` filtresi).
+        params["search"] = topic
+    sort = MARKET_SORTS[kind]
+    if sort:
+        params["sort"] = sort
+    filter_expr = (filters or MarketFilters()).to_openalex()
+    if filter_expr:
+        params["filter"] = filter_expr
+    return params
+
+
 class PaperMarketService:
     """OpenAlex Works API uzerinden konu bazli akademik makale aramasi.
 
@@ -222,17 +238,7 @@ class PaperMarketService:
     ) -> MarketPage:
         """Tek bir sekmenin `page`. sayfasi. Hata `MarketPage.error`'a yazilir
         (arayuz 'sonuc yok' ile 'ulasilamadi' ayrimini yapabilsin diye)."""
-        if kind not in MARKET_SORTS:
-            raise ValueError(f"Gecersiz sekme: {kind}")
-        params: dict = {"per-page": _PER_PAGE, "page": max(1, page)}
-        if topic:  # Yazar aramasinda konu bos olabilir (yalnizca `author.id` filtresi).
-            params["search"] = topic
-        sort = MARKET_SORTS[kind]
-        if sort:
-            params["sort"] = sort
-        filter_expr = (filters or MarketFilters()).to_openalex()
-        if filter_expr:
-            params["filter"] = filter_expr
+        params = _search_params(topic, kind, filters, page)
         try:
             works, total = self._get_page(params)
         except Exception as exc:

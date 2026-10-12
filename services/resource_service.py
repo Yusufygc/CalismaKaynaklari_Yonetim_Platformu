@@ -94,19 +94,30 @@ def _normalize_tag_names(tag_names: list[str]) -> list[str]:
     return normalized
 
 
+def _bare_host(url: str) -> str:
+    """URL'nin ana bilgisayar adi; `www.` ve `m.` onekleri atilir."""
+    host = (urlparse(url).hostname or "").lower()
+    for prefix in ("www.", "m."):
+        if host.startswith(prefix):
+            host = host[len(prefix):]
+    return host
+
+
+def _platform_tag_name(host: str) -> str | None:
+    for suffix, tag_name in PLATFORM_NAMES.items():
+        if host == suffix or host.endswith(f".{suffix}"):
+            return tag_name
+    return None
+
+
 def _url_tag_names(url: str | None) -> list[str]:
     if not url:
         return []
 
-    host = (urlparse(url).hostname or "").lower()
-    if host.startswith("www."):
-        host = host[4:]
-    if host.startswith("m."):
-        host = host[2:]
-
-    for suffix, tag_name in PLATFORM_NAMES.items():
-        if host == suffix or host.endswith(f".{suffix}"):
-            return [tag_name]
+    host = _bare_host(url)
+    platform = _platform_tag_name(host)
+    if platform:
+        return [platform]
 
     parts = [part for part in host.split(".") if part]
     if len(parts) >= 2:

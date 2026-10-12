@@ -61,18 +61,21 @@ class ScraperService:
         soup = BeautifulSoup(html, "html.parser")
 
         metadata = {
-            "og_title": self._content(soup, "property", "og:title")
-            or self._content(soup, "name", "twitter:title")
-            or self._content(soup, "property", "twitter:title")
+            "og_title": self._first_content(
+                soup, ("property", "og:title"), ("name", "twitter:title"), ("property", "twitter:title")
+            )
             or self._text(soup.find("title")),
-            "og_description": self._content(soup, "property", "og:description")
-            or self._content(soup, "name", "twitter:description")
-            or self._content(soup, "property", "twitter:description")
-            or self._content(soup, "name", "description"),
+            "og_description": self._first_content(
+                soup,
+                ("property", "og:description"),
+                ("name", "twitter:description"),
+                ("property", "twitter:description"),
+                ("name", "description"),
+            ),
             "thumbnail": self._absolute(
-                self._content(soup, "property", "og:image")
-                or self._content(soup, "name", "twitter:image")
-                or self._content(soup, "property", "twitter:image"),
+                self._first_content(
+                    soup, ("property", "og:image"), ("name", "twitter:image"), ("property", "twitter:image")
+                ),
                 base_url,
             ),
             "favicon": self._absolute(self._favicon(soup), base_url),
@@ -80,6 +83,15 @@ class ScraperService:
             "site_name": self._content(soup, "property", "og:site_name"),
         }
         return {key: value for key, value in metadata.items() if value}
+
+    @staticmethod
+    def _first_content(soup: BeautifulSoup, *candidates: tuple[str, str]) -> str | None:
+        """Sirayla verilen (oznitelik, deger) meta adaylarindan ilk dolu `content`i dondurur."""
+        for attr_name, attr_value in candidates:
+            value = ScraperService._content(soup, attr_name, attr_value)
+            if value:
+                return value
+        return None
 
     @staticmethod
     def _content(soup: BeautifulSoup, attr_name: str, attr_value: str) -> str | None:
@@ -161,7 +173,13 @@ class ScraperService:
             query_id = parse_qs(parsed.query).get("v", [None])[0]
             if query_id:
                 return query_id
-            parts = [part for part in parsed.path.split("/") if part]
-            if len(parts) >= 2 and parts[0] in {"shorts", "embed"}:
-                return parts[1]
+            return ScraperService._youtube_path_video_id(parsed.path)
+        return None
+
+    @staticmethod
+    def _youtube_path_video_id(path: str) -> str | None:
+        """`/shorts/<id>` ve `/embed/<id>` bicimli yollardan video kimligini cikarir."""
+        parts = [part for part in path.split("/") if part]
+        if len(parts) >= 2 and parts[0] in {"shorts", "embed"}:
+            return parts[1]
         return None
