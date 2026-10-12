@@ -1,6 +1,6 @@
 # pdfkit — PDF Okuma ve Çalışma Modülü
 
-Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · Faz 0–1 raporları: `docs/plans/pdfkit-faz0-raporu.md`, `docs/plans/pdfkit-faz1-raporu.md`. Durum: **Faz 2 tamam** (belge deposu + alıntı alanı ve çapa çözümleyici); UI veri akışı, vault sonraki fazlar.
+Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · Faz 0–1 raporları: `docs/plans/pdfkit-faz0-raporu.md`, `docs/plans/pdfkit-faz1-raporu.md`. Durum: **Faz 3a tamam** (belge deposu, alıntı alanı, çapa çözümleyici, okuma yolu arka ucu); yazma yolu (3b), QML geçişi (3c), birleştirme (3d), vault sonraki fazlar. Alt faz planı: `docs/plans/pdfkit-faz3-plani.md`.
 
 ## Sınır kuralları
 
@@ -29,6 +29,16 @@ Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · F
 - **Çözümleyici** (`pdfkit/domain/anchoring.py`, saf Python): (1) kayıtlı konumdaki metin alıntıyla uyuşuyor mu (boşluk-normalize); (2) aynı sayfada normalize arama, birden çok eşleşmede önceki/sonraki bağlamla ve kayıtlı konuma yakınlıkla ayırma; (3) harf-rakam dışını yok sayan arama (satır sonu tirelemesi, ligatür boşlukları); (4) komşu sayfalar (±1); (5) bulunamazsa `orphaned`. 3 karakterden kısa alıntılar aranmaz (sahte eşleşme riski). Parçalı alıntıda her parça ayrı çözülür, biri bile bulunamazsa alıntı `orphaned` olur. Durumlar: `ok`, `pending_context`, `orphaned`, `unanchored`.
 - **Servis** (`pdfkit/app/annotations.py::AnnotationService`): alıntı/not/kelime CRUD (commit/rollback burada), `relink` (yetim alıntıyı yeni seçime bağlar), `apply_resolution`, `backfill_context(document_id, provider, engine_fp)`: eski kayıtların konumunu doğrular, önceki/sonraki bağlamı çıkarır; belge ilk açıldığında `QtPageTextProvider` ile çağrılacak (Faz 3). Lone surrogate'lar `sanitize_text` ile `?` yapılır (indeksler kaymaz).
 - **Eski veri köprüsü** (`pdfkit/app/legacy_import.py`, geçici): `highlights`/`pdf_notes`/`vocabulary` satırlarından PDF belgesine bağlı kaynakların kayıtları `legacy_id` ile kopyalanır; tekrar çalıştırmak güvenlidir ve eski tablodaki yorum/renk/silme değişikliklerini yansıtır, doğrudan pdfkit'te oluşturulan kayıtlara dokunmaz. Eski tablolar silinmez (arayüz Faz 3'e kadar onları kullanır); HTML makale alıntıları eski tabloda kalır. `PdfLibrary.start_maintenance` eski PDF benimsemesi bitince çalıştırır.
+
+## Okuma yolu arka ucu (Faz 3a)
+
+Arayüz değişmedi; `bridge.pdf` mevcut yolun yanında ek olarak bulunur (3c'de QML buna geçer).
+
+- **`AnnotationListModel`** (`pdfkit/ui/models.py`, `QAbstractListModel`): açık belgenin alıntıları sayfa+konuma göre sıralı. `upsert`/`remove` yalnız etkilenen satır için `rowsInserted/rowsRemoved/dataChanged` yayar (QML'de tüm sayfa katmanları yeniden kurulmaz). Roller: `annotationId`, `uid`, `page`, `pages`, `labelKey`, `label`, `color` (açık renk > etiket rengi > varsayılan), `comment`, `tags`, `quote`, `status`, `polygons`, `boundingRect`, `hasGeometry`; poligon ve sınırlayıcı dikdörtgen eklemede bir kez hesaplanır.
+- **`PageFilterModel`** (`QSortFilterProxyModel`): sayfa delegesi başına; `page` ve isteğe bağlı `labelKey` özellikleri. Çok parçalı alıntı tüm sayfalarında görünür (`pages` rolü).
+- **`DocumentSession`** (`pdfkit/ui/session.py`): `QPdfDocument`'i açar, bekleyen (eski) kayıtların bağlamını tamamlar (`backfill_context`), alıntıları modele yükler. **Geometri tembel ve kalıcı:** `request_geometry(page)` poligonu olmayan ya da farklı `engine_fp`'li alıntıları hesaplar, veritabanına yazar (belge başına bir kez); hesaplama 8'erli dilimlerle (`GEOMETRY_CHUNK`, ≈45 ms/dilim) olay döngüsüne yayılır, belge kapanınca bekleyen dilimler iptal olur. `close()` Windows dosya kilidi için `close()` + `deleteLater()` kullanır.
+- **`PdfBridge`** (`pdfkit/ui/bridge.py`, `bridge.pdf`): `annotations` (kalıcı model), `currentDocument` (`resourceId`, `documentId`, `fileUrl`, `pageCount`, `hasTextLayer`), `labels`, `openDocument(resourceId)`, `closeDocument()`, `pageModel(page)` (QML'e `CppOwnership` ile verilir), `ensureGeometry(page)`.
+- **Ölçüm** (`scripts/bench_pdf.py --pdfkit`, gerçek 15 sayfalık PDF): 1000 alıntılı belge açma **94 ms** (eski yolda `serialize` 3375 ms); 25 alıntı 7 ms; tüm sayfa modelleri 15 ms. Eski, geometrisiz kayıtların ilk açılış maliyeti alıntı başına ≈5 ms'dir (1000 alıntı ≈4,8 sn toplam, tek seferlik ve dilimli; tek dilim ≈45 ms).
 
 ## Ölçümler ve kararlar
 

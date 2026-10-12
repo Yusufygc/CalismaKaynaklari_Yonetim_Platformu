@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-12] FEAT | pdfkit Faz 3a: okuma yolu arka ucu (bridge.pdf)
+
+Faz 3 dört alt faza bölündü (`docs/plans/pdfkit-faz3-plani.md`). 3a: `AnnotationListModel` (artımlı Qt modeli), `PageFilterModel`, `DocumentSession` (belge açma, bağlam tamamlama, tembel ve kalıcı dilimli geometri), `PdfBridge` (`bridge.pdf`). Arayüz değişmedi. Ölçüm: 1000 alıntılı belge açma 94 ms (eski `serialize` 3375 ms), tek geometri dilimi ≈45 ms. 624 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz3a-raporu.md`.
+
+---
+
 ## [2026-10-12] FEAT | pdfkit Faz 2: alıntı alanı ve çapa çözümleyici
 
 `pdf_annotations`, `pdf_page_notes`, `pdf_terms` tabloları (migration `d7e3b1a94c52`; ORM ile parite testli). Alıntılar kararlı ULID, anlam etiketi (`label_key`, renkten ayrı), serbest etiketler ve W3C TextQuote + TextPosition çapası taşıyor; geometri seçim anında `QPdfSelection.bounds()`'tan saklanabilir. `AnchorResolver` dört kademeli (konum → bağlamlı arama → harf-rakam arama → komşu sayfa → yetim), alıntı sessizce kaybolmuyor. Eski alıntı/not/kelime kayıtları `legacy_id` ile idempotent kopyalanıyor (arayüz Faz 3'e kadar eski tabloları kullanır). Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz2-raporu.md`. 604 test geçti, çapa modülü kapsamı %99.
