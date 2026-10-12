@@ -2,6 +2,7 @@
 
 HIGHLIGHT_SAVED = "Alıntı kaydedildi."
 HIGHLIGHT_RELABELED = "Aynı metin zaten alıntılanmıştı; anlam etiketi güncellendi."
+HIGHLIGHT_RELINKED = "Alıntı yeni konuma bağlandı."
 HIGHLIGHT_DELETED = "Alıntı silindi."
 HIGHLIGHTS_DELETED_FMT = "{count} alıntı silindi."
 NOTE_SAVED = "Not kaydedildi."

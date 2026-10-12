@@ -74,7 +74,10 @@ def click(app, window, item) -> None:
 def type_text(app, window, text: str) -> None:
     keys = {c: getattr(Qt, f"Key_{c.upper()}") for c in "abcdefghijklmnopqrstuvwxyz"}
     for ch in text:
-        QTest.keyClick(window, keys[ch])
+        if ch in keys:
+            QTest.keyClick(window, keys[ch])
+        else:  # bosluk, virgul, #, buyuk harf...: karakter olarak gonderilir
+            QTest.keyClick(window, ch)
         pump(app, 2)
 
 

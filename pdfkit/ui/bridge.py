@@ -2,6 +2,7 @@ from PySide6.QtCore import Property, QCoreApplication, QObject, QTimer, Signal, 
 
 from core.logger import log
 
+from pdfkit.domain.annotations import STATUS_ORPHANED
 from pdfkit.domain.labels import LABELS, effective_color, name_for_label
 from pdfkit.ui.commands import AnnotationCommands
 from pdfkit.ui.library import PdfLibrary
@@ -86,27 +87,42 @@ class PdfBridge(QObject):
         listelerin QML baglamalarini yeniden degerlendirmek icin kullanilir."""
         return self._revision
 
-    @Slot(str, int, result="QVariantList")
-    def notebookItems(self, label_key: str, _revision: int = 0) -> list:
-        """Yan paneldeki 'Notlarim' listesi: alintilar (istenirse tek etikete gore) ve sayfa notlari, sayfa/konum
-        sirali. `_revision` kullanilmaz; QML baglamasinin `revision` degisince yeniden calismasi icin gecilir."""
+    @Property(int, notify=revisionChanged)
+    def orphanCount(self) -> int:
+        """Acik belgede konumu bulunamayan (yetim) alinti sayisi."""
+        return self._model.count_with_status(STATUS_ORPHANED)
+
+    @Property(list, notify=revisionChanged)
+    def tags(self) -> list:
+        """Acik belgedeki serbest alinti etiketleri: [{name, count}], cok kullanilandan aza."""
+        return [{"name": name, "count": count} for name, count in self._model.tag_counts()]
+
+    @Slot(str, str, bool, int, result="QVariantList")
+    def notebookItems(self, label_key: str, tag: str, only_orphaned: bool, _revision: int = 0) -> list:
+        """Yan paneldeki 'Notlarim' listesi: alintilar (istenirse tek anlam etiketine, serbest etikete ya da yalniz
+        yetim olanlara gore suzulur) ve sayfa notlari, sayfa/konum sirali. Suzgec varken sayfa notlari gizlenir.
+        `_revision` kullanilmaz; QML baglamasinin `revision` degisince yeniden calismasi icin gecilir."""
         items = []
         for annotation, rect in self._model.rows_with_rect():
             if label_key and annotation.label_key != label_key:
+                continue
+            if tag and tag not in annotation.tags:
+                continue
+            if only_orphaned and annotation.status != STATUS_ORPHANED:
                 continue
             items.append(
                 {
                     "kind": "highlight", "id": annotation.id, "page": annotation.page if annotation.page is not None else -1,
                     "color": effective_color(annotation.label_key, annotation.color),
                     "label": name_for_label(annotation.label_key), "text": annotation.quote_exact,
-                    "comment": annotation.comment or "", "status": annotation.status,
+                    "comment": annotation.comment or "", "status": annotation.status, "tags": annotation.tags,
                     "x": rect[0] if rect else -1, "y": rect[1] if rect else -1,
                 }
             )
-        if not label_key:
+        if not (label_key or tag or only_orphaned):
             items += [
                 {"kind": "note", "id": n.id, "page": n.page, "color": "", "label": "Not", "text": n.text,
-                 "comment": "", "status": "ok", "x": n.x, "y": n.y}
+                 "comment": "", "status": "ok", "tags": [], "x": n.x, "y": n.y}
                 for n in self._notes.all_notes()
             ]
         items.sort(key=lambda item: (item["page"], item["y"]))
@@ -217,6 +233,11 @@ class PdfBridge(QObject):
     @Slot(int, "QVariantList", result=bool)
     def setTags(self, annotation_id: int, tags: list) -> bool:
         return self._changed(self._commands.set_tags(annotation_id, [str(tag) for tag in tags]))
+
+    @Slot(int, "QVariantMap", result=bool)
+    def relinkAnnotation(self, annotation_id: int, selection: dict) -> bool:
+        """Yetim alintiyi sayfada yeni secilen metne baglar (`selection` addHighlight ile ayni harita)."""
+        return self._changed(self._commands.relink(annotation_id, selection))
 
     @Slot(int, result=bool)
     def deleteAnnotation(self, annotation_id: int) -> bool:

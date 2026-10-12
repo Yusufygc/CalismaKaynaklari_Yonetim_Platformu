@@ -5,7 +5,7 @@ import pytest
 from PySide6.QtPdf import QPdfDocument
 
 from pdfkit.api import PdfBridge
-from pdfkit.domain.annotations import STATUS_OK, Segment
+from pdfkit.domain.annotations import STATUS_OK, STATUS_ORPHANED, Segment
 from pdfkit.ui import messages
 from pdfkit.ui.pdf_text import current_engine_fp
 
@@ -188,11 +188,87 @@ def test_notebook_items_merge_highlights_and_notes_sorted_by_page_and_filtered_b
     bridge.addNote(0, 5.0, 5.0, "ust not")
     bridge.addNote(2, 5.0, 5.0, "sonraki sayfa")
 
-    everything = bridge.notebookItems("", bridge.revision)
-    methods_only = bridge.notebookItems("method", bridge.revision)
+    everything = bridge.notebookItems("", "", False, bridge.revision)
+    methods_only = bridge.notebookItems("method", "", False, bridge.revision)
 
     assert [(i["kind"], i["page"]) for i in everything] == [("note", 0), ("highlight", 0), ("highlight", 0), ("note", 2)]
     assert [i["text"] for i in everything if i["kind"] == "highlight"][0].strip().startswith("tilki")
     assert everything[0]["color"] == "" and everything[1]["color"] in {"#22C55E", "#06B6D4"} and everything[1]["y"] >= 0
     assert [i["label"] for i in methods_only] == ["Yöntem"]  # etiket filtresi notlari da disarida birakir
     assert revisions == sorted(revisions) and len(set(revisions)) == len(revisions) >= 4  # her yazma revizyonu artirir
+
+
+def _orphan(pdf_library, document, comment="onemli yorum", tags=("yontem",)):
+    """Konumu bulunamayan (metni belgeden silinmis) bir alinti; yorum, etiket ve anlam etiketi dolu."""
+    return pdf_library.annotations().create_highlight(
+        document.id, "belgede artik olmayan metin", [Segment(0, 1, 28, "belgede artik olmayan metin")],
+        "critique", comment=comment, tags=list(tags), status=STATUS_ORPHANED,
+    )
+
+
+def test_orphans_are_counted_listed_and_filterable_in_the_notebook(opened, pdf_library):
+    bridge, document, reader, _notes, _changed = opened
+    bridge.addHighlight(selection_of(reader, "tilki"), "finding")
+    orphan = _orphan(pdf_library, document)
+    bridge.openDocument(bridge.currentDocument["resourceId"])  # modeli yeniden yukle
+
+    items = bridge.notebookItems("", "", True, bridge.revision)
+
+    assert bridge.orphanCount == 1
+    assert [i["id"] for i in items] == [orphan.id] and items[0]["status"] == STATUS_ORPHANED
+    assert items[0]["x"] == -1 and items[0]["tags"] == ["yontem"]  # sayfada cizilemez: konum yok
+
+
+def test_relink_attaches_an_orphan_to_the_new_selection_keeping_label_comment_and_tags(opened, pdf_library):
+    bridge, document, reader, notes, changed = opened
+    orphan = _orphan(pdf_library, document)
+    bridge.openDocument(bridge.currentDocument["resourceId"])
+    changed.clear()
+    notes.clear()
+
+    assert bridge.relinkAnnotation(orphan.id, selection_of(reader, "tembel"))
+
+    stored = pdf_library.annotations().get_highlight(orphan.id)
+    assert stored.status == STATUS_OK and "tembel" in stored.quote_exact
+    assert stored.segments[0].polygons and stored.engine_fp == current_engine_fp()
+    assert stored.quote_prefix and stored.quote_suffix  # baglam da yeni metinden
+    assert (stored.label_key, stored.comment, stored.tags) == ("critique", "onemli yorum", ["yontem"])
+    assert bridge.orphanCount == 0 and bridge.annotations.count == 1
+    assert bridge.pageModel(0).rowCount() == 1  # artik sayfada cizilir
+    assert notes == [("info", messages.HIGHLIGHT_RELINKED)] and changed == [bridge.currentDocument["resourceId"]]
+
+
+def test_relink_without_a_usable_selection_reports_an_error_and_keeps_the_orphan(opened, pdf_library):
+    bridge, document, _reader, notes, changed = opened
+    orphan = _orphan(pdf_library, document)
+    bridge.openDocument(bridge.currentDocument["resourceId"])
+    changed.clear()
+    notes.clear()
+
+    assert not bridge.relinkAnnotation(orphan.id, {"page": 0, "fromX": 1.0, "fromY": 1.0, "toX": 2.0, "toY": 1.0})
+
+    assert pdf_library.annotations().get_highlight(orphan.id).status == STATUS_ORPHANED
+    assert notes == [("error", messages.NO_SELECTION)] and changed == []
+
+
+def test_relinking_an_unknown_annotation_fails_without_touching_other_data(opened):
+    bridge, _document, reader, notes, _changed = opened
+
+    assert not bridge.relinkAnnotation(99999, selection_of(reader, "tilki"))
+
+    assert notes[-1][0] == "error" and bridge.annotations.count == 0
+
+
+def test_free_tags_are_listed_with_counts_and_filter_the_notebook(opened):
+    bridge, _document, reader, _notes, _changed = opened
+    first = bridge.addHighlight(selection_of(reader, "tilki"), "finding")
+    second = bridge.addHighlight(selection_of(reader, "tembel"), "method")
+    bridge.addHighlight(selection_of(reader, "kopegin"), "method")
+    bridge.setTags(first, ["#Hipotez", "ornek"])
+    bridge.setTags(second, ["hipotez"])
+
+    assert bridge.tags == [{"name": "hipotez", "count": 2}, {"name": "ornek", "count": 1}]  # # atilir, kucuk harfe
+    tagged = bridge.notebookItems("", "hipotez", False, bridge.revision)
+    assert {i["id"] for i in tagged} == {first, second}
+    assert [i["tags"] for i in bridge.notebookItems("method", "hipotez", False, bridge.revision)] == [["hipotez"]]
+    assert bridge.notebookItems("", "yok", False, bridge.revision) == []

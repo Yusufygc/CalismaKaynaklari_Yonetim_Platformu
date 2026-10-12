@@ -14,10 +14,13 @@ Rectangle {
     property int currentPage: 0
 
     signal pageRequested(int page, point location)
+    signal relinkRequested(int annotationId, string quote)  // yetim alintiyi sayfada yeni secilen metne bagla
 
     color: Theme.bgSidebar
     property int activeTab: 0 // 0: Sayfalar, 1: Anahat, 2: Notlarım, 3: Kaynakça
     property string labelFilter: ""   // anlam etiketi anahtari (bridge.pdf.labels[].key); "" = tümü
+    property string tagFilter: ""     // serbest etiket adi (bridge.pdf.tags[].name); "" = tümü
+    property bool orphanFilter: false // yalniz konumu bulunamayan (yetim) alintilar
     property string relatedKind: "references" // Kaynakça sekmesi: references | citations
 
     readonly property string paperOpenAlexId: (resource && resource.paper) ? resource.paper.openalexId : ""
@@ -255,6 +258,28 @@ Rectangle {
                             onClicked: root.labelFilter = (root.labelFilter === modelData.key ? "" : modelData.key)
                         }
                     }
+
+                    // Konumu bulunamayan alintilar (belge metni degismis olabilir): yalniz varsa gorunur.
+                    AppFilterChip {
+                        objectName: "orphanFilterChip"
+                        visible: bridge.pdf.orphanCount > 0
+                        text: "Konumu bulunamayan (" + bridge.pdf.orphanCount + ")"
+                        dotColor: Theme.danger
+                        isSelected: root.orphanFilter
+                        onClicked: root.orphanFilter = !root.orphanFilter
+                    }
+
+                    // Serbest etiketler (#etiket)
+                    Repeater {
+                        model: bridge.pdf.tags
+                        AppFilterChip {
+                            required property var modelData
+                            objectName: "tagFilterChip"
+                            text: "#" + modelData.name + " (" + modelData.count + ")"
+                            isSelected: root.tagFilter === modelData.name
+                            onClicked: root.tagFilter = (root.tagFilter === modelData.name ? "" : modelData.name)
+                        }
+                    }
                 }
 
                 ListView {
@@ -270,11 +295,12 @@ Rectangle {
 
                     // Yalniz sekme acikken hesaplanir; `bridge.pdf.revision` degisince (alinti/not eklendi, silindi)
                     // baglama yeniden degerlendirilir.
-                    model: root.activeTab === 2 ? bridge.pdf.notebookItems(root.labelFilter, bridge.pdf.revision) : []
+                    model: root.activeTab === 2 ? bridge.pdf.notebookItems(root.labelFilter, root.tagFilter, root.orphanFilter, bridge.pdf.revision) : []
 
                     delegate: Rectangle {
                         id: noteItem
                         required property var modelData
+                        readonly property bool isOrphan: modelData.kind === "highlight" && modelData.status === "orphaned"
                         width: notesList.width - 16
                         x: 8
                         implicitHeight: noteCol.implicitHeight + 16
@@ -325,13 +351,53 @@ Rectangle {
                                 font.italic: true
                                 color: Theme.accentText
                             }
+                            Text {
+                                width: parent.width
+                                visible: noteItem.modelData.tags.length > 0
+                                text: noteItem.modelData.tags.map(function(t) { return "#" + t }).join("  ")
+                                elide: Text.ElideRight
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 10
+                                color: Theme.textMuted
+                            }
+
+                            // Yetim alinti: sayfada cizilemez; yeni metne baglanabilir ya da silinebilir.
+                            Flow {
+                                width: parent.width
+                                visible: noteItem.isOrphan
+                                spacing: 6
+                                Text {
+                                    height: 24
+                                    verticalAlignment: Text.AlignVCenter
+                                    text: "Konumu bulunamadı"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    font.weight: Font.Bold
+                                    color: Theme.dangerText
+                                }
+                                AppButton {
+                                    objectName: "relinkButton"
+                                    text: "Yeniden bağla"
+                                    variant: "ghost"
+                                    implicitHeight: 24
+                                    onClicked: root.relinkRequested(noteItem.modelData.id, noteItem.modelData.text)
+                                }
+                                AppButton {
+                                    text: "Sil"
+                                    variant: "ghost"
+                                    implicitHeight: 24
+                                    onClicked: bridge.pdf.deleteAnnotation(noteItem.modelData.id)
+                                }
+                            }
                         }
 
                         MouseArea {
                             id: noteMouse
                             anchors.fill: parent
                             hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
+                            cursorShape: noteItem.isOrphan ? Qt.ArrowCursor : Qt.PointingHandCursor
+                            // Yetim satirin konumu yok; satir tiklamasi yalnizca dugmelerle (ustteki) calisir.
+                            enabled: !noteItem.isOrphan
                             onClicked: root.pageRequested(
                                 noteItem.modelData.page,
                                 Qt.point(Math.max(0, noteItem.modelData.x), Math.max(0, noteItem.modelData.y)))

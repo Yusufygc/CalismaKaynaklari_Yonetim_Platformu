@@ -36,6 +36,10 @@ Item {
     signal viewStateChanged(int page, real x, real y, real zoom, int seenPage)
     property bool trackView: false
 
+    // Yetim alinti yeniden baglama: > 0 iken secim araç çubuğu "Buraya bağla" gosterir (bkz. PdfSelectionOverlay).
+    property int relinkTargetId: 0
+    signal relinkCompleted()
+
     function restoreView(page, x, y, zoom) {
         goToLocation(page, Qt.point(x, y), zoom)
     }
@@ -436,6 +440,8 @@ Item {
                     pdfSelection: selection
                     paper: paper
                     pageIndex: pageHolder.index
+                    relinkTargetId: root.relinkTargetId
+                    onRelinkCompleted: root.relinkCompleted()
                 }
 
                 PdfHighlightHits {

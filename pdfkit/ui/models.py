@@ -223,6 +223,17 @@ class AnnotationListModel(_IncrementalModel):
     def annotations_on_page(self, page: int) -> list[Annotation]:
         return [r.annotation for r in self._rows if page in r.pages]
 
+    def count_with_status(self, status: str) -> int:
+        return sum(1 for r in self._rows if r.annotation.status == status)
+
+    def tag_counts(self) -> list[tuple[str, int]]:
+        """Belgedeki serbest etiketler ve kullanim sayilari (cok kullanilandan aza, esitte ada gore)."""
+        counts: dict[str, int] = {}
+        for row in self._rows:
+            for tag in row.annotation.tags:
+                counts[tag] = counts.get(tag, 0) + 1
+        return sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+
     def rows_with_rect(self) -> list[tuple[Annotation, list]]:
         """Tum alintilar ve sinirlayici dikdortgenleri ([x, y, w, h] ya da []), model sirasiyla."""
         return [(r.annotation, r.bounding_rect) for r in self._rows]

@@ -4,7 +4,7 @@ import "../components"
 import "../theme"
 
 // Kalıcı alıntılara tıklama alanları (yorum köşe işareti dahil) ve tıklanınca açılan düzenleme popover'ı
-// (renk/anlam değiştir, yorum, sil). Sayfa (`paper`) üzerine bindirilir.
+// (renk/anlam değiştir, yorum, serbest etiketler, sil). Sayfa (`paper`) üzerine bindirilir.
 Item {
     id: root
 
@@ -36,6 +36,7 @@ Item {
             required property var boundingRect
             required property string comment
             required property string label
+            required property var tags
             visible: boundingRect.length === 4
             x: visible ? boundingRect[0] * root.paper.pageScale : 0
             y: visible ? boundingRect[1] * root.paper.pageScale : 0
@@ -70,6 +71,8 @@ Item {
                     editHighlightPopover.highlightId = highlightHitArea.annotationId
                     editHighlightPopover.label = highlightHitArea.label
                     editCommentInput.text = highlightHitArea.comment
+                    editHighlightPopover.initialTags = highlightHitArea.tags.join(", ")
+                    editTagsInput.text = editHighlightPopover.initialTags
                     editHighlightPopover.x = Math.max(0, Math.min(
                         highlightHitArea.x, root.paper.width - editHighlightPopover.width))
                     editHighlightPopover.y = Math.max(0, Math.min(
@@ -88,6 +91,7 @@ Item {
         objectName: "editHighlightPopover"
         property int highlightId: -1
         property string label: ""
+        property string initialTags: ""
         visible: false
         z: 30
         width: 264
@@ -191,6 +195,37 @@ Item {
                 }
             }
 
+            // Serbest etiketler (virgülle ayrılır): anlam etiketinden bağımsız, Obsidian'da #etiket olur.
+            Rectangle {
+                width: parent.width
+                height: 30
+                radius: Theme.radiusXs
+                color: Theme.bgSurface
+                border.width: 1
+                border.color: editTagsInput.activeFocus ? Theme.borderFocus : Theme.borderSubtle
+
+                TextInput {
+                    id: editTagsInput
+                    objectName: "editTagsInput"
+                    anchors.fill: parent
+                    anchors.margins: 6
+                    verticalAlignment: TextInput.AlignVCenter
+                    color: Theme.textPrimary
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSm
+                    clip: true
+
+                    Text {
+                        anchors.fill: parent
+                        verticalAlignment: Text.AlignVCenter
+                        text: "Etiketler (virgülle ayır)..."
+                        font: editTagsInput.font
+                        color: Theme.textMuted
+                        visible: !editTagsInput.text && !editTagsInput.activeFocus
+                    }
+                }
+            }
+
             Item {
                 width: parent.width
                 height: saveCommentButton.height
@@ -198,11 +233,15 @@ Item {
                 AppButton {
                     id: saveCommentButton
                     anchors.right: parent.right
-                    text: "Yorumu Kaydet"
+                    text: "Kaydet"
                     variant: "primary"
                     implicitHeight: 28
                     onClicked: {
-                        bridge.pdf.setComment(editHighlightPopover.highlightId, editCommentInput.text)
+                        const id = editHighlightPopover.highlightId
+                        bridge.pdf.setComment(id, editCommentInput.text)
+                        if (editTagsInput.text !== editHighlightPopover.initialTags) {
+                            bridge.pdf.setTags(id, editTagsInput.text.split(",").map(t => t.trim()).filter(t => t !== ""))
+                        }
                         editHighlightPopover.visible = false
                     }
                 }

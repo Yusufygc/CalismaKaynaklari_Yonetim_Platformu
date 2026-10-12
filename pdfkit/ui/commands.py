@@ -62,6 +62,28 @@ class AnnotationCommands:
 
         return self._guard(create, 0)
 
+    def relink(self, annotation_id: int, selection: dict) -> bool:
+        """Konumu bulunamayan (yetim) alintiyi kullanicinin yeni sectigi metne baglar: metin, baglam ve geometri
+        yeni secimden alinir; anlam etiketi, yorum ve etiketler korunur."""
+        resolved = self._session.resolve_selection(selection)
+        if resolved is None:
+            self._notify("error", messages.NO_SELECTION)
+            return False
+        page, qt_selection = resolved
+        segment = segment_from_selection(page, qt_selection)
+        before, after = context_around(self._session.provider.text_of(page), segment.start, segment.end)
+
+        def run() -> bool:
+            updated = self._library.annotations().relink(
+                annotation_id, [segment], segment.text,
+                before[-_CONTEXT_STORED:] or None, after[:_CONTEXT_STORED] or None, current_engine_fp(),
+            )
+            self._session.annotations_model.upsert(updated)
+            self._notify("info", messages.HIGHLIGHT_RELINKED)
+            return True
+
+        return self._guard(run, False)
+
     def set_label(self, annotation_id: int, label_key: str) -> bool:
         return self._relabel(annotation_id, label_key) != 0
 

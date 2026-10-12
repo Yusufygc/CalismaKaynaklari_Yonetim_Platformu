@@ -29,6 +29,7 @@ Item {
             bridge.pdf.closeDocument()
     }
     onResourceIdChanged: {
+        relinkTargetId = 0
         pageArea.flushViewState()  // onceki belgenin son konumu (oturum henuz eski belgede)
         pageArea.trackView = false
         if (resourceId === 0)
@@ -42,6 +43,10 @@ Item {
     // Geri yükleme bitip yerleşene kadar konum kaydı kapalıdır (eski kayıt sayfa 0 ile ezilmesin).
     property int restoredResourceId: 0
     property bool textLayerBannerDismissed: false
+
+    // Yetim alintiyi yeniden baglama: yan panelden baslar, sayfada yeni metin secilince biter (bkz. PdfSelectionOverlay).
+    property int relinkTargetId: 0
+    property string relinkQuote: ""
     // Son acilan belgenin metin katmani durumu. Okuyucu kapanirken oturum basligi bosalir; bandin yuksekligi o anda
     // degisirse sayfa alani kapanista yeniden yerlesir (Qt TableView cokmesi gozlendi), bu yuzden deger yalniz yeni
     // belge acilinca guncellenir.
@@ -447,6 +452,10 @@ Item {
                 resource: root.resource ?? ({})
                 currentPage: pageArea.currentPage
                 onPageRequested: (page, location) => pageArea.goToLocation(page, location, 0)
+                onRelinkRequested: (annotationId, quote) => {
+                    root.relinkTargetId = annotationId
+                    root.relinkQuote = quote
+                }
             }
 
             PdfPageArea {
@@ -457,7 +466,52 @@ Item {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 document: pdfDoc
+                relinkTargetId: root.relinkTargetId
+                onRelinkCompleted: root.relinkTargetId = 0
                 onViewStateChanged: (page, x, y, zoom, seenPage) => bridge.pdf.saveReadingState(page, x, y, zoom, seenPage)
+            }
+
+            // Yeniden baglama bilgisi: sayfa alaninin ustunde yuzer (yerlesimi etkilemez; okuyucu kapanirken yukseklik
+            // degisimi sayfa alanini yeniden yerlestirip cokmeye yol aciyordu).
+            Rectangle {
+                id: relinkBanner
+                objectName: "relinkBanner"
+                visible: root.relinkTargetId > 0
+                z: 60
+                anchors.top: parent.top
+                anchors.topMargin: 10
+                anchors.horizontalCenter: pageArea.horizontalCenter
+                width: Math.min(pageArea.width - 40, relinkRow.implicitWidth + 24)
+                height: 40
+                radius: Theme.radiusPill
+                color: Theme.popoverBg
+                border.width: 1
+                border.color: Theme.accent
+
+                Row {
+                    id: relinkRow
+                    anchors.centerIn: parent
+                    spacing: 10
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: Math.min(420, implicitWidth)
+                        elide: Text.ElideRight
+                        text: "Sayfada yeni metni seç: “" + root.relinkQuote + "”"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSm
+                        color: Theme.textPrimary
+                    }
+
+                    AppButton {
+                        objectName: "cancelRelinkButton"
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Vazgeç"
+                        variant: "ghost"
+                        implicitHeight: 28
+                        onClicked: root.relinkTargetId = 0
+                    }
+                }
             }
 
             Column {

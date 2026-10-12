@@ -19,6 +19,7 @@ from tests.test_qml.qml_harness import (
     walk,
     white_page_box,
 )
+from pdfkit.domain.annotations import STATUS_ORPHANED, STATUS_OK, Segment
 from ui_qml.bridge import QmlBridge
 
 
@@ -103,7 +104,7 @@ def test_vocabulary_popover_saves_word_with_translation_and_sentence_context(rea
     assert view.visible("newVocabPopover") is None, "kaydedince popover kapanmali"
 
 
-def test_clicking_a_saved_highlight_opens_editor_and_saves_comment(reader):
+def test_clicking_a_saved_highlight_opens_editor_and_saves_comment_and_free_tags(reader):
     view, resource = reader
     view.select("kopegin")
     view.click_first_swatch()
@@ -115,10 +116,12 @@ def test_clicking_a_saved_highlight_opens_editor_and_saves_comment(reader):
     click(view.app, view.window, hit_area)
     assert view.visible("editHighlightPopover") is not None, "alintiya tiklayinca duzenleme popover'i acilmali"
     view.type_into("editCommentInput", "onemli")
-    click(view.app, view.window, find_text(view.window, "Yorumu Kaydet"))
+    view.type_into("editTagsInput", "#Hipotez, ornek , hipotez")
+    click(view.app, view.window, find_text(view.window, "Kaydet"))
 
     (updated,) = view.annotations.list_highlights(view.document_id)
     assert updated.id == highlight.id and updated.comment == "onemli"
+    assert updated.tags == ["hipotez", "ornek"]  # '#' atilir, kucuk harfe cevrilir, tekrar elenir
     assert view.visible("editHighlightPopover") is None
 
 
@@ -175,3 +178,83 @@ def test_clicking_another_highlight_while_editor_is_open_keeps_the_new_editor_op
     popover = view.visible("editHighlightPopover")
     assert popover is not None, "yeni alintinin duzenleme popover'i acik kalmali"
     assert popover.property("highlightId") in ids and popover.property("highlightId") != first
+
+
+def _open_notebook_with_an_orphan(view):
+    """Yan paneli 'Notlarim' sekmesinde acar; konumu bulunamayan (yetim) bir alinti hazirlar."""
+    from tests.test_qml.qml_harness import find_named
+
+    orphan = view.annotations.create_highlight(
+        view.document_id, "belgede artik olmayan metin", [Segment(0, 1, 28, "belgede artik olmayan metin")],
+        "critique", comment="eski yorum", tags=["yontem"], status=STATUS_ORPHANED,
+    )
+    view.bridge.pdf.openDocument(view.bridge.pdf.currentDocument["resourceId"])  # modeli yeniden yukle
+    find_named(view.window, "pdfReaderView").setProperty("sidePanelOpen", True)
+    find_named(view.window, "sidePanel").setProperty("activeTab", 2)
+    pump(view.app, 60)
+    _remeasure(view)
+    return orphan
+
+
+def _remeasure(view):
+    """Yan panel acilinca sayfa alani daralir ve sayfa kayar: sahne koordinatlari yeniden olculur."""
+    x_left, x_right, y_top = white_page_box(view.window)
+    view.x_left, view.y_top = x_left, y_top
+    view.scale = (x_right - x_left) / view.doc.pagePointSize(0).width()
+
+
+def test_orphan_is_listed_in_the_notebook_and_relinking_to_a_new_selection_reattaches_it(reader):
+    view, _resource = reader
+    orphan = _open_notebook_with_an_orphan(view)
+    assert view.visible("orphanFilterChip") is not None, "yetim varken suzgec cipi gorunmeli"
+    assert view.visible("relinkBanner") is None
+
+    click(view.app, view.window, view.visible("relinkButton"))
+    assert view.visible("relinkBanner") is not None, "yeniden baglama bilgisi gorunmeli"
+    view.select("kopegin")
+    assert find_text(view.window, "Buraya bağla") is not None, "secim cubugu renk yerine 'Buraya bağla' gostermeli"
+    click(view.app, view.window, find_text(view.window, "Buraya bağla"))
+    pump(view.app, 40)
+
+    relinked = view.annotations.get_highlight(orphan.id)
+    assert relinked.status == STATUS_OK and "kopegin" in relinked.quote_exact and relinked.segments[0].polygons
+    assert (relinked.label_key, relinked.comment, relinked.tags) == ("critique", "eski yorum", ["yontem"])
+    assert view.visible("relinkBanner") is None, "bitince bilgi kapanmali"
+    assert view.visible("orphanFilterChip") is None, "yetim kalmadi"
+    assert len(view.annotations.list_highlights(view.document_id)) == 1  # yeni kayit olusmadi
+
+
+def test_cancelling_a_relink_keeps_the_orphan_and_restores_the_normal_selection_toolbar(reader):
+    view, _resource = reader
+    orphan = _open_notebook_with_an_orphan(view)
+    click(view.app, view.window, view.visible("relinkButton"))
+
+    click(view.app, view.window, view.visible("cancelRelinkButton"))
+    view.select("kopegin")
+
+    assert view.visible("relinkBanner") is None
+    assert find_text(view.window, "Buraya bağla") is None
+    assert view.annotations.get_highlight(orphan.id).status == STATUS_ORPHANED
+    assert view.toolbar() is not None  # renk secenekleri geri geldi
+
+
+def test_notebook_filters_by_free_tag(reader):
+    view, _resource = reader
+    view.select("tilki")
+    view.click_first_swatch()
+    view.select("kopegin")
+    view.click_first_swatch()
+    first, second = sorted(view.annotations.list_highlights(view.document_id), key=lambda h: h.id)
+    view.bridge.pdf.setTags(first.id, ["hipotez"])
+    from tests.test_qml.qml_harness import find_named
+
+    find_named(view.window, "pdfReaderView").setProperty("sidePanelOpen", True)
+    find_named(view.window, "sidePanel").setProperty("activeTab", 2)
+    pump(view.app, 60)
+    assert len(view.bridge.pdf.notebookItems("", "", False, view.bridge.pdf.revision)) == 2
+
+    click(view.app, view.window, view.visible("tagFilterChip"))
+    pump(view.app, 40)
+
+    assert find_named(view.window, "sidePanel").property("tagFilter") == "hipotez"
+    assert [i["id"] for i in view.bridge.pdf.notebookItems("", "hipotez", False, view.bridge.pdf.revision)] == [first.id]

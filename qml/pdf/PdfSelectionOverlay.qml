@@ -12,6 +12,9 @@ Item {
     property var pdfSelection      // PdfSelection (hold/text/from/to/clear())
     property Item paper            // Sayfa kâğıdı (pageScale, width, height)
     property int pageIndex: 0
+    // > 0 iken secim araç çubuğu renk yerine "Buraya bağla" gösterir: secilen metin bu yetim alintiyi yeniden baglar.
+    property int relinkTargetId: 0
+    signal relinkCompleted()
 
     readonly property bool popoverVisible: newVocabPopover.visible
     function closeVocabulary() { newVocabPopover.visible = false }
@@ -30,7 +33,7 @@ Item {
         objectName: "newHighlightToolbar"
         visible: root.pdfSelection.hold && root.pdfSelection.text.trim().length > 0
         z: 20
-        implicitWidth: newHighlightRow.implicitWidth + 16
+        implicitWidth: (root.relinkTargetId > 0 ? relinkButton.implicitWidth : newHighlightRow.implicitWidth) + 16
         implicitHeight: 36
         radius: Theme.radiusPill
         color: Theme.popoverBg
@@ -76,8 +79,26 @@ Item {
             return Math.min(selectionBottomY + 10, parent.height - height)
         }
 
+        AppButton {
+            id: relinkButton
+            objectName: "relinkHereButton"
+            visible: root.relinkTargetId > 0
+            anchors.centerIn: parent
+            text: "Buraya bağla"
+            variant: "primary"
+            implicitHeight: 28
+            onClicked: {
+                if (newHighlightToolbar.capturedText.trim().length > 0
+                        && bridge.pdf.relinkAnnotation(root.relinkTargetId, newHighlightToolbar.selectionMap(root.pageIndex))) {
+                    root.relinkCompleted()
+                }
+                root.pdfSelection.clear()
+            }
+        }
+
         Row {
             id: newHighlightRow
+            visible: root.relinkTargetId === 0
             anchors.centerIn: parent
             spacing: 8
 
