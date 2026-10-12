@@ -1,0 +1,11 @@
+"""Kullaniciya gosterilen pdfkit bildirimleri (toast)."""
+
+HIGHLIGHT_SAVED = "Alıntı kaydedildi."
+HIGHLIGHT_RELABELED = "Aynı metin zaten alıntılanmıştı; anlam etiketi güncellendi."
+HIGHLIGHT_DELETED = "Alıntı silindi."
+HIGHLIGHTS_DELETED_FMT = "{count} alıntı silindi."
+NOTE_SAVED = "Not kaydedildi."
+TERM_SAVED_FMT = "'{word}' kelime havuzuna eklendi."
+TERM_DELETED = "Kelime silindi."
+NO_SELECTION = "Seçili metin alınamadı."
+OPERATION_FAILED = "İşlem tamamlanamadı."

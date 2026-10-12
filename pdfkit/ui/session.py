@@ -1,15 +1,17 @@
 from dataclasses import replace
 from functools import partial
 
-from PySide6.QtCore import QObject, QTimer
+from PySide6.QtCore import QObject, QPointF, QTimer
 from PySide6.QtQml import QQmlEngine
-from PySide6.QtPdf import QPdfDocument
+from PySide6.QtPdf import QPdfDocument, QPdfSelection
 
 from core.logger import log
 from pdfkit.domain.annotations import STATUS_OK, STATUS_PENDING, Segment
+from pdfkit.domain.annotations import Term
 from pdfkit.domain.models import Document
+from pdfkit.domain.text import sanitize_text
 from pdfkit.ui.library import PdfLibrary
-from pdfkit.ui.models import AnnotationListModel, PageFilterModel
+from pdfkit.ui.models import AnnotationListModel, NoteListModel, PageFilterModel
 from pdfkit.ui.pdf_text import QtPageTextProvider, current_engine_fp
 
 
@@ -22,14 +24,23 @@ class DocumentSession(QObject):
 
     Qt nesneleri yalnizca UI thread'inde kullanilir."""
 
-    def __init__(self, library: PdfLibrary, model: AnnotationListModel, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        library: PdfLibrary,
+        model: AnnotationListModel,
+        notes_model: NoteListModel | None = None,
+        parent: QObject | None = None,
+    ) -> None:
         super().__init__(parent)
         self._library = library
         self._model = model
+        self._notes_model = notes_model if notes_model is not None else NoteListModel(self)
+        self._terms: list[Term] = []
         self._document: Document | None = None
         self._qdoc: QPdfDocument | None = None
         self._provider: QtPageTextProvider | None = None
         self._page_models: dict[int, PageFilterModel] = {}
+        self._note_page_models: dict[int, PageFilterModel] = {}
         self._geometry_failed: set[int] = set()
         self._generation = 0  # open/close ile artar; eski belgenin bekleyen dilimleri kendini iptal eder
 
@@ -40,6 +51,29 @@ class DocumentSession(QObject):
     @property
     def is_open(self) -> bool:
         return self._document is not None
+
+    @property
+    def qdoc(self) -> QPdfDocument | None:
+        return self._qdoc
+
+    @property
+    def provider(self) -> QtPageTextProvider | None:
+        return self._provider
+
+    @property
+    def annotations_model(self) -> AnnotationListModel:
+        return self._model
+
+    @property
+    def notes_model(self) -> NoteListModel:
+        return self._notes_model
+
+    @property
+    def terms(self) -> list[Term]:
+        return self._terms
+
+    def reload_terms(self) -> None:
+        self._terms = self._library.annotations().list_terms(self._document.id) if self._document else []
 
     def open(self, resource_id: int) -> bool:
         """Kaynagin PDF belgesini acar ve alintilarini modele yukler. Belge yoksa/acilamazsa False."""
@@ -62,13 +96,18 @@ class DocumentSession(QObject):
             service.backfill_context(document.id, self._provider, current_engine_fp())
             items = service.list_highlights(document.id)
         self._model.set_annotations(items)
+        self._notes_model.set_notes(service.list_notes(document.id))
+        self.reload_terms()
         return True
 
     def close(self) -> None:
         self._generation += 1
         self._geometry_failed.clear()
         self._model.clear()
+        self._notes_model.clear()
+        self._terms = []
         self._page_models.clear()
+        self._note_page_models.clear()
         if self._qdoc is not None:
             # Windows'ta QPdfDocument dosyayi kilitler: close() + deleteLater() (zorla flush guvenli degil).
             self._qdoc.close()
@@ -82,6 +121,27 @@ class DocumentSession(QObject):
             QQmlEngine.setObjectOwnership(model, QQmlEngine.ObjectOwnership.CppOwnership)  # QML'in GC'si silmesin
             self._page_models[page] = model
         return model
+
+    def note_page_model(self, page: int) -> PageFilterModel:
+        model = self._note_page_models.get(page)
+        if model is None:
+            model = PageFilterModel(self._notes_model, page, self)
+            QQmlEngine.setObjectOwnership(model, QQmlEngine.ObjectOwnership.CppOwnership)
+            self._note_page_models[page] = model
+        return model
+
+    def resolve_selection(self, selection: dict) -> tuple[int, QPdfSelection] | None:
+        """QML'in gonderdigi secim haritasini ({page, fromX, fromY, toX, toY}; sayfa noktasi uzayinda) Qt
+        secimine cevirir. Gecersiz ya da yalnizca bosluk iceren secimde None."""
+        if self._qdoc is None:
+            return None
+        page = int(selection["page"])
+        found = self._qdoc.getSelection(
+            page, QPointF(selection["fromX"], selection["fromY"]), QPointF(selection["toX"], selection["toY"])
+        )
+        if not found.isValid() or not sanitize_text(found.text()).strip():
+            return None
+        return page, found
 
     def request_geometry(self, page: int) -> int:
         """Sayfa gorunur olunca cagrilir: ilk dilimi hemen hesaplar (hesaplanan sayiyi dondurur), kalanlari

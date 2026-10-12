@@ -68,6 +68,7 @@ class QmlBridge(QObject):
         search_state = SavedSearchState(self)
         self._annotations = AnnotationsBridge(self._ctx, self._reader, self)
         self._pdf = PdfBridge(self._ctx.pdf_library, self)
+        self._pdf.notification.connect(self._on_pdf_notification)
         self._citations = CitationsBridge(self._ctx, self._library, self._reader, self)
         self._market = MarketBridge(self._ctx, self._library, search_state, self)
         self._discovery = DiscoveryBridge(self._ctx, self._library, self)
@@ -114,6 +115,9 @@ class QmlBridge(QObject):
     @Property(QObject, constant=True)
     def settings(self) -> QObject:
         return self._settings
+
+    def _on_pdf_notification(self, kind: str, message: str) -> None:
+        (self._ctx.notify.error if kind == "error" else self._ctx.notify.info)(message)
 
     @property
     def controllers(self) -> Controllers:

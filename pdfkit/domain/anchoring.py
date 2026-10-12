@@ -131,7 +131,7 @@ def _search_page(
     return None
 
 
-def _context(text: str, start: int, end: int) -> tuple[str, str]:
+def context_around(text: str, start: int, end: int) -> tuple[str, str]:
     return text[max(0, start - CONTEXT_CHARS) : start], text[end : end + CONTEXT_CHARS]
 
 
@@ -174,6 +174,6 @@ def resolve(
     moved = resolved != segments
     method = next((m for m in methods if m != "position"), "position")
     first, last = resolved[0], resolved[-1]
-    before, _ = _context(provider.text_of(first.page), first.start, first.end)
-    _, after = _context(provider.text_of(last.page), last.start, last.end)
+    before, _ = context_around(provider.text_of(first.page), first.start, first.end)
+    _, after = context_around(provider.text_of(last.page), last.start, last.end)
     return Resolution(STATUS_OK, resolved, method, moved, prefix=before, suffix=after)
