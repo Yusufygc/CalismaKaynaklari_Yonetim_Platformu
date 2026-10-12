@@ -12,3 +12,11 @@ class DownloadError(PdfkitError):
 
 class TooLargeError(DownloadError):
     """Uzak PDF izin verilen boyutu asti."""
+
+
+class InvalidAnnotationError(PdfkitError):
+    """Alinti/not/kelime verisi gecersiz (bos metin, bilinmeyen etiket, parcasiz alinti ...)."""
+
+
+class NotFoundError(PdfkitError):
+    """Istenen belge, alinti, not ya da kelime bulunamadi."""
