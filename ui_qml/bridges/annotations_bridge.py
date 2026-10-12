@@ -1,3 +1,5 @@
+from collections import Counter
+
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from core.constants.highlight_labels import HIGHLIGHT_LABELS
@@ -70,6 +72,12 @@ class AnnotationsBridge(QObject):
     @Property(list, notify=vocabularyChanged)
     def vocabulary(self) -> list:
         return self._vocabulary_cache
+
+    @Property(list, notify=highlightsChanged)
+    def highlightTags(self) -> list:
+        """Havuzdaki serbest etiketler: [{name, count}] (sik kullanilandan aza, esitlikte ada gore)."""
+        counts = Counter(tag for item in self._highlights_cache for tag in item.get("tags", []))
+        return [{"name": name, "count": count} for name, count in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]
 
     @Property(list, constant=True)
     def highlightLabels(self) -> list:

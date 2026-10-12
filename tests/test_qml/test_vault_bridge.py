@@ -27,7 +27,7 @@ def env(qapp, session, tmp_path, monkeypatch):
 
 
 def _note_files(vault):
-    return sorted((vault / "Papers").glob("*.md")) if (vault / "Papers").exists() else []
+    return sorted(p for p in (vault / "Papers").glob("[!_]*.md")) if (vault / "Papers").exists() else []  # "_" ile baslayanlar ozet notlari
 
 
 def test_choosing_a_vault_saves_the_setting_syncs_existing_documents_and_reports_status(env):

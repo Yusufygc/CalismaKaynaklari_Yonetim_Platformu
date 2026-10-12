@@ -71,6 +71,9 @@ class ExportService:
         lines = [f"- “{_quote(item.content)}”{page}"]
         if item.comment:
             lines.append(f"  - Yorum: {_quote(item.comment)}")
+        tags = getattr(item, "tags", None)  # serbest etiketler yalniz PDF alintilarinda (Obsidian etiketi bicimiyle)
+        if tags:
+            lines.append("  - Etiketler: " + " ".join(f"#{tag}" for tag in tags))
         return lines
 
     @staticmethod

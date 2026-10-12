@@ -60,7 +60,7 @@ def _no_comment_markers(text: str) -> str:
     return text.replace("%%", "% %")
 
 
-def _inline(text: str) -> str:
+def inline_text(text: str) -> str:
     return _no_comment_markers(" ".join((text or "").split()))
 
 
@@ -99,7 +99,7 @@ def _annotation_lines(document: Document, annotation: Annotation) -> list[str]:
         heading = f"> [!{_callout_type(annotation.label_key)}] {label} · konumu bulunamadı"
     else:
         heading = f"> [!{_callout_type(annotation.label_key)}] {label} · {_page_link(document, annotation.page, annotation.uid)}"
-    body = [f"> “{_inline(annotation.quote_exact)}”"]
+    body = [f"> “{inline_text(annotation.quote_exact)}”"]
     comment = _lines(annotation.comment or "")
     if comment:
         body += [">", f"> **Yorum:** {comment[0]}"] + [f"> {line}" for line in comment[1:]]
@@ -117,12 +117,12 @@ def _note_lines(document: Document, note: PageNote) -> list[str]:
     return lines
 
 
-def _term_line(document: Document, term: Term) -> str:
-    line = f"- **{_inline(term.word)}** — {_inline(term.translation)}"
+def term_line(document: Document, term: Term) -> str:
+    line = f"- **{inline_text(term.word)}** — {inline_text(term.translation)}"
     if term.segments:
         line += f" · {_page_link(document, term.segments[0].page, term.uid)}"
     if term.context_sentence:
-        line += f" — _“{_inline(term.context_sentence)}”_"
+        line += f" — _“{inline_text(term.context_sentence)}”_"
     return line
 
 
@@ -145,7 +145,7 @@ def render_block(content: NoteContent) -> str:
         sections.append(["### Notlar", ""] + _join_blank([_note_lines(document, n) for n in notes]))
     terms = sorted(content.terms, key=lambda t: (t.segments[0].page if t.segments else _NO_PAGE_SORT, t.word.lower(), t.id))
     if terms:
-        sections.append(["### Kelimeler", ""] + [_term_line(document, t) for t in terms])
+        sections.append(["### Kelimeler", ""] + [term_line(document, t) for t in terms])
     lines = [SENTINEL_BEGIN, ""]
     if sections:
         lines += _join_blank(sections)
@@ -179,8 +179,8 @@ def managed_fields(content: NoteContent) -> dict[str, str]:
     fields = {
         "pkm_id": content.document.sha256[:16],
         "citekey": _yaml(content.citekey),
-        "title": _yaml(_inline(info.title)) if info.title else "",
-        "authors": "[" + ", ".join(_yaml(_inline(a)) for a in info.authors if a.strip()) + "]" if info.authors else "",
+        "title": _yaml(inline_text(info.title)) if info.title else "",
+        "authors": "[" + ", ".join(_yaml(inline_text(a)) for a in info.authors if a.strip()) + "]" if info.authors else "",
         "year": str(info.year) if info.year else "",
         "doi": _yaml(info.doi) if info.doi else "",
         "status": _yaml(info.status) if info.status else "",
@@ -233,10 +233,12 @@ def _merge_frontmatter(lines: list[str], fields: dict[str, str]) -> list[str]:
 # ---------------------------------------------------------------------- #
 
 
-def _replace_or_append_block(text: str, block: str) -> str:
+def replace_block(text: str, block: str, begin_marker: str = BEGIN_MARKER, end_marker: str = SENTINEL_END) -> str:
+    """Sentinel'li blogu degistirir; hic sentinel yoksa blogu sona ekler. Eksik, tekrarli ya da ters sentinel
+    kullanici metnine dokunulamayacagi anlamina gelir: `VaultNoteError`."""
     lines = text.split("\n")
-    begins = [i for i, line in enumerate(lines) if line.strip().startswith(BEGIN_MARKER)]
-    ends = [i for i, line in enumerate(lines) if line.strip() == SENTINEL_END]
+    begins = [i for i, line in enumerate(lines) if line.strip().startswith(begin_marker)]
+    ends = [i for i, line in enumerate(lines) if line.strip() == end_marker]
     if not begins and not ends:
         return text.rstrip("\n") + "\n\n" + block + "\n"
     if len(begins) != 1 or len(ends) != 1 or begins[0] > ends[0]:
@@ -263,7 +265,7 @@ def compose_note(existing: str | None, content: NoteContent) -> str:
     else:
         header, rest = split
         text = "---\n" + "\n".join(_merge_frontmatter(header, fields)) + "\n---" + ("\n" + rest if rest or text.endswith("\n") else "")
-    text = _replace_or_append_block(text, block)
+    text = replace_block(text, block)
     if not text.endswith("\n"):
         text += "\n"
     return text.replace("\n", newline) if newline != "\n" else text
@@ -271,5 +273,5 @@ def compose_note(existing: str | None, content: NoteContent) -> str:
 
 def _new_note(content: NoteContent, fields: dict[str, str], block: str) -> str:
     header = _merge_frontmatter([], fields) + ["tags: [paper]"]
-    title = _inline(content.info.title) or content.citekey
+    title = inline_text(content.info.title) or content.citekey
     return "---\n" + "\n".join(header) + "\n---\n\n" + f"# {title}\n\n" + block + "\n"

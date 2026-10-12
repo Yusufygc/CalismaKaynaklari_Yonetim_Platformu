@@ -8,12 +8,13 @@ ve girdiyi kendisi dogrular."""
 import getpass
 import time
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QCoreApplication, QObject, Signal
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 
 MAX_MESSAGE_BYTES = 2048
 _CONNECT_TIMEOUT_MS = 500
 _RETRY_DELAY_S = 0.03
+_RETRY_DELAY_MS = 30
 
 
 def default_name() -> str:
@@ -43,8 +44,15 @@ def send_message(name: str, message: str, timeout_ms: int = _CONNECT_TIMEOUT_MS)
     socket = _connect(name, timeout_ms)
     if socket is None:
         return False
-    socket.write(data)
-    delivered = socket.waitForBytesWritten(timeout_ms)
+    # `write` veriyi kuyruga alir ve Windows'ta gonderim eszamansiz tamamlanir; `waitForBytesWritten` bu sirada
+    # (ozellikle ardisik istemcilerde) hata dondurup veriyi yine de gonderebilir. Donus degerine degil, kuyrugun
+    # bosalmasina bakilir; yoksa mesaj gitmisken "iletilemedi" sanilip ikinci bir uygulama ornegi baslatilirdi.
+    queued = socket.write(data) == len(data)
+    deadline = time.monotonic() + timeout_ms / 1000
+    while queued and socket.bytesToWrite() > 0 and time.monotonic() < deadline:
+        socket.waitForBytesWritten(_RETRY_DELAY_MS)
+        QCoreApplication.processEvents()
+    delivered = queued and socket.bytesToWrite() == 0
     socket.disconnectFromServer()
     if socket.state() != QLocalSocket.LocalSocketState.UnconnectedState:
         socket.waitForDisconnected(timeout_ms)

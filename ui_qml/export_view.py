@@ -2,12 +2,12 @@
 
 `ExportService` eski `Resource` iliskilerini (highlights / pdf_notes / vocabulary) okur. PDF belgesi olan kaynaklar icin
 bu alanlari pdfkit verisiyle dolduran hafif bir kopya verilir; diger kaynaklar (HTML makaleler) oldugu gibi gecer.
-Gecici: Faz 5'te vault ciktisi dogrudan pdfkit'ten uretilince kalkar.
+Gecici: Faz 8'de eski tablolar kalkinca sadelesir.
 """
 from types import SimpleNamespace
 
 from models import Resource
-from pdfkit.api import PdfLibrary, effective_color
+from pdfkit.api import PdfLibrary, effective_color, obsidian_tag
 
 
 def export_view(resource: Resource, pdf_library: PdfLibrary):
@@ -22,6 +22,7 @@ def export_view(resource: Resource, pdf_library: PdfLibrary):
                 content=annotation.quote_exact,
                 color=effective_color(annotation.label_key, annotation.color),
                 comment=annotation.comment,
+                tags=[tag for tag in (obsidian_tag(t) for t in annotation.tags) if tag],
                 page_number=first.page if first else None,
                 start_index=first.start if first else None,
             )

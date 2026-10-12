@@ -12,6 +12,7 @@ Item {
     property int activeTab: 0 // 0: Alıntılar, 1: Kelimeler
     property string searchQuery: ""
     property string labelFilter: "" // Alıntılar: akademik anlam etiketi ("" = tümü)
+    property string tagFilter: "" // Alıntılar: serbest etiket ("" = tümü)
 
     Column {
         anchors.fill: parent
@@ -164,6 +165,8 @@ Item {
                 searchQuery: root.searchQuery
                 labelFilter: root.labelFilter
                 onLabelFilterRequested: (label) => root.labelFilter = label
+                tagFilter: root.tagFilter
+                onTagFilterRequested: (tag) => root.tagFilter = tag
             }
 
             VocabularyTab {

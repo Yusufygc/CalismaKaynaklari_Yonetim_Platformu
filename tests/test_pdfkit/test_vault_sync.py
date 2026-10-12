@@ -60,7 +60,7 @@ def _reports(sync):
 
 def _notes(vault):
     papers = vault / "Papers"
-    return sorted(p.name for p in papers.glob("*.md")) if papers.exists() else []
+    return sorted(p.name for p in papers.glob("[!_]*.md")) if papers.exists() else []  # "_" ile baslayanlar ozet notlari
 
 
 def test_nothing_happens_while_no_vault_is_configured(sync, doc):
@@ -204,3 +204,94 @@ def test_clearing_the_root_disables_syncing_but_keeps_existing_notes(sync, vault
     sync.sync_all()
 
     assert sync.status()["state"] == STATE_DISABLED and _notes(vault) == ["lecun2015deep.md"]  # silinmez
+
+
+# ---- ozet notlari: kutuphane dizini ve kelime defteri ----
+
+
+def _summary(vault, name):
+    path = vault / "Papers" / name
+    return path.read_text(encoding="utf-8") if path.exists() else None
+
+
+def test_full_sync_writes_the_library_index_and_skips_an_empty_vocabulary(sync, library, vault, doc):
+    _resource, document = doc
+    library.annotations().create_highlight(document.id, "alinti", [Segment(0, 0, 5, "alinti")], "method")
+    reports = _reports(sync)
+    sync.set_root(vault)
+
+    sync.sync_all()
+
+    index = _summary(vault, "_Index.md")
+    assert "- [[lecun2015deep]] — Deep learning · Yann LeCun · 2015 · 1 alıntı · Gelen Kutusu" in index
+    assert _summary(vault, "_Kelimeler.md") is None  # kelime yok: bos defter olusturulmaz
+    assert reports[0].summaries_written == 1 and reports[0].created == 1
+    assert "1 not yazıldı" in sync.status()["message"]  # ozet notlari belge sayisina karismaz
+
+
+def test_terms_reach_the_vocabulary_note_and_counts_in_the_index_follow_changes(sync, library, vault, doc):
+    resource, document = doc
+    sync.set_root(vault)
+    sync.sync_all()
+    library.annotations().create_term(document.id, "ubiquitous", "her yerde", "It is ubiquitous.", [Segment(2, 0, 10, "ubiquitous")])
+    reports = _reports(sync)
+
+    sync.mark_resource(resource.id)
+    QTest.qWait(120)
+
+    vocabulary = _summary(vault, "_Kelimeler.md")
+    assert "### [[lecun2015deep]] — Deep learning (1)" in vocabulary and "**ubiquitous** — her yerde" in vocabulary
+    assert "1 kelime" in _summary(vault, "_Index.md")
+    assert reports[0].summaries_written == 2
+
+
+def test_unchanged_summaries_are_not_rewritten(sync, library, vault, doc):
+    sync.set_root(vault)
+    sync.sync_all()
+    index = vault / "Papers" / "_Index.md"
+    stamp = index.stat().st_mtime_ns
+    reports = _reports(sync)
+
+    sync.sync_all()
+
+    assert reports[0].summaries_written == 0 and index.stat().st_mtime_ns == stamp
+
+
+def test_summaries_wait_for_a_full_sync_so_a_partial_index_never_replaces_a_complete_one(sync, vault, doc):
+    resource, _document = doc
+    sync.set_root(vault)
+
+    sync.mark_resource(resource.id)  # tam esitleme yok: onbellek eksik olabilir
+    QTest.qWait(120)
+
+    assert _notes(vault) == ["lecun2015deep.md"] and _summary(vault, "_Index.md") is None
+
+
+def test_the_index_follows_new_documents_and_keeps_user_text(sync, library, vault, doc, session, pdf_store, tmp_path):
+    sync.set_root(vault)
+    sync.sync_all()
+    index = vault / "Papers" / "_Index.md"
+    index.write_text(index.read_text(encoding="utf-8") + "\nBenim notum.\n", encoding="utf-8")
+    other, _other_document = _add_document(session, pdf_store, tmp_path, "iki")
+
+    sync.mark_resource(other.id)
+    QTest.qWait(120)
+
+    text = index.read_text(encoding="utf-8")
+    assert "Kaynaklar (2)" in text and "Benim notum." in text
+
+
+def test_a_corrupted_summary_fails_alone_and_notes_are_still_written(sync, library, vault, doc):
+    _resource, document = doc
+    papers = vault / "Papers"
+    papers.mkdir()
+    (papers / "_Index.md").write_text("# Dizin\n%% pkm:end index %%\n", encoding="utf-8")
+    library.annotations().create_highlight(document.id, "a", [Segment(0, 0, 1, "a")], "method")
+    reports = _reports(sync)
+    sync.set_root(vault)
+
+    sync.sync_all()
+
+    assert reports[0].failed[0][0] == "_Index.md" and reports[0].created == 1
+    assert sync.status()["state"] == STATE_ERROR
+    assert (papers / "_Index.md").read_text(encoding="utf-8") == "# Dizin\n%% pkm:end index %%\n"

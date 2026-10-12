@@ -63,6 +63,7 @@ def serialize_pool_pdf_highlight(entry) -> dict:
         "color": effective_color(annotation.label_key, annotation.color),
         "label": name_for_label(annotation.label_key),
         "comment": annotation.comment or "",
+        "tags": list(annotation.tags),
         "page": first.page if first else -1,
         "created_at": format_local_datetime(annotation.created_at),
     }
@@ -103,6 +104,7 @@ def serialize_pool_highlight(highlight: Highlight) -> dict:
         "color": highlight.color or DEFAULT_HIGHLIGHT_COLOR,
         "label": label_for_color(highlight.color),
         "comment": highlight.comment or "",
+        "tags": [],  # HTML makale alintilarinda serbest etiket yok (yalniz PDF alintilarinda)
         "page": highlight.page_number if highlight.page_number is not None else -1,
         "created_at": format_local_datetime(highlight.created_at),
     }

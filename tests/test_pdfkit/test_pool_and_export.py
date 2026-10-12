@@ -156,3 +156,38 @@ def test_deleting_a_resource_removes_its_pdf_annotations_from_the_pool_after_ref
     bridge.annotations.reload_highlights()
 
     assert [h for h in bridge.annotations.highlights if h["key"].startswith("pdf:")] == []
+
+
+def _tag_first_highlight(bridge, tags):
+    annotation = bridge.ctx.pdf_library.annotations().list_highlights(bridge.pdf.currentDocument["documentId"])[0]
+    bridge.ctx.pdf_library.annotations().set_tags(annotation.id, tags)
+
+
+def test_pool_carries_free_tags_and_counts_them_across_highlights(env):
+    bridge, _pdf, web_resource, reader = env
+    bridge.pdf.addHighlight(selection_of(reader, "tilki"), "finding")
+    bridge.pdf.addHighlight(selection_of(reader, "tembel"), "method")
+    annotations = bridge.ctx.pdf_library.annotations()
+    first, second = annotations.list_highlights(bridge.pdf.currentDocument["documentId"])
+    annotations.set_tags(first.id, ["hipotez", "örnek etiket"])
+    annotations.set_tags(second.id, ["Hipotez"])
+    bridge.controllers.highlights.create_highlight(web_resource.id, "web alintisi", "#EAB308")
+
+    bridge.annotations.reload_highlights()
+
+    by_content = {h["content"]: h for h in bridge.annotations.highlights}
+    assert by_content["web alintisi"]["tags"] == []  # HTML makale alintilarinda etiket yok
+    assert sorted(t for h in bridge.annotations.highlights for t in h["tags"]) == ["hipotez", "hipotez", "örnek etiket"]
+    assert bridge.annotations.highlightTags == [{"name": "hipotez", "count": 2}, {"name": "örnek etiket", "count": 1}]
+
+
+def test_resource_markdown_export_lists_free_tags_in_obsidian_form(env, tmp_path):
+    bridge, pdf_resource, _web, reader = env
+    bridge.pdf.addHighlight(selection_of(reader, "tilki"), "finding")
+    _tag_first_highlight(bridge, ["hipotez", "örnek etiket", "123"])
+    target = tmp_path / "etiketli.md"
+
+    bridge.reader.exportResourceMarkdown(pdf_resource.id, target.as_uri())
+
+    markdown = target.read_text(encoding="utf-8")
+    assert "  - Etiketler: #hipotez #örnek-etiket\n" in markdown  # yalniz rakamli etiket Obsidian'da etiket sayilmaz

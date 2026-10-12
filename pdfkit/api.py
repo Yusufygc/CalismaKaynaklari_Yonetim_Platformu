@@ -12,6 +12,7 @@ from pdfkit.domain.errors import (
 )
 from pdfkit.domain.labels import effective_color, name_for_label
 from pdfkit.domain.models import Document, PdfInspection, SourceInfo
+from pdfkit.domain.vault_note import obsidian_tag
 from pdfkit.infra.text import extract_page_texts
 from pdfkit.ui.bridge import PdfBridge
 from pdfkit.ui.library import ImportOutcome, PdfLibrary, ResourceAnnotations
@@ -43,5 +44,6 @@ __all__ = [
     "effective_color",
     "extract_page_texts",
     "name_for_label",
+    "obsidian_tag",
     "parse_open_link",
 ]

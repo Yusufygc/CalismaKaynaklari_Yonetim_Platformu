@@ -10,7 +10,15 @@ Item {
 
     property string searchQuery: ""
     property string labelFilter: ""   // "" = tümü
+    property string tagFilter: ""     // serbest etiket ("" = tümü)
+    // Süzgeçteki etiketin son alıntısı silinince chip kaybolur: süzgeç sessizce boş liste bırakmasın
+    readonly property string activeTag: {
+        const tags = bridge.annotations.highlightTags
+        for (let i = 0; i < tags.length; i++) if (tags[i].name === root.tagFilter) return root.tagFilter
+        return ""
+    }
     signal labelFilterRequested(string label)
+    signal tagFilterRequested(string tag)
 
     // Alıntılar: toplu silme için seçim (anahtar -> true; anahtar 'pdf:<id>' ya da 'html:<id>'; değişince yeniden atanır ki bağlamalar tazelensin)
     property var selectedIds: ({})
@@ -41,6 +49,7 @@ Item {
 
     // Görünmeyen (filtre/arama/sekme dışı) alıntı yanlışlıkla silinmesin: görünüm değişince seçimi bırak.
     onLabelFilterChanged: clearSelection()
+    onTagFilterChanged: clearSelection()
     onSearchQueryChanged: clearSelection()
     onVisibleChanged: if (!visible) clearSelection()  // Sekme değişince seçim bırakılır
 
@@ -113,6 +122,7 @@ Item {
 
     ListView {
         id: highlightsList
+        objectName: "highlightsList"
         anchors.top: selectionBar.bottom
         anchors.left: parent.left
         anchors.right: parent.right
@@ -126,33 +136,59 @@ Item {
             var all = bridge.annotations.highlights
             return all.filter(function(h) {
                 if (root.labelFilter !== "" && h.label !== root.labelFilter) return false
+                if (root.activeTag !== "" && h.tags.indexOf(root.activeTag) === -1) return false
                 if (!root.searchQuery) return true
                 return TextUtils.foldTr(h.content).indexOf(root.searchQuery) !== -1 ||
                        TextUtils.foldTr(h.resource_title).indexOf(root.searchQuery) !== -1 ||
-                       TextUtils.foldTr(h.comment).indexOf(root.searchQuery) !== -1
+                       TextUtils.foldTr(h.comment).indexOf(root.searchQuery) !== -1 ||
+                       TextUtils.foldTr(h.tags.join(" ")).indexOf(root.searchQuery) !== -1
             })
         }
 
-        // Akademik anlam etiketine göre filtre (Yöntem, Bulgu / Sonuç, ...)
-        header: Flow {
+        // Akademik anlam etiketine göre filtre (Yöntem, Bulgu / Sonuç, ...) ve serbest etiketler (#hipotez)
+        header: Column {
             width: highlightsList.width - 24
             spacing: 8
             bottomPadding: 12
 
-            AppFilterChip {
-                text: "Tümü"
-                isSelected: root.labelFilter === ""
-                onClicked: root.labelFilterRequested("")
+            Flow {
+                width: parent.width
+                spacing: 8
+
+                AppFilterChip {
+                    text: "Tümü"
+                    isSelected: root.labelFilter === ""
+                    onClicked: root.labelFilterRequested("")
+                }
+
+                Repeater {
+                    model: bridge.annotations.highlightLabels
+                    delegate: AppFilterChip {
+                        required property var modelData
+                        text: modelData.label
+                        dotColor: modelData.color
+                        isSelected: root.labelFilter === modelData.label
+                        onClicked: root.labelFilterRequested(root.labelFilter === modelData.label ? "" : modelData.label)
+                    }
+                }
             }
 
-            Repeater {
-                model: bridge.annotations.highlightLabels
-                delegate: AppFilterChip {
-                    required property var modelData
-                    text: modelData.label
-                    dotColor: modelData.color
-                    isSelected: root.labelFilter === modelData.label
-                    onClicked: root.labelFilterRequested(root.labelFilter === modelData.label ? "" : modelData.label)
+            Flow {
+                objectName: "tagFilterRow"
+                width: parent.width
+                spacing: 8
+                visible: bridge.annotations.highlightTags.length > 0
+
+                Repeater {
+                    model: bridge.annotations.highlightTags
+                    delegate: AppFilterChip {
+                        required property var modelData
+                        objectName: "tagChip"
+                        text: "#" + modelData.name
+                        count: modelData.count
+                        isSelected: root.activeTag === modelData.name
+                        onClicked: root.tagFilterRequested(root.activeTag === modelData.name ? "" : modelData.name)
+                    }
                 }
             }
         }
@@ -243,6 +279,17 @@ Item {
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontXs
                     font.italic: true
+                    color: Theme.accentText
+                }
+
+                // Serbest etiketler
+                Text {
+                    width: parent.width - 50
+                    visible: modelData.tags.length > 0
+                    text: modelData.tags.map(function(t) { return "#" + t }).join("  ")
+                    wrapMode: Text.Wrap
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontXs
                     color: Theme.accentText
                 }
 

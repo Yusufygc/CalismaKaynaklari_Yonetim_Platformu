@@ -9,6 +9,15 @@ from PySide6.QtCore import QObject, QThreadPool, QTimer, Signal
 from core.logger import log
 from pdfkit.domain.errors import PdfkitError
 from pdfkit.domain.vault_note import NoteContent
+from pdfkit.domain.vault_summary import (
+    IndexContent,
+    IndexEntry,
+    SummaryContent,
+    VocabularyContent,
+    VocabularySection,
+    index_entry_for,
+    vocabulary_section_for,
+)
 from pdfkit.infra.vault_writer import VaultWriter, WriteOutcome
 from pdfkit.ui.library import PdfLibrary
 from pdfkit.ui.workers import CallWorker, submit
@@ -28,16 +37,24 @@ class SyncReport:
     created: int = 0
     updated: int = 0
     unchanged: int = 0
-    failed: list[tuple[str, str]] = field(default_factory=list)  # (citekey, mesaj)
+    failed: list[tuple[str, str]] = field(default_factory=list)  # (citekey ya da ozet dosyasi, mesaj)
+    summaries_written: int = 0  # dizin / kelime defteri notlarindan yazilan (belge notlarindan ayri sayilir)
 
     @property
     def written(self) -> int:
         return self.created + self.updated
 
 
-def write_batch(writer: VaultWriter, contents: list[NoteContent]) -> SyncReport:
+def write_batch(writer: VaultWriter, contents: list[NoteContent], summaries: list[SummaryContent] | None = None) -> SyncReport:
     """Notlari sirayla yazar (worker thread'inde). Tek notun hatasi digerlerini durdurmaz."""
     report = SyncReport()
+    for summary in summaries or []:
+        try:
+            if writer.write_summary(summary) is not WriteOutcome.UNCHANGED:
+                report.summaries_written += 1
+        except (PdfkitError, OSError) as exc:
+            log.warning("Vault ozet notu yazilamadi (%s): %s", summary.filename, exc)
+            report.failed.append((summary.filename, str(exc)))
     for content in contents:
         try:
             outcome = writer.write(content)
@@ -76,6 +93,10 @@ class VaultSync(QObject):
         self._dirty: set[int] = set()
         self._queue: deque[int] = deque()
         self._contents: list[NoteContent] = []
+        self._full_requested = False  # `sync_all`: dizin/kelime defteri tum belgelerden yeniden kurulur
+        self._full_pass = False  # calisan esitleme tam mi?
+        self._cache: dict[int, tuple[IndexEntry, VocabularySection]] = {}  # belge -> dizin/kelime defteri parcalari
+        self._cache_complete = False  # onbellek tum belgeleri kapsiyor mu? (degilse ozet notlari yazilmaz)
         self._running = False
         self._state = STATE_DISABLED
         self._message = ""
@@ -99,6 +120,9 @@ class VaultSync(QObject):
         if path is None:
             self._writer = None
             self._dirty.clear()
+            self._cache.clear()
+            self._cache_complete = False
+            self._full_requested = False
             self._timer.stop()
             self._set_status(STATE_DISABLED, "")
             return
@@ -134,6 +158,7 @@ class VaultSync(QObject):
             return
         for document_id in self._library.note_builder().linked_document_ids():
             self._dirty.add(document_id)
+        self._full_requested = True
         self._timer.stop()
         self._flush()
 
@@ -157,6 +182,9 @@ class VaultSync(QObject):
         self._queue = deque(sorted(self._dirty))
         self._dirty.clear()
         self._contents = []
+        self._full_pass, self._full_requested = self._full_requested, False
+        if self._full_pass:
+            self._cache.clear()
         self._set_status(STATE_SYNCING, "")
         self._build_next()
 
@@ -165,22 +193,41 @@ class VaultSync(QObject):
         for _ in range(_BUILD_CHUNK):
             if not self._queue:
                 break
+            document_id = self._queue.popleft()
             try:
-                content = builder.build(self._queue.popleft())
+                content = builder.build(document_id)
             except Exception:
                 log.exception("Vault notu hazirlanamadi")
                 continue
-            if content is not None:
-                self._contents.append(content)
+            if content is None:
+                self._cache.pop(document_id, None)  # bagli kaynagi kalmadi: dizinden dusur (not dosyasi silinmez)
+                continue
+            self._contents.append(content)
+            self._cache[document_id] = (index_entry_for(content), vocabulary_section_for(content))
         if self._queue:
             QTimer.singleShot(0, self._build_next)
             return
-        writer, contents = self._writer, self._contents
+        writer, contents, summaries = self._writer, self._contents, self._summaries()
         self._contents = []
-        if writer is None or not contents:
+        if writer is None or not (contents or summaries):
             self._on_written(SyncReport(), None)
             return
-        submit(self._thread_pool(), CallWorker(lambda: write_batch(writer, contents), self._on_written), self._dispatch)
+        submit(
+            self._thread_pool(),
+            CallWorker(lambda: write_batch(writer, contents, summaries), self._on_written),
+            self._dispatch,
+        )
+
+    def _summaries(self) -> list[SummaryContent]:
+        """Dizin ve kelime defteri notlari. Onbellek tum belgeleri kapsamadan yazilmaz: eksik bir dizin, vault'taki
+        dogru dizini bozardi. Tam bir esitleme (`sync_all`) onbellegi bastan kurar; sonrasinda degisen belgeler
+        onbellegi gunceller."""
+        if self._full_pass:
+            self._cache_complete = True
+        if not self._cache_complete:
+            return []
+        parts = [self._cache[document_id] for document_id in sorted(self._cache)]
+        return [IndexContent([entry for entry, _section in parts]), VocabularyContent([section for _entry, section in parts])]
 
     def _dispatch(self, callback, result, error) -> None:
         callback(result, error)

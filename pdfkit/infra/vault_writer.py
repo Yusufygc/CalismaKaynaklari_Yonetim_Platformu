@@ -2,12 +2,14 @@
 import codecs
 import os
 import time
+from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
 
 from core.logger import log
 from pdfkit.domain.errors import VaultConflictError, VaultNoteError, VaultUnavailableError
 from pdfkit.domain.vault_note import NOTE_DIRECTORY, NoteContent, compose_note, note_rel_path
+from pdfkit.domain.vault_summary import SummaryContent, compose_summary
 
 _ATTEMPTS = 3  # okuma ile degistirme arasinda dosya degisirse yeniden dene
 _REPLACE_RETRIES = 4  # Windows: antivirus/arama dizinleyicisi anlik kilit tutabilir
@@ -52,11 +54,22 @@ class VaultWriter:
 
     def write(self, content: NoteContent) -> WriteOutcome:
         self.check()
-        target = self._target(content.citekey)
+        return self._write_text(self._target(content.citekey), lambda existing: compose_note(existing, content))
+
+    def write_summary(self, content: SummaryContent) -> WriteOutcome:
+        """Kutuphane dizini / kelime defteri gibi tek dosyalik ozet notlari (sabit dosya adi). Icerik bossa ve dosya
+        yoksa olusturulmaz (kelime kullanmayan kullanicinin vault'unda bos bir kelime defteri durmasin)."""
+        self.check()
+        target = self._summary_target(content.filename)
+        if content.is_empty and not target.exists():
+            return WriteOutcome.UNCHANGED
+        return self._write_text(target, lambda existing: compose_summary(existing, content))
+
+    def _write_text(self, target: Path, compose: Callable[[str | None], str]) -> WriteOutcome:
         for _ in range(_ATTEMPTS):
             before = _snapshot(target)
             existing, bom = self._read(target) if before else (None, False)
-            composed = compose_note(existing, content)
+            composed = compose(existing)
             if existing is not None and composed == existing:
                 return WriteOutcome.UNCHANGED
             if self._replace(target, composed, bom, before):
@@ -66,7 +79,12 @@ class VaultWriter:
     # ------------------------------------------------------------------ #
 
     def _target(self, citekey: str) -> Path:
-        target = self._root / note_rel_path(citekey)
+        return self._notes_directory() / Path(note_rel_path(citekey)).name
+
+    def _summary_target(self, filename: str) -> Path:
+        return self._notes_directory() / filename
+
+    def _notes_directory(self) -> Path:
         directory = self._root / NOTE_DIRECTORY
         try:
             directory.mkdir(exist_ok=True)
@@ -74,7 +92,7 @@ class VaultWriter:
             resolved.relative_to(self._root.resolve())
         except (OSError, ValueError) as exc:
             raise VaultUnavailableError(f"'{NOTE_DIRECTORY}' klasörü oluşturulamadı ya da vault dışına işaret ediyor.") from exc
-        return target
+        return directory
 
     @staticmethod
     def _read(path: Path) -> tuple[str, bool]:
