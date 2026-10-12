@@ -110,6 +110,9 @@ Repo/servis/controller: `repositories/saved_search_repo.py`, `services/saved_sea
 ### `pdf_documents` / `pdf_resource_documents` (pdfkit belge deposu — 2026-10-12, migration `b3a91c5d7e20`)
 Modeller `pdfkit/infra/orm.py` (ortak `Base`). `pdf_documents`: id, `sha256` (benzersiz), `rel_path` (depo köküne göre `store/ab/<sha>/<ad>.pdf`), `byte_size`, `page_count`, `has_text_layer`, `pdf_title`, `pdf_author`, `doi` (indeksli), `source` (`local`/`web`), `original_filename`, `imported_at`. `pdf_resource_documents`: `resource_id` (PK, FK → resources, CASCADE) → `document_id` (FK → pdf_documents, RESTRICT, indeksli); aynı PDF birden çok kaynakta olabilir, hiçbir kaynağa bağlı olmayan belge çöp toplamayla karantinaya alınır. Bkz. [[pdfkit]].
 
+### `pdf_annotations` / `pdf_page_notes` / `pdf_terms` (pdfkit alıntı alanı — 2026-10-12, migration `d7e3b1a94c52`)
+Modeller `pdfkit/infra/orm.py`. Ortak: `uid` (ULID, benzersiz), `document_id` (FK → pdf_documents, CASCADE), `legacy_id` (eski tablodaki id; benzersiz, geçici köprü için). `pdf_annotations`: `label_key`, `color`, `comment`, `tags` (JSON), `quote_exact/prefix/suffix`, `page`, `segments` (JSON), `engine_fp`, `anchor_status`, `created_at`, `updated_at`. `pdf_page_notes`: `page`, `x`, `y`, `text`. `pdf_terms`: `word`, `translation`, `context_sentence`, `mastery_level`, `page`, `segments`, `engine_fp`, `anchor_status`. Eski `highlights`/`pdf_notes`/`vocabulary` Faz 8'e kadar durur. Bkz. [[pdfkit]].
+
 ## Hafif Migration
 `utils/db_utils.py:_apply_lightweight_migrations()` mevcut SQLite dosyalarına eksik kolonları ekler (idempotent). `init_db()` her başlangıçta önce bunu çağırır, sonra `Base.metadata.create_all` ile yeni tabloları oluşturur. Şu an listedeki tek migration: `resources.is_favorite` kolonu (2026-05-17).
 

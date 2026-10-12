@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-12] FEAT | pdfkit Faz 2: alıntı alanı ve çapa çözümleyici
+
+`pdf_annotations`, `pdf_page_notes`, `pdf_terms` tabloları (migration `d7e3b1a94c52`; ORM ile parite testli). Alıntılar kararlı ULID, anlam etiketi (`label_key`, renkten ayrı), serbest etiketler ve W3C TextQuote + TextPosition çapası taşıyor; geometri seçim anında `QPdfSelection.bounds()`'tan saklanabilir. `AnchorResolver` dört kademeli (konum → bağlamlı arama → harf-rakam arama → komşu sayfa → yetim), alıntı sessizce kaybolmuyor. Eski alıntı/not/kelime kayıtları `legacy_id` ile idempotent kopyalanıyor (arayüz Faz 3'e kadar eski tabloları kullanır). Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz2-raporu.md`. 604 test geçti, çapa modülü kapsamı %99.
+
+---
+
 ## [2026-10-12] FEAT | pdfkit Faz 1: içerik adresli belge deposu
 
 Yeni bağımsız paket `pdfkit/` (bkz. [[pdfkit]]). Yerel PDF içe aktarma artık SHA-256 ile tekrar önleyen, `store/ab/<sha>/<ad>.pdf` düzenli depoya yazıyor (`pdf_documents`, `pdf_resource_documents`; migration `b3a91c5d7e20`); PDFium ile sayfa sayısı, metin katmanı, başlık/yazar ve DOI çıkarılıyor, DOI varsa OpenAlex'ten metadata tamamlanıyor. Web PDF indirme akış halinde ve boyut sınırı indirirken denetleniyor. Eski düzendeki PDF'ler açılışta arka planda depoya alınıyor, kaynak silinince dosya doğrudan silinmiyor karantinaya alınıyor. Tam metin çıkarımı pypdf yerine pypdfium2 (14–17× hızlı, GIL'i bırakıyor). Günlük DB anlık görüntüsü eklendi (`snapshot_database_daily`). `PdfDownloadWorker`/`PdfImportWorker` kaldırıldı. Gerçek verinin kopyası üzerinde prova yapıldı (göç, benimseme, DOI, tekrar çalıştırma). Eski PDF testleri gerçek PDF kullanacak şekilde güncellendi; 561 test geçti. Ayrıntı: `docs/plans/pdfkit-faz1-raporu.md`.
