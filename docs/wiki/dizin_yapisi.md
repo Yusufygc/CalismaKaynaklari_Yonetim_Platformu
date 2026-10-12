@@ -19,6 +19,7 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │
 ├── core/                       # Yapılandırma, sabitler, temel araçlar
 │   ├── config.py
+│   ├── user_settings.py        # Kullanıcı ayarları (JSON, atomik): Obsidian vault yolu
 │   ├── logger.py
 │   ├── exceptions.py
 │   ├── events.py               # Event Bus singleton
@@ -89,7 +90,8 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   │   ├── market_bridge.py    # Makale Market araması/sayfalama/geçmiş, kaydet/dışa aktar (yardımcı: market_saver)
 │   │   ├── discovery_bridge.py # Market kart keşfi (referans/atıf/benzer/yazar) ve kütüphaneden öneriler
 │   │   ├── searches_bridge.py  # Kayıtlı aramalar ve yeni yayın takibi (durum: saved_search_state)
-│   │   └── settings_bridge.py  # Kategori ve etiket yönetimi
+│   │   ├── settings_bridge.py  # Kategori ve etiket yönetimi
+│   │   └── vault_bridge.py     # Obsidian vault klasörü, eşitleme durumu (pdfkit.VaultSync)
 │   ├── pdf_files.py            # PdfFileManager: yerel PDF URL/durum, web PDF indirme durumu, silme temizliği (belge açmayı pdfkit yapar)
 │   ├── full_text.py            # FullTextExtractor: tam metin çıkarımı (arka plan)
 │   ├── notifier.py             # Notifier: tek toast kanalı

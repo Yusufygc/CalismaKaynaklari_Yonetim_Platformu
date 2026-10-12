@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | pdfkit Faz 5b: vault yazıcı, eşitleme ve Ayarlar > Obsidian
+
+`VaultWriter` (atomik yazım, değişmediyse dokunmama, eşzamanlı kullanıcı düzenlemesinde yeniden birleştirme, BOM/UTF-8/yol güvenliği), `NoteBuilder`, `VaultSync` (1,5 sn birleştirme, dilimli hazırlık, tek worker'da sıralı yazım, `SyncReport`), `UserSettings` (vault yolu `user_settings.json`'da), `bridge.vault` ve Ayarlar'da Obsidian sekmesi. Alıntı/not/kelime ve kaynak başlığı/durum değişimleri notlara akar; kullanıcı notu asla silinmez. Kullanıcıya dönük vault hata iletileri Türkçe karakterli. Gerçek veri kopyasında gerçek PDF + gerçek thread havuzuyla not üretildi (`bardak2024makine.md`). `QTest.qWait` GIL'i tuttuğundan gerçek havuz worker'ı bekletir: gerçek havuz denemelerinde `QEventLoop.exec` kullan. 782 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz5b-raporu.md`.
+
+---
+
 ## [2026-10-13] FEAT | pdfkit Faz 5a: Obsidian vault not modeli (citekey, not oluşturucu/birleştirici, derin bağlantı)
 
 Faz 5 alt fazlara bölündü (`docs/plans/pdfkit-faz5-plani.md`). 5a saf çekirdek: kalıcı citekey (`pdf_vault_notes`, migration `a5d1e7c3b920`), frontmatter + sentinel'li blok üreten ve kullanıcı metnini koruyarak birleştiren `compose_note` (callout, `^hl-` blok kimliği, `#etiket`, derin bağlantı; bozuk sentinel reddi; idempotent), `pkm://open` bağlantı üretici/ayrıştırıcı, `ResourceCatalogPort.describe`. Dosya/arayüz yok (5b). 743 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz5a-raporu.md`.
