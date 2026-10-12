@@ -1,6 +1,6 @@
 # pdfkit — PDF Okuma ve Çalışma Modülü
 
-Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · Faz 0–1 raporları: `docs/plans/pdfkit-faz0-raporu.md`, `docs/plans/pdfkit-faz1-raporu.md`. Durum: **Faz 3 tamam** (okuyucu pdfkit'e geçti, eski yol temizlendi: belge deposu, alıntı alanı, çapa çözümleyici, okuma/yazma yolu, QML, havuz, dışa aktarım); Faz 4 okuma deneyimi, vault sonraki fazlar. Alt faz planı: `docs/plans/pdfkit-faz3-plani.md`.
+Bağımsız paket (`pdfkit/`). Plan: `docs/plans/pdfkit-plan-2026-10-12.md` · Faz 0–1 raporları: `docs/plans/pdfkit-faz0-raporu.md`, `docs/plans/pdfkit-faz1-raporu.md`. Durum: **Faz 4a tamam** (okuma durumu); **Faz 3 tamam** (okuyucu pdfkit'e geçti, eski yol temizlendi: belge deposu, alıntı alanı, çapa çözümleyici, okuma/yazma yolu, QML, havuz, dışa aktarım); Faz 4 okuma deneyimi, vault sonraki fazlar. Alt faz planı: `docs/plans/pdfkit-faz3-plani.md`.
 
 ## Sınır kuralları
 
@@ -70,6 +70,15 @@ PDF okuyucu artık alıntı/not/kelimeyi yalnız `bridge.pdf` üzerinden okur ve
 - **`QPdfDocument` ömrü:** LRU(3) önbellek eklenmedi. Yükleme ölçümü 1–13 ms (15 sayfa) olduğundan kazanç yok; açık belge Windows'ta dosyayı kilitlediği için önbellek, kaynak silme/GC yolunu karmaşıklaştırırdı. Belge değişince `close()` + `deleteLater()`.
 - **Toplu silme:** `AnnotationRepository.delete_annotations` tek `DELETE ... IN (...)` (500'lük parçalar); `_IncrementalModel.remove_many` 16'dan fazla öğede tek model sıfırlaması yapar (az öğede satır sinyalleri). 503 alıntı silme: **674 ms → 5,6 ms** (satır satır yükleme + satır başına flush + her sayfa süzgecine 503 sinyal).
 - **Son ölçüm** (`scripts/bench_pdf.py --pdf <gerçek 15 sayfa>`): açılış 1000 alıntıda **94 ms** (bütçe ≤150), tek ekleme **≈6 ms** (≤16), tüm sayfa modelleri 15 ms, toplu silme 503 alıntı **5,8 ms**, eski kayıtlar için ilk açılış geometrisi ≈4,8 sn/1000 (tek seferlik, 44 ms'lik dilimlerle). `bench_pdf.py` artık yalnız pdfkit yolunu ölçer (eski serileştirme ölçümü kaldırıldı).
+
+## Okuma durumu (Faz 4a)
+
+- **Tablo:** `pdf_reading_state` (migration `f2c8d4a61b93`; belge başına bir satır, belge silinince CASCADE): `last_page` + `loc_x/loc_y` (görünümün **üstündeki** sayfa ve sayfa içi konum, sayfa noktası uzayı), `zoom`, `max_page` (ilerleme), `total_seconds`, `updated_at`. Plan K14'ten sapma: `max_page` eklendi, `scroll` iki sayıya bölündü.
+- **Geri dönüş noktası ≠ sayfa sayacı:** sayaç görünümün **ortasındaki** sayfayı gösterir; ortadaki sayfaya göre konum, üst sayfa yukarıdaysa negatif çıkar ve `PdfPageNavigator.jump` için geçersizdir. Bu yüzden QML `PdfPageArea.topViewState()` görünümün üstündeki sayfa + konumu hesaplar; ilerleme (`max_page`) ise ortadaki sayfadan (`seen_page`) gelir — son sayfa hiçbir zaman görünümün üstüne gelmeyebilir.
+- **İlerleme:** `(max_page + 1) / page_count`; `max_page` hiç azalmaz. Aktif okuma süresi: iki kayıt arasındaki süre en çok 60 sn eklenir (boşta geçen süre sayılmaz).
+- **Akış:** `PdfPageArea` sayfa/konum/zoom değişimini 500 ms birleştirip `viewStateChanged` yayar (`trackView` kapalıyken yayılmaz: geri yükleme bitmeden eski kayıt sayfa 0 ile ezilmesin; `PdfReaderView` 700 ms yerleşme sonrası açar). `bridge.pdf.saveReadingState` Python'da 1 sn birleştirir; belge kapanınca, başka belge açılınca ve `aboutToQuit`'te anında yazar. Kaynak değişirken QML `flushViewState()` eski belgenin son konumunu gönderir.
+- **Geri yükleme:** `PdfReaderView.tryRestore()` belge hazır (QML `PdfDocument` + pdfkit oturumu) olunca `bridge.pdf.readingState` ile `pageArea.restoreView(sayfa, x, y, zoom)` çağırır (satır sayısı 0 iken bekleyen atlama mekanizmasını kullanır).
+- **Kart ilerlemesi:** `PdfLibrary.progress_map()` tek `JOIN` ile `{kaynak: oran}`; `ResourceListModel.ReadingProgressRole` (`readingProgress`) — `LibraryBridge.reload()` ve okuma durumu yazılınca (`readingProgressChanged`) `set_progress`, yalnız değişirse `dataChanged`. `AppCard` altta 3 px çubuk gösterir.
 
 ## Ölçümler ve kararlar
 

@@ -138,7 +138,7 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │       └── ArticleMarketView.qml # Makale Market (OpenAlex konu araması)
 │
 ├── pdfkit/                     # Bağımsız PDF modülü (bkz. [[pdfkit]]); dış dünya yalnız pdfkit.api
-│   ├── domain/                 # Saf Python: Document, PdfInspection, DOI çıkarımı, hatalar
+│   ├── domain/                 # Saf Python: Document, PdfInspection, DOI çıkarımı, hatalar, ReadingState (reading.py)
 │   ├── app/                    # Use-case: prepare_pdf, DocumentService, ResourceCatalogPort
 │   ├── infra/                  # file_store (CAS), inspector/text (pypdfium2), downloader, orm, repository
 │   └── ui/                     # Qt cephesi: PdfLibrary (içe aktarma, indirme, benimseme, çöp toplama), AnnotationListModel/NoteListModel/PageFilterModel, DocumentSession, AnnotationCommands (yazma), PdfBridge (bridge.pdf)

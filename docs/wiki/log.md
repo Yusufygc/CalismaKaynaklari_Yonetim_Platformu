@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | pdfkit Faz 4a: okuma durumu (kaldığın yerden devam, kart ilerlemesi)
+
+Yeni `pdf_reading_state` tablosu (migration `f2c8d4a61b93`), `ReadingService`, `bridge.pdf.readingState/saveReadingState`; okuyucu kapanıp açılınca görünümün üstündeki sayfa, konum ve zoom'a döner (`PdfReaderView.tryRestore`, `PdfPageArea.restoreView/topViewState`). Kayıt QML'de 500 ms, Python'da 1 sn birleştirilir; belge kapanırken/değişirken ve uygulama çıkarken anında yazılır. İlerleme `(max_page+1)/page_count`; kaynak kartlarında `ResourceListModel.readingProgress` rolü ve `AppCard` ilerleme çubuğu (tek sorgu, N+1 yok). Gerçek veri kopyasında gerçek PDF ile doğrulandı. 666 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz4a-raporu.md`.
+
+---
+
 ## [2026-10-13] REFACTOR | pdfkit Faz 3d: temizlik, QML taşıma ve toplu silme
 
 `PdfFileManager` belge önbelleği/`select_text`/`highlight_geometry` ve serileştiricideki kopya blok + eski `_highlights` silindi; PDF belgesini yalnız `DocumentSession` açar. PDF QML dosyaları `qml/pdf/` altına taşındı (`main.qml` `import "pdf"`). Toplu alıntı silme: tek `DELETE ... IN` + 16'dan fazla öğede tek model sıfırlaması (503 alıntı 674 → 5,6 ms). `bench_pdf.py` yalnız pdfkit yolunu ölçer; bütçeler karşılandı (1000 alıntıda açılış 94 ms, ekleme ≈6 ms). `QPdfDocument` LRU önbelleği bilinçli eklenmedi (yükleme 1–13 ms, Windows dosya kilidi). 648 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz3d-raporu.md`.
