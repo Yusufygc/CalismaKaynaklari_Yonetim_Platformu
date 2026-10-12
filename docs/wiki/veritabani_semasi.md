@@ -107,6 +107,9 @@ Repo/servis/controller: `repositories/pdf_note_repo.py::PdfNoteRepository`, `ser
 
 Repo/servis/controller: `repositories/saved_search_repo.py`, `services/saved_search_service.py` (aynı konu+filtre tekrar kaydedilemez → `DuplicateRecordError`), `controllers/saved_search_controller.py`. Kaynaklarla ilişkisi yoktur (bağımsız tablo).
 
+### `pdf_documents` / `pdf_resource_documents` (pdfkit belge deposu — 2026-10-12, migration `b3a91c5d7e20`)
+Modeller `pdfkit/infra/orm.py` (ortak `Base`). `pdf_documents`: id, `sha256` (benzersiz), `rel_path` (depo köküne göre `store/ab/<sha>/<ad>.pdf`), `byte_size`, `page_count`, `has_text_layer`, `pdf_title`, `pdf_author`, `doi` (indeksli), `source` (`local`/`web`), `original_filename`, `imported_at`. `pdf_resource_documents`: `resource_id` (PK, FK → resources, CASCADE) → `document_id` (FK → pdf_documents, RESTRICT, indeksli); aynı PDF birden çok kaynakta olabilir, hiçbir kaynağa bağlı olmayan belge çöp toplamayla karantinaya alınır. Bkz. [[pdfkit]].
+
 ## Hafif Migration
 `utils/db_utils.py:_apply_lightweight_migrations()` mevcut SQLite dosyalarına eksik kolonları ekler (idempotent). `init_db()` her başlangıçta önce bunu çağırır, sonra `Base.metadata.create_all` ile yeni tabloları oluşturur. Şu an listedeki tek migration: `resources.is_favorite` kolonu (2026-05-17).
 

@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-12] FEAT | pdfkit Faz 1: içerik adresli belge deposu
+
+Yeni bağımsız paket `pdfkit/` (bkz. [[pdfkit]]). Yerel PDF içe aktarma artık SHA-256 ile tekrar önleyen, `store/ab/<sha>/<ad>.pdf` düzenli depoya yazıyor (`pdf_documents`, `pdf_resource_documents`; migration `b3a91c5d7e20`); PDFium ile sayfa sayısı, metin katmanı, başlık/yazar ve DOI çıkarılıyor, DOI varsa OpenAlex'ten metadata tamamlanıyor. Web PDF indirme akış halinde ve boyut sınırı indirirken denetleniyor. Eski düzendeki PDF'ler açılışta arka planda depoya alınıyor, kaynak silinince dosya doğrudan silinmiyor karantinaya alınıyor. Tam metin çıkarımı pypdf yerine pypdfium2 (14–17× hızlı, GIL'i bırakıyor). Günlük DB anlık görüntüsü eklendi (`snapshot_database_daily`). `PdfDownloadWorker`/`PdfImportWorker` kaldırıldı. Gerçek verinin kopyası üzerinde prova yapıldı (göç, benimseme, DOI, tekrar çalıştırma). Eski PDF testleri gerçek PDF kullanacak şekilde güncellendi; 561 test geçti. Ayrıntı: `docs/plans/pdfkit-faz1-raporu.md`.
+
+---
+
 ## [2026-10-12] REFACTOR | pdfkit Faz 0: yetim PDF karantinası, ölçüm betiği, spike'lar
 
 PDF modülü incelemesi sonrası `docs/plans/pdfkit-plan-2026-10-12.md` planı onaylandı. Faz 0: `PdfStorageService.sweep_orphans` artık silmiyor, `pdfs/.trash/` altına taşıyor (30 gün saklama) ve kaynak listesi boşsa hiçbir şeye dokunmuyor (bkz. [[core_servisler]]). `scripts/bench_pdf.py` eklendi (taban: gerçek 15 sayfalık PDF'te 100 alıntıda serialize 326 ms, 300'de 998 ms). Spike S1: `pypdfium2` pypdf'ten 14–17× hızlı ve GIL'i bırakıyor (UI yavaşlaması 1,00× vs 2,01×). Spike S2: seçimden gelen `bounds()` ile `getSelectionAtIndex` poligonları 643/643 birebir aynı, yani geometri oluşturma anında saklanabilir. Ayrıntı: `docs/plans/pdfkit-faz0-raporu.md`. Kullanıcı kararları: eski PDF testleri silinebilir/yeniden yazılabilir, `pypdfium2` serbest, vault klasörünü kullanıcı uygulama içinden seçecek.

@@ -26,6 +26,12 @@
 |-------|------|
 | [[core_servisler]] | Repository/Service/Controller katmanları, ResourceService.update_resource, TagService CRUD, URL regex, custom exceptions |
 
+## PDF Modülü
+
+| Sayfa | Özet |
+|-------|------|
+| [[pdfkit]] | Bağımsız PDF paketi: içerik adresli belge deposu, SHA-256 ile tekrar önleme, PDFium incelemesi (metin katmanı, DOI), akış halinde indirme, karantina, eski dosyaların benimsenmesi |
+
 ## Arayüz (UI/UX)
 
 | Sayfa | Özet |
