@@ -16,7 +16,8 @@ from controllers.saved_search_controller import SavedSearchController
 from controllers.tag_controller import TagController
 from controllers.vocabulary_controller import VocabularyController
 from core.events import event_bus
-from pdfkit.api import PdfLibrary
+from core.user_settings import UserSettings, default_settings_path
+from pdfkit.api import PdfLibrary, VaultSync
 from services.library_index import LibraryIndex
 from services.pdf_download_service import stream_fetch
 from ui_qml.full_text import FullTextExtractor
@@ -81,8 +82,10 @@ class BridgeContext:
         controllers: Controllers,
         thread_pool: QThreadPool | None = None,
         notifier: Notifier | None = None,
+        user_settings: UserSettings | None = None,
     ) -> None:
         self.controllers = controllers
+        self.user_settings = user_settings or UserSettings(default_settings_path())
         self.thread_pool = thread_pool or QThreadPool.globalInstance()
         self.notify = notifier or Notifier()
         self.pdf_files = PdfFileManager(self)
@@ -94,6 +97,7 @@ class BridgeContext:
             fetch=stream_fetch,
         )
         self.pdf_library.downloadFinished.connect(self.pdf_files.on_download_finished)
+        self.vault_sync = VaultSync(self.pdf_library, thread_pool=lambda: self.thread_pool)
         self.extractor = FullTextExtractor(self)
         self.library_index = LibraryIndexCache(controllers.resources)
         self.serializer = ResourceSerializer(self.pdf_files, self.pdf_library)

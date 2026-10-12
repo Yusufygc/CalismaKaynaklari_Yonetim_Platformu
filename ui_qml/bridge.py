@@ -11,6 +11,7 @@ from ui_qml.bridges.market_bridge import MarketBridge
 from ui_qml.bridges.reader_bridge import ReaderBridge
 from ui_qml.bridges.searches_bridge import SearchesBridge
 from ui_qml.bridges.settings_bridge import SettingsBridge
+from ui_qml.bridges.vault_bridge import VaultBridge
 from ui_qml.context import BridgeContext, Controllers
 from ui_qml.saved_search_state import SavedSearchState
 
@@ -25,6 +26,7 @@ class QmlBridge(QObject):
     - `bridge.reader`   -- okuyucuyu ac/kapat, PDF indirme/anahat, Markdown disa aktarim
     - `bridge.annotations` -- alinti, kelime havuzu, PDF sayfa notlari
     - `bridge.pdf`      -- pdfkit: PDF belgesi, alinti modelleri (artimli), sayfa filtreleri (bkz. docs/plans/pdfkit-faz3-plani.md)
+    - `bridge.vault`    -- Obsidian vault klasoru, esitleme durumu (pdfkit.VaultSync)
     - `bridge.citations` -- atif metni, OpenAlex bilgisi, referans/atif listeleri
     - `bridge.market`   -- Makale Market aramasi, sayfalama, gecmis, kaydetme/disa aktarma
     - `bridge.discovery` -- Market kart kesfi (referans/atif/benzer/yazar) ve kutuphaneden oneriler
@@ -71,6 +73,10 @@ class QmlBridge(QObject):
         self._pdf.notification.connect(self._on_pdf_notification)
         self._pdf.contentChanged.connect(self._on_pdf_content_changed)
         self._pdf.readingProgressChanged.connect(lambda _resource_id: self._library.refresh_progress())
+        self._vault = VaultBridge(self._ctx, self)
+        # Alinti/not/kelime ya da kaynak kunyesi (baslik, durum) degisince vault notu yeniden uretilir (1,5 sn birlesik).
+        self._pdf.contentChanged.connect(self._ctx.vault_sync.mark_resource)
+        event_bus.resource_updated.connect(self._ctx.vault_sync.mark_resource)
         self._citations = CitationsBridge(self._ctx, self._library, self._reader, self)
         self._market = MarketBridge(self._ctx, self._library, search_state, self)
         self._discovery = DiscoveryBridge(self._ctx, self._library, self)
@@ -97,6 +103,10 @@ class QmlBridge(QObject):
     @Property(QObject, constant=True)
     def pdf(self) -> QObject:
         return self._pdf
+
+    @Property(QObject, constant=True)
+    def vault(self) -> QObject:
+        return self._vault
 
     @Property(QObject, constant=True)
     def citations(self) -> QObject:
@@ -146,6 +156,7 @@ class QmlBridge(QObject):
 
     def run_startup_tasks(self) -> None:
         """Pencere acildiktan sonra bir kez: PDF deposu bakimi (cop toplama, eski PDF'leri depoya alma)."""
+        self._vault.restore()
         self._ctx.pdf_library.start_maintenance()
 
     @Property(bool, notify=isDarkThemeChanged)

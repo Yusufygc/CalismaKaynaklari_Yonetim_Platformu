@@ -64,6 +64,10 @@ class DocumentRepository:
             link.document_id = document_id
         self._session.flush()
 
+    def linked_document_ids(self) -> list[int]:
+        """En az bir kaynaga bagli belgelerin kimlikleri (artan sirayla)."""
+        return sorted(set(self._session.scalars(select(PdfResourceLinkRow.document_id))))
+
     def linked_resource_ids(self) -> set[int]:
         return set(self._session.scalars(select(PdfResourceLinkRow.resource_id)))
 

@@ -14,6 +14,12 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
 
+@pytest.fixture(autouse=True)
+def _isolated_user_settings(tmp_path, monkeypatch):
+    """Testler gercek kullanici ayarlarini (ornegin gercek Obsidian vault klasorunu) okumasin ya da yazmasin."""
+    monkeypatch.setattr("ui_qml.context.default_settings_path", lambda: tmp_path / "user_settings.json")
+
+
 @pytest.fixture(scope="session")
 def qapp():
     app = QApplication.instance() or QApplication([])

@@ -7,7 +7,7 @@ import "../theme"
 Item {
     id: root
 
-    property int activeTab: 0 // 0: Kategoriler, 1: Etiketler
+    property int activeTab: 0 // 0: Kategoriler, 1: Etiketler, 2: Obsidian
     property string newCategoryColor: Theme.accent
 
     // Silme onayı bekleyen öğe: kind "category" | "tag"
@@ -52,7 +52,7 @@ Item {
                 spacing: 16
 
                 Rectangle {
-                    width: 260
+                    width: 390
                     height: 36
                     radius: Theme.radiusSm
                     color: Theme.bgElevated
@@ -65,7 +65,7 @@ Item {
                         spacing: 4
 
                         Rectangle {
-                            width: (parent.width - 4) / 2
+                            width: (parent.width - 8) / 3
                             height: parent.height
                             radius: Theme.radiusXs
                             color: root.activeTab === 0 ? Theme.bgSurface : "transparent"
@@ -99,7 +99,7 @@ Item {
                         }
 
                         Rectangle {
-                            width: (parent.width - 4) / 2
+                            width: (parent.width - 8) / 3
                             height: parent.height
                             radius: Theme.radiusXs
                             color: root.activeTab === 1 ? Theme.bgSurface : "transparent"
@@ -131,6 +131,41 @@ Item {
                                 onClicked: root.activeTab = 1
                             }
                         }
+
+                        Rectangle {
+                            objectName: "vaultTab"
+                            width: (parent.width - 8) / 3
+                            height: parent.height
+                            radius: Theme.radiusXs
+                            color: root.activeTab === 2 ? Theme.bgSurface : "transparent"
+                            border.width: root.activeTab === 2 ? 1 : 0
+                            border.color: Theme.borderStrong
+
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: 6
+                                AppIcon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    name: "fa5s.gem"
+                                    size: 11
+                                    color: root.activeTab === 2 ? Theme.accentText : Theme.textSecondary
+                                }
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Obsidian"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSm
+                                    font.weight: root.activeTab === 2 ? Font.DemiBold : Font.Normal
+                                    color: root.activeTab === 2 ? Theme.textPrimary : Theme.textSecondary
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.activeTab = 2
+                            }
+                        }
                     }
                 }
             }
@@ -157,6 +192,12 @@ Item {
                 topPadding: 24
                 bottomPadding: 40
                 spacing: 24
+
+                // --- OBSIDIAN PANELİ ---
+                VaultSettingsPanel {
+                    visible: root.activeTab === 2
+                    width: parent.width
+                }
 
                 // --- KATEGORİLER PANELİ ---
                 Column {

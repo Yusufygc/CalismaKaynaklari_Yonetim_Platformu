@@ -41,7 +41,7 @@ class NoteContent:
 def note_rel_path(citekey: str) -> str:
     """Vault kokune gore not yolu ('/' ayiracli). Citekey yalnizca [a-z0-9] oldugundan yol enjeksiyonu yoktur."""
     if not re.fullmatch(r"[a-z0-9]{1,80}", citekey):
-        raise VaultNoteError(f"Gecersiz citekey: {citekey!r}")
+        raise VaultNoteError(f"Geçersiz citekey: {citekey!r}")
     return f"{NOTE_DIRECTORY}/{citekey}.md"
 
 
@@ -196,7 +196,7 @@ def _split_frontmatter(text: str) -> tuple[list[str], str] | None:
     for index in range(1, len(lines)):
         if lines[index].rstrip() == "---":
             return lines[1:index], "\n".join(lines[index + 1:])
-    raise VaultNoteError("Frontmatter kapanmamis ('---' eksik); dosyaya dokunulmadi.")
+    raise VaultNoteError("Frontmatter kapanmamış ('---' eksik); dosyaya dokunulmadı.")
 
 
 def _entries(lines: list[str]) -> list[tuple[str | None, list[str]]]:
@@ -240,7 +240,7 @@ def _replace_or_append_block(text: str, block: str) -> str:
     if not begins and not ends:
         return text.rstrip("\n") + "\n\n" + block + "\n"
     if len(begins) != 1 or len(ends) != 1 or begins[0] > ends[0]:
-        raise VaultNoteError("Sentinel isaretleri bozuk (eksik, tekrarlı ya da ters); dosyaya dokunulmadi.")
+        raise VaultNoteError("Sentinel işaretleri bozuk (eksik, tekrarlı ya da ters); dosyaya dokunulmadı.")
     merged = lines[: begins[0]] + block.split("\n") + lines[ends[0] + 1:]
     return "\n".join(merged)
 

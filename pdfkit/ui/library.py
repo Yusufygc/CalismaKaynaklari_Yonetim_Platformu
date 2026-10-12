@@ -13,6 +13,7 @@ from core.logger import log
 from pdfkit.app.annotations import AnnotationService
 from pdfkit.app.documents import DocumentService
 from pdfkit.app.reading import ReadingService
+from pdfkit.app.vault import NoteBuilder
 from pdfkit.app.legacy_import import LegacyAnnotationImporter, LegacyMigrationReport
 from pdfkit.app.importing import prepare_pdf, prepare_remote_pdf
 from pdfkit.app.ports import LegacyPdf, ResourceCatalogPort
@@ -88,6 +89,9 @@ class PdfLibrary(QObject):
 
     def annotations(self) -> AnnotationService:
         return AnnotationService(self._session)
+
+    def note_builder(self) -> NoteBuilder:
+        return NoteBuilder(self._session, self._catalog)
 
     def reading(self) -> ReadingService:
         return ReadingService(self._session)
