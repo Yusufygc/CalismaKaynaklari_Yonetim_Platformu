@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from core.logger import log
 from pdfkit.domain.search import SearchHit, fold, make_snippet, parse_query
 from pdfkit.domain.text import sanitize_text
+from pdfkit.infra.search_schema import ROWID_SPAN
 from pdfkit.infra.search_repository import (
     STATUS_FAILED,
     STATUS_INDEXING,
@@ -15,8 +16,9 @@ from pdfkit.infra.search_repository import (
     PageIndexRepository,
 )
 
-INDEX_VERSION = 1  # cikarim/katlama kurali degisirse artirilir: eski belgeler yeniden dizinlenir
-MAX_INDEXED_PAGES = 2000  # belge basina ust sinir (dev ciltler veritabanini sisirmesin)
+INDEX_VERSION = 2  # cikarim/katlama kurali degisirse artirilir: eski belgeler yeniden dizinlenir
+MAX_INDEXED_PAGES = ROWID_SPAN  # belge basina ust sinir: rowid kodlamasinin sigdirdigi kadar (sayfa 0..9999)
+CAPPED_PAGE_COUNTS = {1: 2000}  # surum 1'de ust sinir 2000'di: o surumde tam 2000 sayfali "ok" belgeler kesilmis olabilir
 DEFAULT_LIMIT = 300  # gruplamadan once alinan en alakali sayfa sayisi (gosterilen: kaynak basina 5; geri kalani "daha fazla")
 EXPAND_LIMIT = 200  # bir kaynagin "tumunu goster" ile acilan en cok sayfa sayisi
 
@@ -111,7 +113,7 @@ class IndexService:
             return False
 
     def pending(self) -> list[int]:
-        return self._repo.documents_needing_index(INDEX_VERSION)
+        return self._repo.documents_needing_index(INDEX_VERSION, CAPPED_PAGE_COUNTS)
 
     def begin(self, document_id: int) -> None:
         self._write(lambda: (self._repo.delete_pages(document_id), self._repo.set_state(document_id, STATUS_INDEXING, 0, INDEX_VERSION)))
@@ -146,6 +148,10 @@ class IndexService:
         if not self._repo.available():
             return 0
         return self._write(self._repo.purge_orphans)
+
+    def unsearchable(self) -> list[tuple[int, int, str]]:
+        """Aranamayan belgeler (taranmis, dizini basarisiz, metin cikmayan): (belge id, kaynak id, baslik)."""
+        return self._repo.unsearchable()
 
     def statistics(self) -> dict[str, int]:
         return self._repo.count_by_status()

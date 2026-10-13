@@ -10,6 +10,10 @@ Item {
 
     readonly property var status: bridge.contentSearch.indexStatus
     readonly property bool indexing: status.state === "running"
+    readonly property var unsearchable: bridge.contentSearch.unsearchable
+
+    onVisibleChanged: if (visible) bridge.contentSearch.refreshUnsearchable()
+    Component.onCompleted: bridge.contentSearch.refreshUnsearchable()
 
     Rectangle {
         id: statusBar
@@ -29,7 +33,28 @@ Item {
             text: {
                 if (root.status.state === "unavailable") return "Bu sistemde tam metin araması kullanılamıyor."
                 if (root.indexing) return "PDF'ler dizinleniyor: " + root.status.done + "/" + root.status.total + " — bitenlerde arama şimdiden çalışır."
-                return "Arama, PDF'lerin içindeki metinde çalışır (taranmış / metin katmanı olmayan PDF'ler hariç)."
+                return "Arama, PDF'lerin içindeki metinde çalışır. Taranmış (metin katmanı olmayan) PDF'ler aranamaz."
+            }
+        }
+
+        Text {
+            objectName: "unsearchableLink"
+            visible: root.unsearchable.length > 0
+            anchors.right: parent.right
+            anchors.rightMargin: 24
+            anchors.verticalCenter: parent.verticalCenter
+            text: root.unsearchable.length + " PDF aranamıyor"
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontXs
+            font.underline: unsearchableMouse.containsMouse
+            color: Theme.accentText
+
+            MouseArea {
+                id: unsearchableMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: unsearchablePanel.visible = !unsearchablePanel.visible
             }
         }
 
@@ -38,6 +63,64 @@ Item {
             width: parent.width
             height: 1
             color: Theme.borderSubtle
+        }
+    }
+
+    // Aranamayan PDF'lerin listesi (taranmış belgeler); satıra tıklayınca belge okuyucuda açılır
+    Rectangle {
+        id: unsearchablePanel
+        objectName: "unsearchablePanel"
+        visible: false
+        anchors.top: statusBar.bottom
+        anchors.right: parent.right
+        anchors.rightMargin: 24
+        z: 2
+        width: Math.min(parent.width - 48, 420)
+        height: Math.min(unsearchableList.contentHeight + 56, 280)
+        radius: Theme.radiusSm
+        color: Theme.popoverBg
+        border.width: 1
+        border.color: Theme.borderStrong
+
+        Text {
+            x: 12
+            y: 10
+            width: parent.width - 24
+            wrapMode: Text.Wrap
+            text: "Bu PDF'lerde seçilebilir metin yok (taranmış görüntü) ya da okunamadı; içlerinde arama yapılamaz."
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontXs
+            color: Theme.textMuted
+        }
+
+        ListView {
+            id: unsearchableList
+            anchors.fill: parent
+            anchors.topMargin: 44
+            anchors.margins: 8
+            clip: true
+            model: root.unsearchable
+            delegate: Text {
+                required property var modelData
+                objectName: "unsearchableItem"
+                width: unsearchableList.width
+                height: 26
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+                text: modelData.title
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSm
+                color: Theme.textPrimary
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        unsearchablePanel.visible = false
+                        bridge.contentSearch.openHit(modelData.resourceId, 0)
+                    }
+                }
+            }
+            ScrollBar.vertical: ScrollBar { active: true }
         }
     }
 

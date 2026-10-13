@@ -98,3 +98,24 @@ def test_the_more_link_expands_the_card_to_all_matching_pages(bridge, qapp, tmp_
     assert len(_visible(window, "hitRow")) == 8
     assert not find_named(window, "moreHits").property("visible")
     assert engine.captured_warnings == []
+
+
+def test_unsearchable_pdfs_are_listed_in_a_panel_and_open_in_the_reader(bridge, qapp, tmp_path):
+    from tests.pdf_factory import write_outline_pdf
+
+    bridge.library.importLocalPdf(write_outline_pdf(tmp_path / "taranmis.pdf", ["A", "B"]).as_uri())
+    QTest.qWait(80)
+    engine, window = _open_tab(qapp, bridge)
+    link = find_named(window, "unsearchableLink")
+    assert link.property("visible") and link.property("text") == "1 PDF aranamıyor"
+    assert not find_named(window, "unsearchablePanel").property("visible")
+
+    click(qapp, window, link)
+    pump(qapp, 10)
+    item = _visible(window, "unsearchableItem")[0]
+    click(qapp, window, item)
+    QTest.qWait(300)
+    pump(qapp, 20)
+
+    assert bridge.currentView == "pdfReader"
+    assert engine.captured_warnings == []

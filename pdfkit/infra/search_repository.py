@@ -48,17 +48,24 @@ class PageIndexRepository:
             self._session.delete(row)
             self._session.flush()
 
-    def documents_needing_index(self, version: int) -> list[int]:
-        """Metin katmani olan ve (hic dizinlenmemis | yarim kalmis | eski surumle dizinlenmis) belgeler."""
+    def documents_needing_index(self, version: int, capped: dict[int, int] | None = None) -> list[int]:
+        """Metin katmani olan ve (hic dizinlenmemis | yarim kalmis | eski surumle dizinlenmis) belgeler.
+
+        Eski surumle dizinlenmis ve `ok` olan belge, yalniz o surumun sayfa ust siniri `capped[surum]` kadar sayfayla
+        bitmisse (kesilmis olabilir) yeniden dizinlenir; digerleri gecerli kalir. Eski surumde `failed`/`no_text`
+        kalanlar yeniden denenir (cikarim iyilesmis olabilir)."""
+        capped = capped or {}
         rows = self._session.execute(
-            select(PdfDocumentRow.id, PdfTextIndexRow.status, PdfTextIndexRow.version)
+            select(PdfDocumentRow.id, PdfTextIndexRow.status, PdfTextIndexRow.version, PdfTextIndexRow.page_count)
             .outerjoin(PdfTextIndexRow, PdfTextIndexRow.document_id == PdfDocumentRow.id)
             .where(PdfDocumentRow.has_text_layer.is_(True))
             .order_by(PdfDocumentRow.id)
         )
         pending = []
-        for document_id, status, indexed_version in rows:
-            if status is None or status == STATUS_INDEXING or indexed_version != version:
+        for document_id, status, indexed_version, page_count in rows:
+            if status is None or status == STATUS_INDEXING:
+                pending.append(document_id)
+            elif indexed_version != version and (status != STATUS_OK or page_count >= capped.get(indexed_version, 10**9)):
                 pending.append(document_id)
         return pending
 
@@ -96,6 +103,22 @@ class PageIndexRepository:
             text(f"SELECT count(*) FROM {FTS_TABLE} WHERE rowid >= :lo AND rowid < :hi"),
             {"lo": _rowid(document_id, 0), "hi": _rowid(document_id + 1, 0)},
         ).scalar_one()
+
+    def unsearchable(self) -> list[tuple[int, int, str]]:
+        """Aranamayan belgeler: (belge id, kaynak id, baslik). Metin katmani olmayan (taranmis), dizini basarisiz olan
+        ya da hic metin cikmayan belgeler; ayni belge birden cok kaynaktaysa en kucuk kaynak id'si. Basliga gore sirali."""
+        rows = self._session.execute(
+            text(
+                "SELECT d.id, r.id, r.title FROM pdf_documents d "
+                "LEFT JOIN pdf_text_index i ON i.document_id = d.id "
+                "JOIN pdf_resource_documents l ON l.document_id = d.id "
+                "JOIN resources r ON r.id = l.resource_id "
+                "WHERE d.has_text_layer = 0 OR i.status IN (:failed, :no_text) ORDER BY r.id DESC"
+            ),
+            {"failed": STATUS_FAILED, "no_text": STATUS_NO_TEXT},
+        )
+        found = {document_id: (document_id, resource_id, title or "") for document_id, resource_id, title in rows}
+        return sorted(found.values(), key=lambda row: (row[2].casefold(), row[0]))
 
     # ---- arama ----
     def resources_for(self, document_ids: list[int]) -> dict[int, tuple[int, str]]:

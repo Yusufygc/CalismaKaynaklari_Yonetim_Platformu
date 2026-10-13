@@ -155,3 +155,17 @@ def test_show_all_expands_one_resource_to_every_matching_page(bridge, tmp_path):
     assert sorted(hit["page"] for hit in opened["hits"]) == list(range(8))
     bridge.contentSearch.expand(999999)  # bilinmeyen kaynak: hicbir sey olmaz
     assert len(bridge.contentSearch.groups) == 1
+
+
+def test_scanned_pdfs_are_listed_as_unsearchable_and_text_pdfs_are_not(bridge, tmp_path):
+    from tests.pdf_factory import write_outline_pdf
+
+    text_resource = _import(bridge, tmp_path, "kuantum", PAGES)
+    bridge.library.importLocalPdf(write_outline_pdf(tmp_path / "taranmis.pdf", ["A", "B"]).as_uri())  # metin katmani yok
+    QTest.qWait(80)
+
+    bridge.contentSearch.refreshUnsearchable()
+
+    titles = [item["title"] for item in bridge.contentSearch.unsearchable]
+    assert len(titles) == 1 and "taranmis" in titles[0].lower()
+    assert text_resource.id not in [item["resourceId"] for item in bridge.contentSearch.unsearchable]

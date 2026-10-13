@@ -14,6 +14,7 @@ class SearchBridge(QObject):
 
     resultsChanged = Signal()
     statusChanged = Signal()
+    unsearchableChanged = Signal()
 
     def __init__(self, ctx: BridgeContext, reader: ReaderBridge, pdf_bridge: QObject, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -24,6 +25,7 @@ class SearchBridge(QObject):
         self._groups: list[dict] = []
         self._found: dict[int, object] = {}  # kaynak id -> SearchGroup (acilabilsin diye)
         self._searched = False
+        self._unsearchable: list[dict] = []
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
         self._timer.setInterval(DEBOUNCE_MS)
@@ -50,6 +52,23 @@ class SearchBridge(QObject):
     def indexStatus(self) -> dict:
         """{state: idle|running|unavailable, done, total, pending}."""
         return self._ctx.text_indexer.status()
+
+    @Property(list, notify=unsearchableChanged)
+    def unsearchable(self) -> list:
+        """Aranamayan PDF'ler (taranmis / metin katmani yok / okunamadi): [{resourceId, title}]."""
+        return self._unsearchable
+
+    @Slot()
+    def refreshUnsearchable(self) -> None:
+        try:
+            rows = self._ctx.pdf_library.indexing().unsearchable()
+        except Exception:
+            log.exception("Aranamayan belgeler okunamadi")
+            rows = []
+        found = [{"resourceId": resource_id, "title": title or "İsimsiz"} for _document, resource_id, title in rows]
+        if found != self._unsearchable:
+            self._unsearchable = found
+            self.unsearchableChanged.emit()
 
     @Slot(str)
     def search(self, text: str) -> None:
@@ -102,5 +121,6 @@ class SearchBridge(QObject):
         self.resultsChanged.emit()
 
     def _on_index_finished(self) -> None:
+        self.refreshUnsearchable()
         if self._searched and self._query.strip():
             self._run()

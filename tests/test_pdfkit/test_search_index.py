@@ -146,7 +146,12 @@ def test_documents_needing_an_index_follow_state_and_version(session, document):
     service.finish(document.id, 3)
     assert service.pending() == []
     repo.set_state(document.id, STATUS_OK, 3, INDEX_VERSION - 1)
-    assert service.pending() == [document.id]  # eski surum
+    assert service.pending() == []  # eski surum ama sayfa ust sinirina takilmamis: dizin gecerli
+    repo.set_state(document.id, STATUS_OK, 2000, INDEX_VERSION - 1)
+    assert service.pending() == [document.id]  # eski ust sinira (2000) takilmis: kesilmis olabilir
+    repo.set_state(document.id, STATUS_FAILED, 0, INDEX_VERSION - 1)
+    assert service.pending() == [document.id]  # eski surumde basarisiz kalan yeniden denenir
+    repo.set_state(document.id, STATUS_OK, 3, INDEX_VERSION)
     service.fail(document.id)
     assert service.pending() == [] and repo.state(document.id).status == STATUS_FAILED  # basarisiz belge her acilista denenmez
     service.finish_without_text(document.id)
@@ -281,3 +286,20 @@ def test_the_write_slice_adapts_to_its_time_budget_unless_a_size_is_fixed(librar
     fixed = TextIndexer(library, lambda: _InlinePool(), write_chunk=7)
     fixed._tune_chunk(7, 0.5)
     assert fixed._write_chunk == 7
+
+
+def test_the_page_cap_fits_the_rowid_encoding_and_a_long_document_is_fully_indexed(session, document):
+    from pdfkit.app.search import MAX_INDEXED_PAGES
+    from pdfkit.infra.search_schema import ROWID_SPAN
+
+    assert MAX_INDEXED_PAGES <= ROWID_SPAN  # sayfa 0..ROWID_SPAN-1: baska belgenin rowid araligina tasmaz
+    service = IndexService(session)
+    assert service.available()
+    texts = [f"uzunbelge sayfa {i} bu cumle yeterince uzun bir metin olsun diye eklendi" for i in range(2500)]
+    service.begin(document.id)
+    for first in range(0, len(texts), 500):
+        service.add_pages(document.id, first, texts[first:first + 500])
+    service.finish(document.id, len(texts))
+
+    hits = SearchService(session).search("uzunbelge sayfa 2499", limit=5, document_id=document.id)
+    assert hits and hits[0].page == 2499  # eski 2000 sayfalik tavanin otesi aranabilir
