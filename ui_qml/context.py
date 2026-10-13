@@ -26,6 +26,7 @@ from ui_qml.pdf_catalog import ResourceCatalog
 from ui_qml.pdf_files import PdfFileManager
 from ui_qml.serializers import ResourceSerializer
 
+SETTING_AUTO_METADATA = "auto_metadata"  # kullanici ayari: yeni PDF'in kunyesi OpenAlex'ten otomatik doldurulsun mu (varsayilan acik)
 AUTO_INDEX = True  # PDF'ler ice aktarilinca/acilista tam metin dizinine kendiliginden alinir (testler kapatir)
 
 
@@ -108,6 +109,9 @@ class BridgeContext:
         self.extractor = FullTextExtractor(self)
         self.library_index = LibraryIndexCache(controllers.resources)
         self.serializer = ResourceSerializer(self.pdf_files, self.pdf_library)
+
+    def auto_metadata_enabled(self) -> bool:
+        return self.user_settings.get(SETTING_AUTO_METADATA, True) is not False
 
     def _index_imported(self, outcome: ImportOutcome) -> None:
         if outcome.status == "created" and outcome.document is not None:

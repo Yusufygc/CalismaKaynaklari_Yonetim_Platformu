@@ -8,7 +8,9 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QUrl, Signal
 
 from core.constants.strings import AppStrings
+from core.logger import log
 from pdfkit.api import ImportOutcome
+from services.metadata_autofill import fill_missing, titles_conflict
 from ui_qml.context import BridgeContext
 from workers import PaperMetadataWorker, ScrapeWorker
 
@@ -96,22 +98,32 @@ class PdfImporter(QObject):
         inspection = outcome.inspection
         if inspection is not None and not inspection.has_text_layer:
             self._ctx.notify.info(AppStrings.NOTIFICATION_PDF_NO_TEXT_LAYER)
-        if inspection is not None and inspection.doi:
+        if inspection is not None and inspection.doi and self._ctx.auto_metadata_enabled():  # Ayarlar > Kunye
             worker = PaperMetadataWorker(outcome.resource_id, inspection.doi, None)
-            worker.signals.finished.connect(self._on_paper_found)
+            pdf_title = inspection.title
+            worker.signals.finished.connect(
+                lambda resource_id, paper, error: self._on_paper_found(resource_id, paper, error, pdf_title)
+            )
             self._ctx.thread_pool.start(worker)
 
-    def _on_paper_found(self, resource_id: int, paper, error: str) -> None:
-        """DOI ile bulunan OpenAlex kaydini kaynaga isler; bulunamazsa sessiz kalir (kullanici istemedi)."""
+    def _on_paper_found(self, resource_id: int, paper, error: str, pdf_title: str | None = None) -> None:
+        """DOI ile bulunan OpenAlex kaydini kaynaga isler; bulunamazsa sessiz kalir (kullanici istemedi).
+
+        Yalniz bos alanlar doldurulur. PDF'in gomulu basligi (`pdf_title`) bulunan makalenin basligiyla acikca
+        celisiyorsa (DOI metindeki bir atif yapilan makaleye ait olabilir) hicbir sey yazilmaz."""
         if error or paper is None:
+            return
+        if titles_conflict(pdf_title, paper.title):
+            log.info("Kunye doldurma atlandi: bulunan makalenin basligi PDF'in basligiyla celisiyor (id=%d)", resource_id)
             return
         resources = self._ctx.controllers.resources
         resource = resources.get_resource(resource_id)
         if resource is None:
             return
         metadata = resource.extra_metadata or {}
-        changes: dict = {"extra_metadata": {**metadata, **paper.to_metadata()}}
+        merged, added = fill_missing(metadata, paper.to_metadata())
+        changes: dict = {"extra_metadata": merged} if added else {}
         if paper.title and resource.title == Path(metadata.get("original_filename") or "").stem:
             changes["title"] = paper.title  # Baslik hala dosya adiysa makale basligiyla degistir.
-        if resources.update_resource(resource_id, changes) is not None:
+        if changes and resources.update_resource(resource_id, changes) is not None:
             self._ctx.notify.info(AppStrings.NOTIFICATION_PAPER_METADATA_SAVED)
