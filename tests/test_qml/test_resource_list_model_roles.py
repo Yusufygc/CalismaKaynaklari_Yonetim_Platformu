@@ -29,7 +29,7 @@ def test_every_role_has_a_unique_qml_name_and_a_getter(qapp):
     model = ResourceListModel()
     names = [bytes(n).decode() for n in model.roleNames().values()]
 
-    assert len(names) == len(set(names)) == 20
+    assert len(names) == len(set(names)) == 21
     # Okuma ilerlemesi kaynaktan degil pdfkit'ten gelir (set_progress); digerlerinin hepsinin getter'i var.
     assert set(model.roleNames()) - {ResourceListModel.ReadingProgressRole} == set(ResourceListModel._ROLES)
 

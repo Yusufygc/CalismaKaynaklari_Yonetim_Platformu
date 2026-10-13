@@ -1,11 +1,12 @@
 import re
-from urllib.parse import parse_qs, urljoin, urlparse
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
 
 from core.logger import log
 from core.net_utils import safe_http_get
+from utils.url_utils import youtube_video_id
 
 _YOUTUBE_DURATION_RE = re.compile(r'"lengthSeconds"\s*:\s*"(\d+)"')
 
@@ -162,24 +163,4 @@ class ScraperService:
 
     @staticmethod
     def _youtube_video_id(url: str) -> str | None:
-        parsed = urlparse(url)
-        host = (parsed.hostname or "").lower()
-        if host.startswith("www."):
-            host = host[4:]
-        if host == "youtu.be":
-            video_id = parsed.path.strip("/").split("/")[0]
-            return video_id or None
-        if host.endswith("youtube.com"):
-            query_id = parse_qs(parsed.query).get("v", [None])[0]
-            if query_id:
-                return query_id
-            return ScraperService._youtube_path_video_id(parsed.path)
-        return None
-
-    @staticmethod
-    def _youtube_path_video_id(path: str) -> str | None:
-        """`/shorts/<id>` ve `/embed/<id>` bicimli yollardan video kimligini cikarir."""
-        parts = [part for part in path.split("/") if part]
-        if len(parts) >= 2 and parts[0] in {"shorts", "embed"}:
-            return parts[1]
-        return None
+        return youtube_video_id(url)

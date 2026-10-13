@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 from urllib.request import url2pathname
 
 # Guvenilmeyen kaynaktan (PDF baglanti aciklamalari) gelen URL'lerin isletim sistemine
@@ -30,6 +30,31 @@ PLATFORM_NAMES = {
 def is_safe_external_link(url: str | None) -> bool:
     """URL'nin sema'si dis uygulamada acilmasina izin verilenlerden mi (bkz. EXTERNAL_LINK_SCHEMES)."""
     return bool(url) and urlparse(url.strip()).scheme.lower() in EXTERNAL_LINK_SCHEMES
+
+
+def youtube_video_id(url: str | None) -> str | None:
+    """YouTube video kimligi (`watch?v=`, `youtu.be/`, `/shorts/`, `/embed/`); YouTube video adresi degilse None.
+    Kanal/ana sayfa/oynatma listesi adresleri video sayilmaz."""
+    if not url:
+        return None
+    parsed = urlparse(url.strip())
+    host = (parsed.hostname or "").lower().removeprefix("www.")
+    if host == "youtu.be":
+        return parsed.path.strip("/").split("/")[0] or None
+    if host == "youtube.com" or host.endswith(".youtube.com"):
+        query_id = parse_qs(parsed.query).get("v", [None])[0]
+        if query_id:
+            return query_id
+        parts = [part for part in parsed.path.split("/") if part]
+        if len(parts) >= 2 and parts[0] in {"shorts", "embed"}:
+            return parts[1]
+    return None
+
+
+def is_video_url(url: str | None) -> bool:
+    """Kaynak bir video mu? Yalnizca YouTube video adresleri otomatik tanınır; diger video siteleri elle yonetilir
+    (okuyucuda acilir)."""
+    return youtube_video_id(url) is not None
 
 
 def _match_platform_name(host: str) -> str | None:

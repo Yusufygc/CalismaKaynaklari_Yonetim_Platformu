@@ -13,7 +13,7 @@ from ui_qml.bridges.library_bridge import LibraryBridge
 from ui_qml.context import BridgeContext
 from ui_qml.export_view import export_view
 from ui_qml.file_export import write_export
-from utils.url_utils import is_safe_external_link
+from utils.url_utils import is_safe_external_link, is_video_url
 from workers import PdfOutlineWorker
 
 
@@ -97,6 +97,11 @@ class ReaderBridge(QObject):
     def openReader(self, resource_id: int) -> None:
         resource = self._ctx.controllers.resources.get_resource(resource_id)
         if not resource:
+            return
+
+        if is_video_url(resource.url):
+            # Videonun okunacak metni yok: okuyucu acilmaz, video varsayilan tarayicida acilir (ayrinti paneli ve notlar kalir).
+            QDesktopServices.openUrl(QUrl(resource.url.strip()))
             return
 
         pdf_files = self._ctx.pdf_files

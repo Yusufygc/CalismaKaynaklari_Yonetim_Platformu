@@ -202,3 +202,30 @@ def test_full_text_extraction_failure_changes_nothing(qapp, session):
 
     assert bridge.controllers.resources.get_resource(resource.id).full_text is None
     assert updates == []
+
+
+def test_a_youtube_video_opens_in_the_browser_and_never_in_the_reader(bridge):
+    from PySide6.QtGui import QDesktopServices
+
+    video = bridge.controllers.resources.add_resource({"title": "Video", "url": "https://www.youtube.com/watch?v=abc123", "category_id": None, "priority": 2})
+    vimeo = bridge.controllers.resources.add_resource({"title": "Diger", "url": "https://vimeo.com/12345", "category_id": None, "priority": 2})
+    opened = []
+    with patch.object(QDesktopServices, "openUrl", lambda url: opened.append(url.toString()) or True):
+        bridge.reader.openReader(video.id)
+        assert opened == ["https://www.youtube.com/watch?v=abc123"] and bridge.currentView == "showcase"
+        assert bridge.reader.currentReaderResource == {}  # okuyucu durumu degismedi
+
+        bridge.reader.openReader(vimeo.id)  # YouTube disi: elle yonetilir, okuyucu acilir
+    assert opened == ["https://www.youtube.com/watch?v=abc123"] and bridge.currentView == "reader"
+
+
+def test_video_flag_reaches_the_card_model_and_the_drawer_resource(bridge):
+    video = bridge.controllers.resources.add_resource({"title": "Video", "url": "https://youtu.be/abc123", "category_id": None, "priority": 2})
+    page = bridge.controllers.resources.add_resource({"title": "Sayfa", "url": "https://example.org/a", "category_id": None, "priority": 2})
+    bridge.library.reload()
+    model = bridge.library.resourcesModel
+    flags = {model.data(model.index(i, 0), model.IdRole): model.data(model.index(i, 0), model.IsVideoRole) for i in range(model.rowCount())}
+
+    assert flags == {video.id: True, page.id: False}
+    bridge.library.selectResource(video.id)
+    assert bridge.library.selectedResource["isVideo"] is True

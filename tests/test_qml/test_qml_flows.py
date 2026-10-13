@@ -332,3 +332,15 @@ def test_showcase_cards_fill_the_row_at_any_window_width(qapp, bridge):
         card = find_item(window, lambda i: i.property("cardWidth") is not None)
         assert card.property("cardWidth") == cell - 16 and card.property("cardWidth") >= 274
         assert engine.captured_warnings == []
+
+
+def test_video_cards_show_a_play_badge_and_the_drawer_offers_to_open_the_video(qapp, bridge):
+    bridge.controllers.resources.add_resource({"title": "Video", "url": "https://www.youtube.com/watch?v=abc123", "category_id": None, "priority": 2})
+    engine, window = open_window(qapp, bridge, "showcase", width=1280, height=800)
+    pump(qapp, 20)
+    assert find_item(window, lambda i: i.objectName() == "videoBadge") is not None
+
+    click(qapp, window, find_item(window, lambda i: i.property("cardWidth") is not None))
+    pump(qapp, 30)
+    button = find_item(window, lambda i: i.objectName() == "openReaderButton")
+    assert button.property("text") == "Videoyu Aç" and engine.captured_warnings == []

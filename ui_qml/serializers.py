@@ -21,7 +21,7 @@ from pdfkit.api import (
 from services.library_index import LibraryIndex
 from services.paper_market_service import PaperResult
 from utils.date_utils import format_local_datetime
-from utils.url_utils import format_display_url
+from utils.url_utils import format_display_url, is_video_url
 
 if TYPE_CHECKING:
     from pdfkit.api import PdfLibrary
@@ -166,6 +166,7 @@ def _core_fields(resource: Resource) -> dict:
         "content": resource.content or "",
         "fullText": resource.full_text or "",
         "readingMinutes": resource.reading_minutes or 0,
+        "isVideo": is_video_url(resource.url),
         "createdAt": format_local_datetime(resource.created_at),
     }
 

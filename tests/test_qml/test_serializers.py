@@ -14,7 +14,7 @@ from ui_qml.serializers import (
 
 _RESOURCE_KEYS = {
     "id", "title", "url", "domain", "categoryId", "categoryName", "categoryColor", "status", "priority",
-    "isPinned", "isFavorite", "content", "fullText", "thumbnailUrl", "description", "readingMinutes", "tags",
+    "isPinned", "isFavorite", "content", "fullText", "thumbnailUrl", "description", "readingMinutes", "isVideo", "tags",
     "highlights", "pdfFileUrl", "pdfState", "paper", "createdAt",
 }
 

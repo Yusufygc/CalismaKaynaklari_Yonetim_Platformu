@@ -191,8 +191,9 @@ Rectangle {
                     spacing: 8
 
                     AppButton {
-                        text: "Okuyucuda Aç"
-                        iconName: "fa5s.book-open"
+                        objectName: "openReaderButton"
+                        text: (root.resource && root.resource.isVideo) ? "Videoyu Aç" : "Okuyucuda Aç"
+                        iconName: (root.resource && root.resource.isVideo) ? "fa5s.play" : "fa5s.book-open"
                         variant: "primary"
                         // Row, RowLayout degil -- Layout.fillWidth no-op'tu, bu
                         // yuzden kalan genislik elle hesaplaniyor.

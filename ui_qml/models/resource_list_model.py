@@ -4,7 +4,7 @@ from PySide6.QtCore import Property, QAbstractListModel, QModelIndex, Qt, Signal
 
 from models import Resource, status_label
 from utils.date_utils import DATE_FORMAT, format_local_datetime
-from utils.url_utils import format_display_url
+from utils.url_utils import format_display_url, is_video_url
 
 DEFAULT_CATEGORY_COLOR = "#64748B"
 
@@ -62,6 +62,7 @@ class ResourceListModel(QAbstractListModel):
     TagsRole = Qt.ItemDataRole.UserRole + 18
     CreatedAtRole = Qt.ItemDataRole.UserRole + 19
     DurationLabelRole = Qt.ItemDataRole.UserRole + 20
+    IsVideoRole = Qt.ItemDataRole.UserRole + 22  # YouTube video adresi: okuyucu acilmaz, tarayicida acilir
     ReadingProgressRole = Qt.ItemDataRole.UserRole + 21  # PDF okuma orani 0..1 (kaynak degil, pdfkit'ten gelir)
 
     # QML `rowCount()` cagrisi degisimi bildirmez (binding bir kez hesaplanip donar);
@@ -102,6 +103,7 @@ class ResourceListModel(QAbstractListModel):
         TagsRole: (b"tags", lambda r: [{"id": t.id, "name": t.name} for t in r.tags]),
         CreatedAtRole: (b"createdAt", lambda r: format_local_datetime(r.created_at, DATE_FORMAT)),
         DurationLabelRole: (b"durationLabel", _duration_label),
+        IsVideoRole: (b"isVideo", lambda r: is_video_url(r.url)),
     }
 
     def roleNames(self) -> dict[int, bytes]:

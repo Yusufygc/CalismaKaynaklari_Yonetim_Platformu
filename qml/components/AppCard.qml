@@ -25,6 +25,7 @@ Item {
     property string thumbnailUrl: model ? model.thumbnailUrl : ""
     property int readingMinutes: model ? model.readingMinutes : 0
     property string durationLabel: model ? model.durationLabel : ""
+    property bool isVideo: model ? model.isVideo : false
     property real readingProgress: model ? model.readingProgress : 0
     property var tags: model ? model.tags : []
 
@@ -180,6 +181,26 @@ Item {
                     visible: root.thumbnailUrl !== ""
                     smooth: true
                     cache: true
+                }
+
+                // Video: küçük resmin ortasında oynat simgesi
+                Rectangle {
+                    objectName: "videoBadge"
+                    visible: root.isVideo
+                    anchors.centerIn: parent
+                    width: 40
+                    height: 40
+                    radius: 20
+                    color: Theme.overlayBg
+                    border.width: 1
+                    border.color: Qt.alpha(Theme.textOnAccent, 0.6)
+                    AppIcon {
+                        anchors.centerIn: parent
+                        anchors.horizontalCenterOffset: 1
+                        name: "fa5s.play"
+                        size: 14
+                        color: Theme.textOnAccent
+                    }
                 }
 
                 // Küçük Resim Yoksa Şık Gradyan Banner
