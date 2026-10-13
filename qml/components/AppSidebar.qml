@@ -186,6 +186,15 @@ Rectangle {
                     onClicked: root.navSelected("settings")
                 }
 
+                // Nav: Kullanım Kılavuzu
+                SidebarItem {
+                    isCollapsed: root.isCollapsed
+                    iconName: "fa5s.book-open"
+                    title: "Kullanım Kılavuzu"
+                    isActive: root.activeNav === "guide"
+                    onClicked: root.navSelected("guide")
+                }
+
                 // Ayraç
                 Item {
                     width: parent.width

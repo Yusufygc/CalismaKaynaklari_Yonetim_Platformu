@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | Kullanım Kılavuzu sayfası (kenar çubuğu, görselli)
+
+Kenar çubuğuna "Kullanım Kılavuzu" eklendi: son kullanıcı için teknik terimsiz, 12 bölümlü, numaralı adımlı ve ekran görüntülü rehber (`GuideView.qml`, içerik `qml/js/guide.js`, görseller `assets/guide/`). Görseller `scripts/guide_screenshots.py` ile gerçek arayüzden üretilir (bellek içi örnek veri; gerçek veriye/ayara/kayıt defterine dokunmaz). Testler: metinde teknik terim yok, her görsel diskte ve yüklenir, içindekiler kaydırır, kenar çubuğu öğesi açar. Test 1009. Ayrıntı: [[qml_arayuz]], [[dizin_yapisi]].
+
+---
+
 ## [2026-10-13] FEAT | pdfkit sınırlarının kapatılması: arama, matris, performans
 
 Faz 8 raporundaki sınırlar çözüldü (OCR, `pkmpdf://`, eski içe aktarıcı, 7c bilerek yapılmadı). (1) SQLite WAL + `synchronous=NORMAL` + `wal_autocheckpoint=100` (en kötü FTS yazım dilimi ≈ 20 ms), dizin yazım dilimi süreye göre. (2) Metinde Ara: gerçek toplam ve "tümünü göster", tavan 10.000 sayfa (sürüm 2, yalnız kesilmiş belgeler yeniden dizinlenir), aranamayan PDF listesi, arama ayrı oturum/thread'de (istek kimliği), sonuç eşleşen sözcüğün satırında açılır ve vurgulanır. (3) Kütüphane arama kutusu: 250 ms bekletme ve "PDF içinde de ara" düğmesi. (4) Matris: künyeler tek sorguyla (205 → 57 ms), yalnız değişen belge yenilenir, Ayarlar > Matris (sütun sırası, Obsidian sütunları, hücre sınırı), uygulamada hücre başına ilk 3 alıntı, vault notu olmayan satırlarda önerilen kısa ad. Test 1003. Ayrıntı: [[pdfkit]], [[qml_arayuz]], [[veritabani_semasi]].

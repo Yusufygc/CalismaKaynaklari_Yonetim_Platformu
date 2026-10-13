@@ -130,6 +130,13 @@ ApplicationWindow {
                     anchors.fill: parent
                     visible: bridge.currentView === "pdfReader"
                 }
+
+                // Sayfa 7: Kullanım Kılavuzu
+                GuideView {
+                    id: guideView
+                    anchors.fill: parent
+                    visible: bridge.currentView === "guide"
+                }
             }
         }
 

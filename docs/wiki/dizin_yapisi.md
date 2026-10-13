@@ -15,7 +15,8 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 ├── requirements.txt
 │
 ├── assets/
-│   └── icons/                  # Özel SVG ikonlar
+│   ├── icons/                  # Özel SVG ikonlar
+│   └── guide/                  # Kullanım Kılavuzu ekran görüntüleri (scripts/guide_screenshots.py ile üretilir)
 │
 ├── core/                       # Yapılandırma, sabitler, temel araçlar
 │   ├── config.py
@@ -139,7 +140,8 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │       ├── ShowcaseView.qml    # Bağlantı vitrini
 │       ├── ReaderView.qml      # Dikkat dağıtmayan okuyucu (HTML makaleler)
 │       ├── KnowledgePoolView.qml # Bilgi havuzu (alıntılar/kelimeler)
-│       ├── SettingsView.qml    # Kategori ve etiket yönetimi
+│       ├── SettingsView.qml    # Kategori ve etiket yönetimi, Obsidian, Künye, Matris ayarları
+│       ├── GuideView.qml       # Kullanım Kılavuzu (içerik: qml/js/guide.js)
 │       └── ArticleMarketView.qml # Makale Market (OpenAlex konu araması)
 │
 ├── pdfkit/                     # Bağımsız PDF modülü (bkz. [[pdfkit]]); dış dünya yalnız pdfkit.api
@@ -147,7 +149,7 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   ├── app/                    # Use-case: prepare_pdf, DocumentService, ResourceCatalogPort
 │   ├── infra/                  # file_store (CAS), inspector/text/outline (pypdfium2), downloader, orm, repository, search/vault/reading repo'ları
 │   └── ui/                     # Qt cephesi: PdfLibrary (içe aktarma, indirme, benimseme, çöp toplama), AnnotationListModel/NoteListModel/PageFilterModel, DocumentSession, AnnotationCommands (yazma), PdfBridge (bridge.pdf)
-├── scripts/                    # Bakım betikleri (make_lock.py: geçişli requirements.lock üretimi; bench_pdf.py: PDF okuyucu performans ölçümü)
+├── scripts/                    # Bakım betikleri (make_lock.py: geçişli requirements.lock üretimi; bench_pdf.py: PDF okuyucu performans ölçümü; guide_screenshots.py: kılavuz ekran görüntüleri)
 ├── migrations/                 # Alembic veritabanı migrasyonları
 └── tests/                      # Pytest test paketi
     ├── test_controllers/
