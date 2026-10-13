@@ -80,6 +80,7 @@ def _resource_filter_from_dict(filters: dict) -> ResourceFilter:
         favorites_only=bool(filters.get("favorites_only", filters.get("is_favorite", False))),
         urls_only=bool(filters.get("urls_only", False)),
         keyword=filters.get("keyword"),
+        content_resource_ids=_as_tuple(filters, "content_resource_ids", "content_resource_id"),
     )
 
 

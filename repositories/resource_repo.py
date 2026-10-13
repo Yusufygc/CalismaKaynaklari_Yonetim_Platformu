@@ -19,10 +19,11 @@ class ResourceFilter:
     favorites_only: bool = False
     urls_only: bool = False
     keyword: str | None = None
+    content_resource_ids: tuple[int, ...] = ()  # anahtar kelime PDF icinde eslesen kaynaklar: baslik/URL/not eslesmesine EKLENIR
 
     def __post_init__(self) -> None:
         # Cagiranlar liste/kume verebilir; dondurulmus (hashlenebilir) kriter icin tuple'a cevrilir.
-        for name in ("statuses", "tag_ids", "priorities"):
+        for name in ("statuses", "tag_ids", "priorities", "content_resource_ids"):
             object.__setattr__(self, name, tuple(getattr(self, name) or ()))
 
 
@@ -100,7 +101,10 @@ class ResourceRepository(BaseRepository[Resource]):
         if criteria.urls_only:
             q = q.filter(Resource.url.isnot(None), Resource.url != "")
         if criteria.keyword:
-            q = q.filter(_keyword_condition(criteria.keyword))
+            condition = _keyword_condition(criteria.keyword)
+            if criteria.content_resource_ids:
+                condition = or_(condition, Resource.id.in_(criteria.content_resource_ids))
+            q = q.filter(condition)
         if criteria.tag_ids:
             q = (
                 q.join(resource_tags_link, Resource.id == resource_tags_link.c.resource_id)

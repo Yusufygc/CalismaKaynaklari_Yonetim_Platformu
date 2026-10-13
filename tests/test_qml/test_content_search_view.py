@@ -138,3 +138,21 @@ def test_a_hit_opens_the_reader_with_the_word_in_the_search_bar_and_the_page_scr
     assert reader.property("appliedJumpToken") == bridge.pdf.jumpTarget["token"]
     assert bridge.pdf.jumpTarget["y"] > 400
     assert engine.captured_warnings == []
+
+
+def test_the_library_search_box_is_debounced_and_has_a_pdf_content_toggle(bridge, qapp, tmp_path):
+    _import(bridge, tmp_path, "belge", [["Birinci sayfa papatya bahcesi hakkinda bir metin. bu cumle yeterince uzun bir metin olsun diye eklendi"]])
+    engine, window = open_window(qapp, bridge, "showcase", width=1400, height=900)
+    toggle = find_named(window, "contentSearchToggle")
+    assert toggle.property("visible") and bridge.library.searchInContent is False
+
+    click(qapp, window, toggle)
+    assert bridge.library.searchInContent is True
+
+    bar = find_item(window, lambda i: i.property("placeholder") == "Kaynaklarda ara (başlık, not veya URL)...")
+    bar.setProperty("text", "papatya")
+    assert bridge.library.resourcesModel.rowCount() == 1 and bridge.library.filters["keyword"] == ""  # duraklayana dek suzulmedi
+    QTest.qWait(400)
+    pump(qapp, 10)
+    assert bridge.library.filters["keyword"] == "papatya" and bridge.library.resourcesModel.rowCount() == 1
+    assert engine.captured_warnings == []

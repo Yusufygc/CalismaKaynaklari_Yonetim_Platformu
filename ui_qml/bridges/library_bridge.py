@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from core.constants.strings import AppStrings
+from core.logger import log
 from models import ResourceStatus
 from ui_qml.context import BridgeContext
 from ui_qml.importers import MetadataScraper, PdfImporter
@@ -33,6 +34,7 @@ class LibraryBridge(QObject):
     selectedResourceChanged = Signal()
     isDrawerOpenChanged = Signal(bool)
     statsChanged = Signal()
+    searchInContentChanged = Signal()
     urlScraped = Signal(dict)
     pdfImportFinished = Signal(bool)  # her importLocalPdf istegi tam bir kez yayar
     resourcesReloaded = Signal()  # Liste yenilendi (diger bridge'ler kutuphane bayraklarini tazeler)
@@ -44,6 +46,7 @@ class LibraryBridge(QObject):
         self._model = ResourceListModel(self)
         self._selected_resource: dict = {}
         self._is_drawer_open = False
+        self._search_in_content = False  # oturumluk: arama kutusu PDF'lerin icindeki metne de bakar
         self._stats_cache: dict = {}
         # Acik alanlar (bridge disindan `LibraryEventRouter` ve `MarketSaver` kullanir).
         self.events_suspended = False
@@ -141,6 +144,40 @@ class LibraryBridge(QObject):
     # Filtreleme
     # ------------------------------------------------------------------ #
 
+    @Property(bool, notify=searchInContentChanged)
+    def searchInContent(self) -> bool:
+        return self._search_in_content
+
+    @Slot(bool)
+    def setSearchInContent(self, enabled: bool) -> None:
+        """Kutuphane arama kutusu, basligin/URL'nin/notun yani sira PDF'lerin icindeki metinde de arasin."""
+        if enabled == self._search_in_content:
+            return
+        self._search_in_content = enabled
+        self.searchInContentChanged.emit()
+        if self.filters.get("keyword"):
+            self.applyFilter(
+                self.filters["keyword"],
+                str(self.filters.get("category_id") or 0),
+                "0",
+                self._status_key(),
+                bool(self.filters.get("favorites_only")),
+            )
+
+    def _status_key(self) -> str:
+        statuses = self.filters.get("statuses") or []
+        return statuses[0].name if statuses else "ALL"
+
+    def _content_matches(self, keyword: str) -> list[int]:
+        """Anahtar kelimenin PDF metninde gectigi kaynaklar (tam metin dizininden); kapaliysa/bossa/hatada bos."""
+        if not self._search_in_content or not keyword:
+            return []
+        try:
+            return [group.resource_id for group in self._ctx.pdf_library.searching().search_by_resource(keyword)]
+        except Exception:
+            log.exception("Kutuphane aramasinda PDF icerigi taranamadi")
+            return []
+
     @Slot(str, str, str, str, bool)
     def applyFilter(
         self,
@@ -162,6 +199,7 @@ class LibraryBridge(QObject):
             "tag_ids": [tag_id] if tag_id else None,
             "statuses": [status] if status else None,
             "favorites_only": favorite_only,
+            "content_resource_ids": self._content_matches(keyword.strip() if keyword else ""),
         }
         self.reload()
 

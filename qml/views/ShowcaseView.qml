@@ -42,14 +42,41 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 280
                 placeholder: "Kaynaklarda ara (başlık, not veya URL)..."
+                // Yazarken her tuşta değil, duraklayınca süzülür (liste ve PDF içi arama her seferinde yeniden kurulmasın)
                 onSearchChanged: function(q) {
                     root.searchQuery = q
-                    root.updateFilters()
+                    searchDebounce.restart()
                 }
                 onSearchCleared: {
                     root.searchQuery = ""
+                    searchDebounce.stop()
                     root.updateFilters()
                 }
+            }
+
+            Timer {
+                id: searchDebounce
+                interval: 250
+                onTriggered: root.updateFilters()
+            }
+
+            // PDF'lerin içindeki metinde de ara (varsayılan kapalı; yalnızca bu oturum)
+            AppIconButton {
+                id: contentSearchToggle
+                objectName: "contentSearchToggle"
+                anchors.left: searchBar.right
+                anchors.leftMargin: 6
+                anchors.verticalCenter: parent.verticalCenter
+                iconName: "fa5s.file-pdf"
+                iconSize: 14
+                implicitWidth: 32
+                implicitHeight: 32
+                tooltip: bridge.library.searchInContent ? "PDF'lerin içinde de aranıyor (kapatmak için tıkla)" : "PDF'lerin içinde de ara"
+                tooltipPosition: "bottom"
+                isActive: bridge.library.searchInContent
+                activeBgColor: Theme.accentSubtle
+                iconColor: bridge.library.searchInContent ? Theme.accent : Theme.textSecondary
+                onClicked: bridge.library.setSearchInContent(!bridge.library.searchInContent)
             }
 
             // Sağ Taraf: Görünüm Seçici & Yeni Ekle Aksiyonları
@@ -116,7 +143,7 @@ Item {
             // Orta Alan: Kategori Filtresi (Açılır Kapanır Liste)
             Rectangle {
                 id: categoryDropdownButton
-                anchors.left: searchBar.right
+                anchors.left: contentSearchToggle.right
                 anchors.leftMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
                 height: 32
