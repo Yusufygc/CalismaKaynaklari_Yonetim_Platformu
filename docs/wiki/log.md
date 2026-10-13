@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | pdfkit Faz 6b: Metinde Ara sekmesi (PDF içeriğinde arama)
+
+Bilgi Havuzu'na üçüncü sekme: PDF'lerin içindeki metinde arama (`bridge.contentSearch`, `ContentSearchTab.qml`). 250 ms bekletmeli sorgu, kaynağa göre gruplu sonuçlar (en çok 5 sayfa + "N daha"), kaçırılmış vurgulu özet, sonuca tıklayınca okuyucu o sayfada açılır (5c atlama yolu), dizinleme ilerleme satırı, indeksleme bitince açık aramanın tazelenmesi. `SearchService.search_by_resource` eklendi. Test +14 (906). Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz6b-raporu.md`.
+
+---
+
 ## [2026-10-13] FEAT | pdfkit Faz 6a: tam metin dizini (FTS5) ve arka plan indeksleyici
 
 Faz 6 alt fazlara bölündü (`docs/plans/pdfkit-faz6-plani.md`). 6a arka uç: `pdf_text_index` + FTS5 `pdf_page_fts` (migration `b7e3c5a91d04`; Türkçe katlama uygulama tarafında, rowid = belge × 10000 + sayfa), güvenli sorgu kurucu ve özet parçası (`domain/search.py`), `SearchService`/`IndexService`, `iter_page_texts` (sayfa başına PDFium kilidi), `TextIndexer` (worker'da çıkarım, ana thread'de 10 sayfalık yazım dilimleri, iptal, yarım dizin aranmaz). İçe aktarma/indirme/açılışta kendiliğinden dizinlenir (`AUTO_INDEX`). Test: +41 (892); ayrıca `test_deep_links` çerçeve testi sabit beklemeden koşula bağlı beklemeye çevrildi. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz6a-raporu.md`.
