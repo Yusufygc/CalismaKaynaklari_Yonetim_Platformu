@@ -143,6 +143,21 @@ var sections = [
         tip: ""
     },
     {
+        id: "gorunum",
+        title: "Renk ve yazı tipi seçimi",
+        icon: "fa5s.palette",
+        intro: "Uygulamanın renklerini ve yazı tiplerini beğenine göre değiştirebilirsin. Ayarlar > Görünüm sekmesinde seçtiğin hemen uygulanır ve bir sonraki açılışta da hatırlanır.",
+        steps: [
+            "\"Mod\" bölümünden Açık ya da Koyu görünümü seç. Sol alttaki düğme de aynı işi yapar.",
+            "\"Renk teması\" bölümünde altı hazır tema var: Akademik Mavi, Klasik Akademik, Modern Akademik, Kütüphane, Bilimsel / Teknik ve Prestijli Üniversite. Karta tıklaman yeterli.",
+            "\"Yazı tipi\" bölümünde başlık, arayüz ve alıntı yazılarının nasıl görüneceğini her çiftin örneğinden görüp seçebilirsin.",
+            "Her temada yazılar, uzun süre okumada yormayacak ve rahat seçilecek şekilde ayarlanır. \"Varsayılana dön\" ilk haline getirir."
+        ],
+        image: "ayarlar-gorunum.png",
+        caption: "Ayarlar > Görünüm: mod, renk teması ve yazı tipi çifti.",
+        tip: "Bir yazı tipi bilgisayarında kurulu değilse, kartın altında yazan benzer bir yazı tipi kullanılır."
+    },
+    {
         id: "makale-market",
         title: "Makale Market: yeni makale bul",
         icon: "fa5s.compass",

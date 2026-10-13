@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | Ayarlar > Görünüm: 6 renk teması, 7 yazı tipi çifti, kalıcı mod (`ui` dalı)
+
+Renkler `qml/theme/palettes.js` motoruna taşındı: 5 temel renkten açık/koyu mod türetilir, metin ve vurgu renkleri otomatik WCAG AA'ya düzeltilir. Altı tema (Akademik Mavi, Klasik Akademik, Modern Akademik, Kütüphane, Bilimsel/Teknik, Prestijli Üniversite) ve yedi yazı tipi çifti (`fonts.js`; kurulu olmayan yazı tipi benzerine düşer). Ayarlar'a **Görünüm** sekmesi (mod, tema kartları, yazı tipi örnekleri); seçimler ve açık/koyu mod kalıcı (`ui_palette`, `ui_font_pair`, `ui_dark`). Kılavuza "Renk ve yazı tipi seçimi" bölümü; kılavuz görselleri artık gerçek Windows eklentisiyle (doğru yazı tipi adları) üretilir. Test 1117. Ayrıntı: [[qml_arayuz]].
+
+---
+
 ## [2026-10-13] FEAT | Akademik renk paleti ve tipografi denemesi (`ui` dalı)
 
 `ui` dalında `Theme.qml` akademik palete geçirildi: açık temada kâğıt tonlu zemin, koyu temada derin lacivert, mürekkep laciverti metin, akademik mavi vurgu; tüm metin/zemin çiftleri WCAG AA (test: `test_theme_contrast.py`). Yazı tipleri: Segoe UI Variable Text (arayüz), Sitka Heading (başlıklar, kart başlıkları, marka), Sitka Text (alıntılar); kurulu değilse Georgia/Segoe UI'ye düşer. Kılavuz görselleri yeni temayla yeniden üretildi. Ayrıntı: [[qml_arayuz]].

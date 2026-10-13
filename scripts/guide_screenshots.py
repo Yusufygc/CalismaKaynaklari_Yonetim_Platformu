@@ -15,10 +15,15 @@ import sys
 import tempfile
 from pathlib import Path
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
-if sys.platform == "win32":  # offscreen eklentisi sistem yazı tiplerini görmez: metin çizilmezdi
-    os.environ.setdefault("QT_QPA_FONTDIR", str(Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"))
+if sys.platform == "win32" and os.environ.get("GUIDE_OFFSCREEN") != "1":
+    # Gerçek Windows eklentisi: sistem yazı tipleri doğru adlarla görünür (Sitka Heading, Segoe UI Variable...), görüntü
+    # uygulamanın gerçek hâline çok yakın olur. Pencereler kısa süre görünür; ölçek 1:1 (görüntü 1280x800).
+    os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
+else:
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    if sys.platform == "win32":  # offscreen eklentisi sistem yazı tiplerini görmez: yazı tipi klasörü verilir
+        os.environ.setdefault("QT_QPA_FONTDIR", str(Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"))
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -348,6 +353,10 @@ def scene_matris_ayar(guide: Guide):
     _settings(guide, "matrixSettingsTab", "ayarlar-matris")
 
 
+def scene_gorunum(guide: Guide):
+    _settings(guide, "appearanceTab", "ayarlar-gorunum")
+
+
 def scene_market(guide: Guide):
     window = guide.window("articleMarket")
     guide.shot(window, "makale-market")
@@ -362,6 +371,7 @@ SCENES = [
     ("obsidian", scene_obsidian),
     ("kunye", scene_kunye),
     ("matris-ayar", scene_matris_ayar),
+    ("gorunum", scene_gorunum),
     ("market", scene_market),
 ]
 

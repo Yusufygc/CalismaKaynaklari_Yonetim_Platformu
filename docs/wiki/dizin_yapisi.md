@@ -149,7 +149,7 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   ├── app/                    # Use-case: prepare_pdf, DocumentService, ResourceCatalogPort
 │   ├── infra/                  # file_store (CAS), inspector/text/outline (pypdfium2), downloader, orm, repository, search/vault/reading repo'ları
 │   └── ui/                     # Qt cephesi: PdfLibrary (içe aktarma, indirme, benimseme, çöp toplama), AnnotationListModel/NoteListModel/PageFilterModel, DocumentSession, AnnotationCommands (yazma), PdfBridge (bridge.pdf)
-├── scripts/                    # Bakım betikleri (make_lock.py: geçişli requirements.lock üretimi; bench_pdf.py: PDF okuyucu performans ölçümü; guide_screenshots.py: kılavuz ekran görüntüleri)
+├── scripts/                    # Bakım betikleri (make_lock.py: geçişli requirements.lock üretimi; bench_pdf.py: PDF okuyucu performans ölçümü; guide_screenshots.py: kılavuz ekran görüntüleri; gerçek Windows eklentisiyle, GUIDE_OFFSCREEN=1 ile başsız)
 ├── migrations/                 # Alembic veritabanı migrasyonları
 └── tests/                      # Pytest test paketi
     ├── test_controllers/

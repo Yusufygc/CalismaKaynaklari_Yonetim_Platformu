@@ -1,5 +1,7 @@
 pragma Singleton
 import QtQuick
+import "palettes.js" as Palettes
+import "fonts.js" as Fonts
 
 QtObject {
     id: root
@@ -7,66 +9,54 @@ QtObject {
     // Tema durumu (Bridge'e bağlı)
     property bool isDark: true
 
-    // Akademik palet: mürekkep laciverti + kâğıt tonları. Açık temada sıcak "kâğıt" zemin (göz yormaz), koyu temada
-    // derin lacivert zemin; metinler her iki temada da WCAG AA (≥ 4.5:1) kontrastın üstündedir.
+    // Renkler `palettes.js`ten türetilir: seçili tema (paletteId) ve mod (isDark) değişince tüm renkler birlikte yenilenir.
+    // Metin/vurgu çiftleri her temada WCAG AA'dır (tests/test_qml/test_theme_contrast.py bütün temaları denetler).
+    property string paletteId: Palettes.defaultId
+    readonly property var tokens: Palettes.build(paletteId, isDark)
 
-    // Arka planlar (katmanlı yüzeyler)
-    readonly property color bgBase: isDark ? "#0B1020" : "#F4F1E9"
-    readonly property color bgSidebar: isDark ? "#0F1629" : "#ECE8DC"
-    readonly property color bgSurface: isDark ? "#141C33" : "#FBFAF6"
-    readonly property color bgElevated: isDark ? "#1B2542" : "#FFFFFF"
-    readonly property color bgHover: isDark ? "#243154" : "#E7E2D3"
-    readonly property color bgActive: isDark ? "#2E3E69" : "#DAD3BF"
+    readonly property color bgBase: tokens.bgBase
+    readonly property color bgSidebar: tokens.bgSidebar
+    readonly property color bgSurface: tokens.bgSurface
+    readonly property color bgElevated: tokens.bgElevated
+    readonly property color bgHover: tokens.bgHover
+    readonly property color bgActive: tokens.bgActive
+    readonly property color borderSubtle: tokens.borderSubtle
+    readonly property color borderStrong: tokens.borderStrong
+    readonly property color borderFocus: tokens.borderFocus
+    readonly property color textPrimary: tokens.textPrimary
+    readonly property color textSecondary: tokens.textSecondary
+    readonly property color textMuted: tokens.textMuted
+    readonly property color textOnAccent: tokens.textOnAccent
+    readonly property color accent: tokens.accent
+    readonly property color accentHover: tokens.accentHover
+    readonly property color accentSubtle: tokens.accentSubtle
+    readonly property color accentText: tokens.accentText
+    readonly property color statusInbox: tokens.statusInbox
+    readonly property color statusPlanned: tokens.statusPlanned
+    readonly property color statusInProgress: tokens.statusInProgress
+    readonly property color statusCompleted: tokens.statusCompleted
+    readonly property color statusInboxBg: tokens.statusInboxBg
+    readonly property color statusPlannedBg: tokens.statusPlannedBg
+    readonly property color statusInProgressBg: tokens.statusInProgressBg
+    readonly property color statusCompletedBg: tokens.statusCompletedBg
+    readonly property color danger: tokens.danger
+    readonly property color dangerHover: tokens.dangerHover
+    readonly property color dangerSubtle: tokens.dangerSubtle
+    readonly property color dangerText: tokens.dangerText
+    readonly property color favorite: tokens.favorite
+    readonly property color favoriteSubtle: tokens.favoriteSubtle
+    readonly property color pin: tokens.pin
+    readonly property color tooltipBg: tokens.tooltipBg
+    readonly property color chipUnselectedBg: tokens.chipUnselectedBg
+    readonly property color gradientHeaderStart: tokens.gradientHeaderStart
+    readonly property color fallbackCategoryColor: tokens.fallbackCategoryColor
+    readonly property color popoverBg: tokens.popoverBg
 
-    // Kenarlıklar
-    readonly property color borderSubtle: isDark ? "#25314F" : "#DDD6C3"
-    readonly property color borderStrong: isDark ? "#3A4B78" : "#BDB49B"
-    readonly property color borderFocus: isDark ? "#7FA8FF" : "#1E4FA8"
-
-    // Metinler
-    readonly property color textPrimary: isDark ? "#F5F2EA" : "#14213D"
-    readonly property color textSecondary: isDark ? "#C3CCE3" : "#3A4561"
-    readonly property color textMuted: isDark ? "#9AA7C8" : "#525D7A"
-    readonly property color textOnAccent: "#FFFFFF"
-
-    // Vurgu (akademik mavi)
-    readonly property color accent: isDark ? "#3866D6" : "#1E4FA8"
-    readonly property color accentHover: isDark ? "#5E8CF0" : "#2A63C9"
-    readonly property color accentSubtle: isDark ? "#182750" : "#E4EBF8"
-    readonly property color accentText: isDark ? "#A9C2FF" : "#1B3F86"
-
-    // Durum Renkleri (açık temada daha koyu, koyu temada daha parlak: iki yüzeyde de okunur)
-    readonly property color statusInbox: isDark ? "#B99CF7" : "#6D3FC4"
-    readonly property color statusPlanned: isDark ? "#5CC3F5" : "#0B6FA8"
-    readonly property color statusInProgress: isDark ? "#F5B83D" : "#9A5208"
-    readonly property color statusCompleted: isDark ? "#3DD6A0" : "#08704E"
-
-    readonly property color statusInboxBg: isDark ? "#2A1D47" : "#EBE3FA"
-    readonly property color statusPlannedBg: isDark ? "#10304A" : "#DCEEF9"
-    readonly property color statusInProgressBg: isDark ? "#3A2A0F" : "#FAEBCF"
-    readonly property color statusCompletedBg: isDark ? "#0F3328" : "#D5F0E3"
-
-    // Aksiyon Renkleri
-    readonly property color danger: isDark ? "#F0645F" : "#C62828"
-    readonly property color dangerHover: isDark ? "#F47E7A" : "#A61F1F"
-    readonly property color dangerSubtle: isDark ? "#3A1B20" : "#FBE3E1"
-    readonly property color dangerText: isDark ? "#FFB4B0" : "#9B1C1C"
-
-    readonly property color favorite: isDark ? "#F472A8" : "#B8195F"
-    readonly property color favoriteSubtle: isDark ? "#3A1A2D" : "#FADCE9"
-
-    readonly property color pin: isDark ? "#F2C04D" : "#A8730E"
-
-    // Gölgeler ve Karartma
-    readonly property color shadowColor: isDark ? "#00000099" : "#14213D22"
+    // Saydam kaplamalar ve gölgeler
+    readonly property color shadowColor: isDark ? "#00000099" : Qt.alpha(tokens.shadowTint, 0.14)
     readonly property color overlayBg: "#00000077"
     readonly property color backdropSubtle: "#00000055"
-    readonly property color tooltipBg: isDark ? "#1B2542" : "#14213D"
-    readonly property color chipUnselectedBg: isDark ? "#27345A" : "#E3DDCB"
-    readonly property color badgeOverlay: isDark ? "#0F1629DD" : "#FBFAF6EE"
-    readonly property color gradientHeaderStart: isDark ? "#16223F" : "#E4EBF8"
-    readonly property color fallbackCategoryColor: "#5B6683"
-    readonly property color popoverBg: isDark ? "#182140" : "#FFFFFF"
+    readonly property color badgeOverlay: Qt.alpha(tokens.badgeBase, 0.87)
     readonly property color swatchBorderLight: "#FFFFFF44"
     readonly property color markerBorderLight: "#FFFFFF66"
     readonly property color thumbnailOverlay: "#00000045"
@@ -99,19 +89,13 @@ QtObject {
     readonly property int radiusXl: 18
     readonly property int radiusPill: 999
 
-    // Tipografi: arayüz Segoe UI Variable (modern, net), başlıklar Sitka Heading (akademik serif), okunacak metin
-    // (alıntılar) Sitka Text. Kurulu değilse sıradaki aday seçilir (Georgia / Segoe UI hemen her Windows'ta vardır).
-    function pickFamily(candidates, fallback) {
-        const available = Qt.fontFamilies()
-        for (let i = 0; i < candidates.length; i++) {
-            if (available.indexOf(candidates[i]) !== -1)
-                return candidates[i]
-        }
-        return fallback
-    }
-    readonly property string fontFamily: pickFamily(["Segoe UI Variable Text", "Segoe UI", "Inter"], "Segoe UI")
-    readonly property string fontHeading: pickFamily(["Sitka Heading", "Georgia", "Cambria", "Palatino Linotype"], "Georgia")
-    readonly property string fontReading: pickFamily(["Sitka Text", "Georgia", "Cambria", "Palatino Linotype"], "Georgia")
+    // Tipografi: yazı tipi çifti (fontPairId) `fonts.js`teki aday listelerinden, makinede kurulu olanlara göre çözülür.
+    // fontFamily = arayüz gövdesi, fontHeading = başlıklar, fontReading = alıntı/okunacak metin.
+    property string fontPairId: Fonts.defaultId
+    readonly property var fontSet: Fonts.resolve(fontPairId, Qt.fontFamilies())
+    readonly property string fontFamily: fontSet.body
+    readonly property string fontHeading: fontSet.heading
+    readonly property string fontReading: fontSet.reading
     readonly property int fontXs: 11
     readonly property int fontSm: 12
     readonly property int fontBase: 13

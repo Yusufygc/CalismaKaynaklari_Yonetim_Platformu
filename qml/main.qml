@@ -37,8 +37,17 @@ ApplicationWindow {
         }
     }
 
+    // Ayarlar > Görünüm: renk teması ve yazı tipi çifti
+    Connections {
+        target: bridge.appearance
+        function onPaletteChanged() { Theme.paletteId = bridge.appearance.paletteId }
+        function onFontPairChanged() { Theme.fontPairId = bridge.appearance.fontPairId }
+    }
+
     Component.onCompleted: {
         Theme.isDark = bridge.isDarkTheme
+        Theme.paletteId = bridge.appearance.paletteId
+        Theme.fontPairId = bridge.appearance.fontPairId
 
         // Pencere konumu hic kaydedilmiyor (QSettings yok) -- her acilis sifirdan.
         // Qt/Windows'un varsayilan yerlestirmesi coklu-ekran/DPI degisikliginde

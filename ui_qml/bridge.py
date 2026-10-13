@@ -1,9 +1,11 @@
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from sqlalchemy.orm import Session
 
+from core.constants.appearance import SETTING_DARK
 from core.events import event_bus
 from pdfkit.api import PdfBridge
 from ui_qml.bridges.annotations_bridge import AnnotationsBridge
+from ui_qml.bridges.appearance_bridge import AppearanceBridge
 from ui_qml.bridges.citations_bridge import CitationsBridge
 from ui_qml.bridges.discovery_bridge import DiscoveryBridge
 from ui_qml.bridges.library_bridge import LibraryBridge
@@ -33,6 +35,7 @@ class QmlBridge(QObject):
     - `bridge.vault`    -- Obsidian vault klasoru, esitleme durumu (pdfkit.VaultSync)
     - `bridge.contentSearch` -- PDF icerigi tam metin aramasi (pdfkit.SearchService / TextIndexer)
     - `bridge.synthesis` -- Bilgi Havuzu > Matris: literatur matrisi (kaynak x anlam etiketi), suzgecler, Markdown disa aktarim
+    - `bridge.appearance` -- Ayarlar > Gorunum: renk temasi ve yazi tipi cifti (acik/koyu mod `isDarkTheme`/`toggleTheme`)
     - `bridge.metadata` -- Ayarlar > Kunye: yeni PDF'in kunyesini OpenAlex'ten otomatik doldurma (acik/kapali)
     - `bridge.citations` -- atif metni, OpenAlex bilgisi, referans/atif listeleri
     - `bridge.market`   -- Makale Market aramasi, sayfalama, gecmis, kaydetme/disa aktarma
@@ -84,6 +87,8 @@ class QmlBridge(QObject):
         self._vault = VaultBridge(self._ctx, self)
         self._content_search = SearchBridge(self._ctx, self._reader, self._pdf, self)
         self._metadata = MetadataBridge(self._ctx, self)
+        self._appearance = AppearanceBridge(self._ctx, self)
+        self._is_dark_theme = self._ctx.user_settings.get(SETTING_DARK, True) is not False  # son secilen mod
         self._synthesis = SynthesisBridge(self._ctx, self._reader, self._pdf, self)
         self.deep_links = DeepLinkRouter(self, self._ctx, self)
         self.deep_links.activationRequested.connect(self.windowActivationRequested)
@@ -128,6 +133,10 @@ class QmlBridge(QObject):
     @Property(QObject, constant=True)
     def metadata(self) -> QObject:
         return self._metadata
+
+    @Property(QObject, constant=True)
+    def appearance(self) -> QObject:
+        return self._appearance
 
     @Property(QObject, constant=True)
     def synthesis(self) -> QObject:
@@ -199,6 +208,7 @@ class QmlBridge(QObject):
     @Slot()
     def toggleTheme(self) -> None:
         self._is_dark_theme = not self._is_dark_theme
+        self._ctx.user_settings.set(SETTING_DARK, self._is_dark_theme)  # hatada mod yine degisir, yalniz hatirlanmaz
         self.isDarkThemeChanged.emit(self._is_dark_theme)
 
     @Slot(bool)
