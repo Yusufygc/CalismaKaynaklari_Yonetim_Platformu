@@ -69,6 +69,7 @@ class LegacyAnnotationImporter:
                 a, u = sync()
                 copied, updated = copied + a, updated + u
             removed = self._delete_migrated_originals()
+            self._drop_emptied_notes_table()
             self._session.commit()
         except Exception:
             self._session.rollback()
@@ -77,6 +78,13 @@ class LegacyAnnotationImporter:
         if copied or updated or removed:
             log.info("Eski PDF kayitlari pdfkit'e tasindi: +%d ~%d -%d", copied, updated, removed)
         return LegacyMigrationReport(copied, updated, removed)
+
+    def _drop_emptied_notes_table(self) -> None:
+        """Eski `pdf_notes` tablosu tamamen bosaldiysa kaldirir (Faz 8 daraltmasinin calisma zamani yarisi: migration
+        tabloyu yalniz bossa siler; icinde satir olan veritabaninda tabloyu, son satir tasininca bu adim siler).
+        Satir kaldiysa (belgesi henuz depoya alinmamis not) tablo korunur."""
+        if self._has_table("pdf_notes") and self._session.execute(text("SELECT count(*) FROM pdf_notes")).scalar_one() == 0:
+            self._session.execute(text("DROP TABLE pdf_notes"))
 
     def _delete_migrated_originals(self) -> int:
         removed = 0

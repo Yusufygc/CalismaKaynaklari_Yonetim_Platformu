@@ -133,7 +133,7 @@ def test_notes_and_terms_are_moved_and_originals_deleted(session, annotations, i
     assert (term.word, term.translation, term.context_sentence, term.mastery_level, term.status) == (
         "ubiquitous", "her yerde", "It is ubiquitous.", 2, STATUS_UNANCHORED,
     )
-    assert session.execute(text("SELECT count(*) FROM pdf_notes")).scalar_one() == 0 and session.query(Vocabulary).count() == 0
+    assert not _notes_table_exists(session) and session.query(Vocabulary).count() == 0  # bosalan eski tablo da kalkar
 
 
 def test_the_importer_works_when_the_legacy_notes_table_no_longer_exists(session, annotations, importer, resource_with_document):
@@ -143,3 +143,30 @@ def test_the_importer_works_when_the_legacy_notes_table_no_longer_exists(session
     report = importer.migrate()
 
     assert (report.copied, report.removed) == (1, 1) and len(annotations.list_highlights(document.id)) == 1
+
+
+def _notes_table_exists(session) -> bool:
+    return session.execute(text("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'pdf_notes'")).first() is not None
+
+
+def test_the_legacy_notes_table_is_dropped_once_its_last_row_has_been_moved(session, annotations, importer, resource_with_document, legacy_notes):
+    resource, document, _p = resource_with_document
+    session.execute(text("INSERT INTO pdf_notes (resource_id, page, x, y, note_text) VALUES (:r, 0, 1.0, 2.0, 'tasinacak')"), {"r": resource.id})
+    session.commit()
+
+    importer.migrate()
+
+    assert [n.text for n in annotations.list_notes(document.id)] == ["tasinacak"] and not _notes_table_exists(session)
+
+
+def test_the_legacy_notes_table_is_kept_while_a_note_cannot_be_moved(session, importer, resource_with_document, legacy_notes):
+    unlinked = Resource(title="Belgesi yok", url="https://example.com/x.pdf")  # PDF'i henuz depoya alinmamis kaynak
+    session.add(unlinked)
+    session.commit()
+    session.execute(text("INSERT INTO pdf_notes (resource_id, page, x, y, note_text) VALUES (:r, 0, 1.0, 2.0, 'yetim not')"), {"r": unlinked.id})
+    session.commit()
+
+    importer.migrate()
+
+    assert _notes_table_exists(session)
+    assert session.execute(text("SELECT note_text FROM pdf_notes")).scalar_one() == "yetim not"  # veri silinmedi
