@@ -13,10 +13,12 @@ from typing import ClassVar
 
 from pdfkit.domain.annotations import Term
 from pdfkit.domain.models import Document
+from pdfkit.domain.synthesis import MatrixRow, build_row, make_matrix, matrix_summary, render_table
 from pdfkit.domain.vault_note import NOTE_DIRECTORY, NoteContent, inline_text, replace_block, term_line
 
 INDEX_FILE = "_Index.md"
 VOCABULARY_FILE = "_Kelimeler.md"
+MATRIX_FILE = "_Matris.md"
 _MAX_LISTED_AUTHORS = 3
 _NO_PAGE_SORT = 10**6
 
@@ -63,6 +65,10 @@ def index_entry_for(content: NoteContent) -> IndexEntry:
         notes=len(content.notes),
         terms=len(content.terms),
     )
+
+
+def matrix_row_for(content: NoteContent) -> MatrixRow:
+    return build_row(content.document, content.info, content.citekey, content.annotations)
 
 
 def vocabulary_section_for(content: NoteContent) -> VocabularySection:
@@ -134,7 +140,28 @@ class VocabularyContent:
         return lines
 
 
-SummaryContent = IndexContent | VocabularyContent
+@dataclass(frozen=True)
+class MatrixContent:
+    """Literatur matrisi (kaynak x anlam etiketi): suzgecsiz tam matris. Suzgecli cikti arayuzden disa aktarilir."""
+
+    kind: ClassVar[str] = "matrix"
+    filename: ClassVar[str] = MATRIX_FILE
+    title: ClassVar[str] = "Literatür Matrisi"
+
+    rows: Sequence[MatrixRow] = ()
+
+    @property
+    def is_empty(self) -> bool:
+        return not make_matrix(self.rows).rows
+
+    def body_lines(self) -> list[str]:
+        matrix = make_matrix(self.rows)
+        if not matrix.rows:
+            return ["_Henüz alıntı yok._"]
+        return [f"_{matrix_summary(matrix)}_", ""] + render_table(matrix)
+
+
+SummaryContent = IndexContent | VocabularyContent | MatrixContent
 
 
 def summary_rel_path(content: SummaryContent) -> str:

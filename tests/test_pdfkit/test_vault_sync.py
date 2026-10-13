@@ -225,7 +225,7 @@ def test_full_sync_writes_the_library_index_and_skips_an_empty_vocabulary(sync, 
     index = _summary(vault, "_Index.md")
     assert "- [[lecun2015deep]] — Deep learning · Yann LeCun · 2015 · 1 alıntı · Gelen Kutusu" in index
     assert _summary(vault, "_Kelimeler.md") is None  # kelime yok: bos defter olusturulmaz
-    assert reports[0].summaries_written == 1 and reports[0].created == 1
+    assert reports[0].summaries_written == 2 and reports[0].created == 1  # dizin + matris
     assert "1 not yazıldı" in sync.status()["message"]  # ozet notlari belge sayisina karismaz
 
 
@@ -295,3 +295,20 @@ def test_a_corrupted_summary_fails_alone_and_notes_are_still_written(sync, libra
     assert reports[0].failed[0][0] == "_Index.md" and reports[0].created == 1
     assert sync.status()["state"] == STATE_ERROR
     assert (papers / "_Index.md").read_text(encoding="utf-8") == "# Dizin\n%% pkm:end index %%\n"
+
+
+def test_full_sync_writes_the_literature_matrix_and_it_follows_new_annotations(sync, library, vault, doc):
+    resource, document = doc
+    sync.set_root(vault)
+    sync.sync_all()
+    assert _summary(vault, "_Matris.md") is None  # alinti yok: bos matris olusturulmaz
+    library.annotations().create_highlight(document.id, "yontem alintisi", [Segment(0, 0, 10, "yontem alintisi")], "method", tags=["hipotez"])
+    reports = _reports(sync)
+
+    sync.mark_resource(resource.id)
+    QTest.qWait(120)
+
+    matrix = _summary(vault, "_Matris.md")
+    assert "%% pkm:begin matrix" in matrix and "| Kaynak | Önemli | Bulgu / Sonuç | Yöntem |" in matrix
+    assert "[[lecun2015deep]] · Deep learning (2015)" in matrix and "“yontem alintisi”" in matrix
+    assert reports[0].summaries_written == 2  # dizin (sayilar) + matris

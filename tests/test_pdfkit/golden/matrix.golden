@@ -1,0 +1,8 @@
+# Literatür Matrisi
+
+_2 kaynak · 6 alıntı_
+
+| Kaynak | Önemli | Bulgu / Sonuç | Yöntem | Tanım / Kavram | Eleştiri / Soru | Genel |
+|---|---|---|---|---|---|---|
+| [[lecun2015deep]] · Deep learning (2015) |  | • “Doğruluk %92 oldu.” ([s. 5](pkm://open?doc=abababababababab&page=5&ann=01HZX3K9M2P4Q6R8S0T1V2WB22)) | • “Geri yayılım ile eğitildi.” ([s. 2](pkm://open?doc=abababababababab&page=2&ann=01HZX3K9M2P4Q6R8S0T1V2WA11))<br>• “Evrişimli ağlar kullanıldı.” ([s. 3](pkm://open?doc=abababababababab&page=3&ann=01HZX3K9M2P4Q6R8S0T1V2W3X4)) — Yöntem bölümü |  | • “Kayıp metin” |  |
+| [[vaswani2017attention]] · Attention is all you need (2017) |  |  | • “Yalnızca dikkat katmanları.” ([s. 1](pkm://open?doc=cdcdcdcdcdcdcdcd&page=1&ann=01HZX3K9M2P4Q6R8S0T1V2WD44)) |  |  | • “Genel not” ([s. 4](pkm://open?doc=cdcdcdcdcdcdcdcd&page=4&ann=01HZX3K9M2P4Q6R8S0T1V2WE55)) |

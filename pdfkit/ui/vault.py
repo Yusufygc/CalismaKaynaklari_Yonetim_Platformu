@@ -12,12 +12,15 @@ from pdfkit.domain.vault_note import NoteContent
 from pdfkit.domain.vault_summary import (
     IndexContent,
     IndexEntry,
+    MatrixContent,
     SummaryContent,
     VocabularyContent,
     VocabularySection,
     index_entry_for,
+    matrix_row_for,
     vocabulary_section_for,
 )
+from pdfkit.domain.synthesis import MatrixRow
 from pdfkit.infra.vault_writer import VaultWriter, WriteOutcome
 from pdfkit.ui.library import PdfLibrary
 from pdfkit.ui.workers import CallWorker, submit
@@ -95,7 +98,7 @@ class VaultSync(QObject):
         self._contents: list[NoteContent] = []
         self._full_requested = False  # `sync_all`: dizin/kelime defteri tum belgelerden yeniden kurulur
         self._full_pass = False  # calisan esitleme tam mi?
-        self._cache: dict[int, tuple[IndexEntry, VocabularySection]] = {}  # belge -> dizin/kelime defteri parcalari
+        self._cache: dict[int, tuple[IndexEntry, VocabularySection, MatrixRow]] = {}  # belge -> dizin/kelime/matris parcalari
         self._cache_complete = False  # onbellek tum belgeleri kapsiyor mu? (degilse ozet notlari yazilmaz)
         self._running = False
         self._state = STATE_DISABLED
@@ -203,7 +206,7 @@ class VaultSync(QObject):
                 self._cache.pop(document_id, None)  # bagli kaynagi kalmadi: dizinden dusur (not dosyasi silinmez)
                 continue
             self._contents.append(content)
-            self._cache[document_id] = (index_entry_for(content), vocabulary_section_for(content))
+            self._cache[document_id] = (index_entry_for(content), vocabulary_section_for(content), matrix_row_for(content))
         if self._queue:
             QTimer.singleShot(0, self._build_next)
             return
@@ -227,7 +230,11 @@ class VaultSync(QObject):
         if not self._cache_complete:
             return []
         parts = [self._cache[document_id] for document_id in sorted(self._cache)]
-        return [IndexContent([entry for entry, _section in parts]), VocabularyContent([section for _entry, section in parts])]
+        return [
+            IndexContent([entry for entry, _section, _row in parts]),
+            VocabularyContent([section for _entry, section, _row in parts]),
+            MatrixContent([row for _entry, _section, row in parts]),
+        ]
 
     def _dispatch(self, callback, result, error) -> None:
         callback(result, error)

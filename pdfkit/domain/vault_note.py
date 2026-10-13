@@ -85,7 +85,7 @@ def obsidian_tag(tag: str) -> str:
 # ---------------------------------------------------------------------- #
 
 
-def _page_link(document: Document, page: int, uid: str) -> str:
+def page_link(document: Document, page: int, uid: str) -> str:
     return f"[s. {page + 1}]({build_open_link(document.sha256, page, uid)})"
 
 
@@ -98,7 +98,7 @@ def _annotation_lines(document: Document, annotation: Annotation) -> list[str]:
     if annotation.status == STATUS_ORPHANED or annotation.page is None:
         heading = f"> [!{_callout_type(annotation.label_key)}] {label} · konumu bulunamadı"
     else:
-        heading = f"> [!{_callout_type(annotation.label_key)}] {label} · {_page_link(document, annotation.page, annotation.uid)}"
+        heading = f"> [!{_callout_type(annotation.label_key)}] {label} · {page_link(document, annotation.page, annotation.uid)}"
     body = [f"> “{inline_text(annotation.quote_exact)}”"]
     comment = _lines(annotation.comment or "")
     if comment:
@@ -112,7 +112,7 @@ def _annotation_lines(document: Document, annotation: Annotation) -> list[str]:
 
 def _note_lines(document: Document, note: PageNote) -> list[str]:
     text = _lines(note.text) or [""]
-    lines = [f"> [!note] Not · {_page_link(document, note.page, note.uid)}"] + [f"> {line}" for line in text]
+    lines = [f"> [!note] Not · {page_link(document, note.page, note.uid)}"] + [f"> {line}" for line in text]
     lines[-1] += f" ^{block_id('nt', note.uid)}"
     return lines
 
@@ -120,13 +120,13 @@ def _note_lines(document: Document, note: PageNote) -> list[str]:
 def term_line(document: Document, term: Term) -> str:
     line = f"- **{inline_text(term.word)}** — {inline_text(term.translation)}"
     if term.segments:
-        line += f" · {_page_link(document, term.segments[0].page, term.uid)}"
+        line += f" · {page_link(document, term.segments[0].page, term.uid)}"
     if term.context_sentence:
         line += f" — _“{inline_text(term.context_sentence)}”_"
     return line
 
 
-def _annotation_sort_key(annotation: Annotation) -> tuple:
+def annotation_sort_key(annotation: Annotation) -> tuple:
     first = annotation.segments[0] if annotation.segments else None
     orphan = annotation.status == STATUS_ORPHANED or first is None
     return (orphan, _NO_PAGE_SORT if orphan else first.page, 0 if orphan else first.start, annotation.id)
@@ -136,7 +136,7 @@ def render_block(content: NoteContent) -> str:
     """Sentinel'ler dahil uretilen blok (satir sonu `\\n`, sonda bos satir yok)."""
     document = content.document
     sections: list[list[str]] = []
-    annotations = sorted(content.annotations, key=_annotation_sort_key)
+    annotations = sorted(content.annotations, key=annotation_sort_key)
     if annotations:
         items = [_annotation_lines(document, a) for a in annotations]
         sections.append(["### Alıntılar", ""] + _join_blank(items))
