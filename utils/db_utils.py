@@ -31,13 +31,32 @@ engine = create_engine(
 )
 
 
+def _is_file_database(target: Engine) -> bool:
+    database = target.url.database
+    return target.url.get_backend_name() == "sqlite" and bool(database) and database != ":memory:" and not database.startswith("file::memory:")
+
+
+def configure_sqlite_connection(dbapi_connection, file_backed: bool) -> None:
+    """Her yeni SQLite baglantisinin pragma'lari. Yabanci anahtarlar her zaman acik. Dosya veritabaninda ayrica WAL:
+    okuyucular yaziciyi bloklamaz (arama ayri baglantidan okuyabilir) ve `synchronous=NORMAL` ile commit basina fsync
+    yoktur (tam metin dizini yazimindaki seyrek takilmalar). Kilit beklemesi 5 sn'ye kadar tolere edilir."""
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA foreign_keys=ON")
+        if file_backed:
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.execute("PRAGMA busy_timeout=5000")
+            cursor.execute("PRAGMA wal_autocheckpoint=100")  # kucuk, sik checkpoint: tek buyuk checkpoint 100+ ms'lik takilma yapiyordu
+    finally:
+        cursor.close()
+
+
 @event.listens_for(engine, "connect")
-def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record) -> None:
+def _configure_sqlite_connection(dbapi_connection, _connection_record) -> None:
     if engine.url.get_backend_name() != "sqlite":
         return
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
+    configure_sqlite_connection(dbapi_connection, _is_file_database(engine))
 
 def register_sqlite_functions(target: Engine) -> None:
     """Her yeni SQLite baglantisina `fold_tr` SQL fonksiyonunu ekler (Turkce-duyarsiz arama).

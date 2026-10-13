@@ -268,3 +268,16 @@ def test_results_are_grouped_by_resource_and_documents_without_a_resource_are_sk
     session.execute(delete(PdfResourceLinkRow).where(PdfResourceLinkRow.document_id == other.id))
     session.commit()  # kaynagi silinmis belge (dizinde yetim kalmis): sonuclarda gorunmez
     assert [g.document_id for g in SearchService(session).search_by_resource("kuantum")] == [document.id]
+
+
+def test_the_write_slice_adapts_to_its_time_budget_unless_a_size_is_fixed(library):
+    adaptive = TextIndexer(library, lambda: _InlinePool())
+    adaptive._tune_chunk(10, 0.001)  # 0,1 ms/sayfa -> 8 ms butcesine 80 sayfa sigar, ust sinir 50
+    assert adaptive._write_chunk == 50
+    adaptive._tune_chunk(10, 0.1)  # 10 ms/sayfa -> 1 sayfa
+    assert adaptive._write_chunk == 1
+    adaptive._tune_chunk(0, 0.1)  # bos dilim boyu bozmaz
+    assert adaptive._write_chunk == 1
+    fixed = TextIndexer(library, lambda: _InlinePool(), write_chunk=7)
+    fixed._tune_chunk(7, 0.5)
+    assert fixed._write_chunk == 7

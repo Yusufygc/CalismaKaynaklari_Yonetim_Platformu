@@ -1,4 +1,5 @@
 import threading
+import time
 from collections import deque
 from collections.abc import Callable
 from pathlib import Path
@@ -12,7 +13,9 @@ from pdfkit.infra.text import iter_page_texts
 from pdfkit.ui.library import PdfLibrary
 from pdfkit.ui.workers import CallWorker, submit
 
-_WRITE_CHUNK = 10  # her olay dongusu turunda dizine yazilan sayfa sayisi (UI donmasin)
+_WRITE_CHUNK = 10  # ilk dilimin sayfa sayisi; sonrakiler sureye gore ayarlanir
+_SLICE_BUDGET_S = 0.008  # bir olay dongusu turunda dizine yazmaya ayrilan sure (UI donmasin; kare ~16 ms)
+_MAX_CHUNK = 50
 
 STATE_IDLE = "idle"
 STATE_RUNNING = "running"
@@ -46,13 +49,14 @@ class TextIndexer(QObject):
         self,
         library: PdfLibrary,
         thread_pool: Callable[[], QThreadPool],
-        write_chunk: int = _WRITE_CHUNK,
+        write_chunk: int | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._library = library
         self._thread_pool = thread_pool
-        self._write_chunk = write_chunk
+        self._fixed_chunk = write_chunk  # verilirse sabit (testler); yoksa dilim suresine gore ayarlanir
+        self._write_chunk = write_chunk or _WRITE_CHUNK
         self._queue: deque[int] = deque()
         self._current: int | None = None
         self._pages: list[str] = []
@@ -168,17 +172,26 @@ class TextIndexer(QObject):
             self._step_done(document_id, "abandon")
             return
         end = min(self._written + self._write_chunk, len(self._pages))
+        started = time.perf_counter()
         try:
             self._library.indexing().add_pages(document_id, self._written, self._pages[self._written:end])
         except Exception as exc:  # ornegin belge arada silindi
             log.warning("Dizine yazilamadi (id=%d): %s", document_id, exc)
             self._step_done(document_id, "abandon")
             return
+        self._tune_chunk(end - self._written, time.perf_counter() - started)
         self._written = end
         if end < len(self._pages):
             QTimer.singleShot(0, self._write_next)
         else:
             self._step_done(document_id, "ok", len(self._pages))
+
+    def _tune_chunk(self, pages: int, elapsed: float) -> None:
+        """Sonraki dilimin boyunu, son dilimin suresine gore butceye sigacak sekilde ayarlar (1..50 sayfa)."""
+        if self._fixed_chunk is not None or pages <= 0:
+            return
+        per_page = max(elapsed, 1e-6) / pages
+        self._write_chunk = max(1, min(_MAX_CHUNK, int(_SLICE_BUDGET_S / per_page)))
 
     def _step_done(self, document_id: int, outcome: str, page_count: int = 0) -> None:
         service = self._library.indexing()
