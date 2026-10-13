@@ -142,6 +142,10 @@ class ResourceService:
     # Okuma
     # ------------------------------------------------------------------ #
 
+    def get_many(self, resource_ids: list[int]) -> dict[int, Resource]:
+        """Kimlik -> kaynak (tek sorgu; olmayanlar yok)."""
+        return self._resource_repo.get_many(resource_ids)
+
     def get_by_id(self, resource_id: int) -> Resource:
         resource = self._resource_repo.get_by_id(resource_id)
         if resource is None:

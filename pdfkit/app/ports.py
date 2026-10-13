@@ -28,3 +28,6 @@ class ResourceCatalogPort(Protocol):
 
     def describe(self, resource_id: int) -> SourceInfo | None:
         """Kaynagin kunyesi (baslik, yazarlar, yil, DOI, durum); kaynak yoksa None. Vault notu ve citekey icin."""
+
+    def describe_many(self, resource_ids: list[int]) -> dict[int, SourceInfo]:
+        """Birden cok kaynagin kunyesi (kaynak kimligi -> kunye; olmayanlar yok). Toplu okumalarda N+1 sorguyu onler."""

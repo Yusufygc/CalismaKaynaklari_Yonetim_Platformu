@@ -13,7 +13,7 @@ from typing import ClassVar
 
 from pdfkit.domain.annotations import Term
 from pdfkit.domain.models import Document
-from pdfkit.domain.synthesis import MatrixRow, build_row, make_matrix, matrix_summary, render_table
+from pdfkit.domain.synthesis import MatrixFilter, MatrixOptions, MatrixRow, build_row, make_matrix, matrix_summary, render_table
 from pdfkit.domain.vault_note import NOTE_DIRECTORY, NoteContent, inline_text, replace_block, term_line
 
 INDEX_FILE = "_Index.md"
@@ -142,23 +142,29 @@ class VocabularyContent:
 
 @dataclass(frozen=True)
 class MatrixContent:
-    """Literatur matrisi (kaynak x anlam etiketi): suzgecsiz tam matris. Suzgecli cikti arayuzden disa aktarilir."""
+    """Literatur matrisi (kaynak x anlam etiketi). Hangi sutunlarin, hangi sirayla ve hucre basina kac alintinin yazilacagi
+    kullanici ayarindan gelir (`options`); baska suzgec yoktur. Suzgecli cikti arayuzden disa aktarilir."""
 
     kind: ClassVar[str] = "matrix"
     filename: ClassVar[str] = MATRIX_FILE
     title: ClassVar[str] = "Literatür Matrisi"
 
     rows: Sequence[MatrixRow] = ()
+    options: MatrixOptions = MatrixOptions()
+
+    def _matrix(self):
+        columns = self.options.vault_columns
+        return make_matrix(self.rows, MatrixFilter(labels=columns) if columns is not None else None, order=self.options.order)
 
     @property
     def is_empty(self) -> bool:
-        return not make_matrix(self.rows).rows
+        return not self._matrix().rows
 
     def body_lines(self) -> list[str]:
-        matrix = make_matrix(self.rows)
+        matrix = self._matrix()
         if not matrix.rows:
             return ["_Henüz alıntı yok._"]
-        return [f"_{matrix_summary(matrix)}_", ""] + render_table(matrix)
+        return [f"_{matrix_summary(matrix)}_", ""] + render_table(matrix, self.options.cell_limit)
 
 
 SummaryContent = IndexContent | VocabularyContent | MatrixContent

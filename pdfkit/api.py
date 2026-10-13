@@ -18,15 +18,19 @@ from pdfkit.infra.text import extract_page_texts
 from pdfkit.ui.bridge import PdfBridge
 from pdfkit.domain.search import SearchHit, Snippet
 from pdfkit.domain.synthesis import (
+    DEFAULT_VAULT_CELL_LIMIT,
     Matrix,
     MatrixFilter,
+    MatrixOptions,
     MatrixRow,
     column_keys,
     column_name,
     document_ids_matching,
     make_matrix,
+    ordered_columns,
     render_markdown,
     tag_counts,
+    with_provisional_citekeys,
 )
 from pdfkit.domain.synthesis import shorten as shorten_text
 from pdfkit.ui.indexer import TextIndexer
@@ -37,6 +41,8 @@ __all__ = [
     "Annotation",
     "Matrix",
     "MatrixFilter",
+    "DEFAULT_VAULT_CELL_LIMIT",
+    "MatrixOptions",
     "MatrixRow",
     "STATUS_ORPHANED",
     "Document",
@@ -70,6 +76,7 @@ __all__ = [
     "effective_color",
     "extract_page_texts",
     "make_matrix",
+    "ordered_columns",
     "name_for_label",
     "obsidian_tag",
     "parse_open_link",
@@ -77,4 +84,5 @@ __all__ = [
     "render_markdown",
     "shorten_text",
     "tag_counts",
+    "with_provisional_citekeys",
 ]

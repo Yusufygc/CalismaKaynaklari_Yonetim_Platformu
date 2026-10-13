@@ -312,3 +312,45 @@ def test_full_sync_writes_the_literature_matrix_and_it_follows_new_annotations(s
     assert "%% pkm:begin matrix" in matrix and "| Kaynak | Önemli | Bulgu / Sonuç | Yöntem |" in matrix
     assert "[[lecun2015deep]] · Deep learning (2015)" in matrix and "“yontem alintisi”" in matrix
     assert reports[0].summaries_written == 2  # dizin (sayilar) + matris
+
+
+def test_changing_matrix_options_rewrites_only_the_matrix_note_and_applies_columns_order_and_limit(sync, library, vault, doc):
+    from pdfkit.domain.synthesis import MatrixOptions
+
+    resource, document = doc
+    sync.set_root(vault)
+    for i in range(3):
+        text = f"yontem alintisi {i}"
+        library.annotations().create_highlight(document.id, text, [Segment(0, i * 20, i * 20 + 10, text)], "method")
+    library.annotations().create_highlight(document.id, "bulgu alintisi", [Segment(0, 100, 110, "bulgu alintisi")], "finding")
+    sync.sync_all()
+    QTest.qWait(120)
+    index_before = _summary(vault, "_Index.md")
+    assert "| Kaynak | Önemli | Bulgu / Sonuç | Yöntem |" in _summary(vault, "_Matris.md")
+    reports = _reports(sync)
+
+    sync.set_matrix_options(MatrixOptions(order=("method", "finding"), vault_columns=("method", "finding"), cell_limit=2))
+    QTest.qWait(150)
+
+    matrix = _summary(vault, "_Matris.md")
+    assert "| Kaynak | Yöntem | Bulgu / Sonuç |" in matrix and "Önemli" not in matrix  # sira ve sutun secimi
+    assert "… ve 1 alıntı daha (uygulamada)" in matrix and matrix.count("“yontem alintisi") == 2  # hucre siniri
+    assert _summary(vault, "_Index.md") == index_before and reports and reports[0].summaries_written == 1  # yalniz matris
+
+    sync.set_matrix_options(MatrixOptions(order=("method", "finding"), vault_columns=("method", "finding"), cell_limit=2))  # ayni: islem yok
+    QTest.qWait(80)
+    assert len(reports) == 1
+
+
+def test_matrix_options_set_before_the_first_full_sync_apply_to_it(sync, library, vault, doc):
+    from pdfkit.domain.synthesis import MatrixOptions
+
+    _resource, document = doc
+    library.annotations().create_highlight(document.id, "yontem", [Segment(0, 0, 6, "yontem")], "method")
+    sync.set_matrix_options(MatrixOptions(vault_columns=("method",)))  # vault henuz acik degil: yalniz saklanir
+    sync.set_root(vault)
+
+    sync.sync_all()
+    QTest.qWait(120)
+
+    assert "| Kaynak | Yöntem |" in _summary(vault, "_Matris.md")

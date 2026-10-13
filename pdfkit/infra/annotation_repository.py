@@ -1,4 +1,4 @@
-from sqlalchemy import delete, select, text
+from sqlalchemy import bindparam, delete, select, text
 from sqlalchemy.orm import Session
 
 from pdfkit.domain.annotations import Annotation, PageNote, Segment, Term
@@ -103,21 +103,31 @@ class AnnotationRepository:
         )
         return {legacy: new for legacy, new in rows}
 
-    def resources_by_document(self) -> dict[int, list[tuple[int, str]]]:
-        """belge id -> [(kaynak id, kaynak basligi)] (Bilgi Havuzu icin; ayni belge birden cok kaynakta olabilir)."""
-        rows = self._session.execute(
-            text(
-                "SELECT l.document_id, r.id, r.title FROM pdf_resource_documents l "
-                "JOIN resources r ON r.id = l.resource_id ORDER BY r.id"
-            )
+    def resources_by_document(self, document_ids: list[int] | None = None) -> dict[int, list[tuple[int, str]]]:
+        """belge id -> [(kaynak id, kaynak basligi)] (Bilgi Havuzu icin; ayni belge birden cok kaynakta olabilir).
+        `document_ids` verilirse yalniz o belgeler."""
+        statement = (
+            "SELECT l.document_id, r.id, r.title FROM pdf_resource_documents l "
+            "JOIN resources r ON r.id = l.resource_id "
         )
+        if document_ids is None:
+            rows = self._session.execute(text(statement + "ORDER BY r.id"))
+        else:
+            rows = self._session.execute(
+                text(statement + "WHERE l.document_id IN :ids ORDER BY r.id").bindparams(bindparam("ids", expanding=True)),
+                {"ids": list(document_ids) or [0]},
+            )
         grouped: dict[int, list[tuple[int, str]]] = {}
         for document_id, resource_id, title in rows:
             grouped.setdefault(document_id, []).append((resource_id, title))
         return grouped
 
-    def all_annotation_rows(self) -> list[PdfAnnotationRow]:
-        return list(self._session.scalars(select(PdfAnnotationRow).order_by(PdfAnnotationRow.id)))
+    def all_annotation_rows(self, document_ids: list[int] | None = None) -> list[PdfAnnotationRow]:
+        """Tum alintilar (ya da yalniz `document_ids` belgelerinin), kimlik sirasiyla."""
+        statement = select(PdfAnnotationRow).order_by(PdfAnnotationRow.id)
+        if document_ids is not None:
+            statement = statement.where(PdfAnnotationRow.document_id.in_(document_ids))
+        return list(self._session.scalars(statement))
 
     def all_term_rows(self) -> list[PdfTermRow]:
         return list(self._session.scalars(select(PdfTermRow).order_by(PdfTermRow.id)))

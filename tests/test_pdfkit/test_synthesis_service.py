@@ -102,3 +102,38 @@ def test_matrix_applies_the_filter(library, session, pdf_store, tmp_path):
 
     assert [row.document.id for row in by_label.rows] == [second.id]
     assert [row.document.id for row in by_tag.rows] == [first.id]
+
+
+def test_rows_for_reads_only_the_given_documents(library, session, pdf_store, tmp_path):
+    _r1, first = _add(session, pdf_store, tmp_path, "bir")
+    _r2, second = _add(session, pdf_store, tmp_path, "iki")
+    _highlight(library, first, "yontem bir", "method")
+    _highlight(library, second, "yontem iki", "method")
+
+    only_second = library.synthesis().rows_for([second.id])
+
+    assert [row.document.id for row in only_second] == [second.id]
+    assert library.synthesis().rows_for([]) == []  # bos liste tum kutuphaneyi OKUMAZ
+    assert library.synthesis().rows_for([999]) == []  # alintisi/belgesi olmayan: satir yok
+
+
+def test_source_info_is_fetched_in_one_call_for_all_rows_instead_of_one_per_document(session, pdf_store, tmp_path, qapp):
+    calls = []
+
+    class CountingCatalog(InfoCatalog):
+        def describe(self, resource_id):
+            calls.append(("one", resource_id))
+            return super().describe(resource_id)
+
+        def describe_many(self, resource_ids):
+            calls.append(("many", tuple(resource_ids)))
+            return {resource_id: InfoCatalog.describe(self, resource_id) for resource_id in resource_ids}
+
+    library = PdfLibrary(session, lambda: pdf_store.root, CountingCatalog(), lambda: _Pool(), lambda url: None)
+    for name in ("bir", "iki", "uc"):
+        _resource, document = _add(session, pdf_store, tmp_path, name)
+        _highlight(library, document, f"yontem {name}", "method")
+
+    rows = library.synthesis().rows()
+
+    assert len(rows) == 3 and [kind for kind, _ in calls] == ["many"]  # N+1 yok

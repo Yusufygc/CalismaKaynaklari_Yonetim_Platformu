@@ -16,7 +16,7 @@ from controllers.tag_controller import TagController
 from controllers.vocabulary_controller import VocabularyController
 from core.events import event_bus
 from core.user_settings import UserSettings, default_settings_path
-from pdfkit.api import ImportOutcome, PdfLibrary, TextIndexer, VaultSync
+from pdfkit.api import DEFAULT_VAULT_CELL_LIMIT, ImportOutcome, MatrixOptions, PdfLibrary, TextIndexer, VaultSync
 from services.library_index import LibraryIndex
 from services.pdf_download_service import stream_fetch
 from ui_qml.full_text import FullTextExtractor
@@ -25,6 +25,9 @@ from ui_qml.pdf_catalog import ResourceCatalog
 from ui_qml.pdf_files import PdfFileManager
 from ui_qml.serializers import ResourceSerializer
 
+SETTING_MATRIX_COLUMNS = "matrix_columns"  # literatur matrisi sutun sirasi (anahtar listesi; yoksa varsayilan)
+SETTING_MATRIX_VAULT_COLUMNS = "matrix_vault_columns"  # Obsidian `_Matris.md`'ye yazilacak sutunlar (yoksa hepsi)
+SETTING_MATRIX_CELL_LIMIT = "matrix_cell_limit"  # o dosyada hucre basina en cok alinti (0 = hepsi)
 SETTING_AUTO_METADATA = "auto_metadata"  # kullanici ayari: yeni PDF'in kunyesi OpenAlex'ten otomatik doldurulsun mu (varsayilan acik)
 AUTO_INDEX = True  # PDF'ler ice aktarilinca/acilista tam metin dizinine kendiliginden alinir (testler kapatir)
 
@@ -109,6 +112,7 @@ class BridgeContext:
         )
         self.pdf_library.downloadFinished.connect(self.pdf_files.on_download_finished)
         self.vault_sync = VaultSync(self.pdf_library, thread_pool=lambda: self.thread_pool)
+        self.vault_sync.set_matrix_options(self.matrix_options())
         self.text_indexer = TextIndexer(self.pdf_library, thread_pool=lambda: self.thread_pool)
         if AUTO_INDEX:
             self.pdf_library.importFinished.connect(self._index_imported)
@@ -117,6 +121,11 @@ class BridgeContext:
         self.extractor = FullTextExtractor(self)
         self.library_index = LibraryIndexCache(controllers.resources)
         self.serializer = ResourceSerializer(self.pdf_files, self.pdf_library)
+
+    def matrix_options(self) -> MatrixOptions:
+        """Kullanici ayarlarindaki matris secenekleri (bozuk/eksik degerler guvenli hale getirilir)."""
+        get = self.user_settings.get
+        return MatrixOptions.normalized(get(SETTING_MATRIX_COLUMNS), get(SETTING_MATRIX_VAULT_COLUMNS), get(SETTING_MATRIX_CELL_LIMIT, DEFAULT_VAULT_CELL_LIMIT))
 
     def auto_metadata_enabled(self) -> bool:
         return self.user_settings.get(SETTING_AUTO_METADATA, True) is not False

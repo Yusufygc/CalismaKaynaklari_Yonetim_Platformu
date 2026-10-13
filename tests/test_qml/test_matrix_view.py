@@ -79,8 +79,10 @@ def test_filter_changes_do_not_touch_the_database(matrix_env, monkeypatch):
     bridge, _resource, _toasts = matrix_env
     bridge.synthesis.setActive(True)
     reads = []
-    original = type(bridge.ctx.pdf_library.synthesis()).rows
-    monkeypatch.setattr(type(bridge.ctx.pdf_library.synthesis()), "rows", lambda self: (reads.append(1), original(self))[1])
+    service = type(bridge.ctx.pdf_library.synthesis())
+    for name in ("rows", "rows_for"):
+        original = getattr(service, name)
+        monkeypatch.setattr(service, name, lambda self, *args, _original=original: (reads.append(1), _original(self, *args))[1])
 
     bridge.synthesis.toggleLabel("finding")
     bridge.synthesis.setTag("hipotez")
@@ -92,20 +94,24 @@ def test_filter_changes_do_not_touch_the_database(matrix_env, monkeypatch):
 
 def test_content_changes_refresh_an_active_matrix_once_and_an_inactive_one_only_when_shown(matrix_env, monkeypatch):
     bridge, resource, _toasts = matrix_env
-    reads = []
-    original = type(bridge.ctx.pdf_library.synthesis()).rows
-    monkeypatch.setattr(type(bridge.ctx.pdf_library.synthesis()), "rows", lambda self: (reads.append(1), original(self))[1])
+    full, partial = [], []
+    service = type(bridge.ctx.pdf_library.synthesis())
+    original_rows, original_rows_for = service.rows, service.rows_for
+    monkeypatch.setattr(service, "rows", lambda self: (full.append(1), original_rows(self))[1])
+    monkeypatch.setattr(service, "rows_for", lambda self, ids: (partial.append(list(ids)), original_rows_for(self, ids))[1])
 
     bridge.pdf.contentChanged.emit(resource.id)  # sekme gorunur degil: okuma yok
     QTest.qWait(REFRESH_MS + 80)
-    assert reads == []
-    bridge.synthesis.setActive(True)  # gorununce yuklenir
-    assert len(reads) == 1
+    assert full == [] and partial == []
+    bridge.synthesis.setActive(True)  # gorununce yuklenir (ilk yukleme tum kutuphane)
+    assert len(full) == 1 and partial == []
+    document_id = bridge.pdf.currentDocument["documentId"]
     for _ in range(3):
         bridge.pdf.contentChanged.emit(resource.id)
     QTest.qWait(REFRESH_MS + 150)
 
-    assert len(reads) == 2  # art arda degisiklikler tek tazelemeye birlesti
+    assert len(full) == 1 and partial == [[document_id]]  # art arda degisiklikler tek tazelemeye birlesti; yalniz o belge okundu
+    assert bridge.synthesis.matrix["annotationCount"] == 2
 
 
 def test_the_filtered_matrix_is_exported_as_markdown_with_a_filter_note(matrix_env, tmp_path):
@@ -218,3 +224,129 @@ def test_the_search_box_filters_sources_on_the_matrix_tab(matrix_env, qapp):
     bar.setProperty("text", "")
     pump(qapp, 20)
     assert len(_visible(window, "matrixQuote")) == 2 and engine.captured_warnings == []
+
+
+def test_a_title_edit_refreshes_the_open_matrix_and_only_that_documents_row_is_reread(matrix_env, monkeypatch):
+    from core.events import event_bus
+
+    bridge, resource, _toasts = matrix_env
+    bridge.synthesis.setActive(True)
+    assert bridge.synthesis.matrix["rows"][0]["title"] == resource.title
+    service = type(bridge.ctx.pdf_library.synthesis())
+    full = []
+    original = service.rows
+    monkeypatch.setattr(service, "rows", lambda self: (full.append(1), original(self))[1])
+
+    bridge.controllers.resources.update_resource(resource.id, {"title": "Yeni baslik"})  # resource_updated olayi
+    event_bus.resource_updated.emit(resource.id)
+    QTest.qWait(REFRESH_MS + 150)
+
+    assert bridge.synthesis.matrix["rows"][0]["title"] == "Yeni baslik" and full == []  # tum kutuphane okunmadi
+
+
+def test_documents_without_a_vault_note_show_a_suggested_citekey_and_nothing_is_assigned(matrix_env):
+    bridge, _resource, _toasts = matrix_env
+    bridge.synthesis.setActive(True)
+
+    row = bridge.synthesis.matrix["rows"][0]
+
+    assert row["citekey"] == "" and row["suggestedCitekey"] != ""  # oneri gorunur, gercek anahtar yok
+    assert bridge.ctx.pdf_library.synthesis().rows()[0].citekey is None  # hicbir sey veritabanina atanmadi
+    assert "[[" not in bridge.synthesis.markdown()  # onerilen anahtar baglanti uretmez
+
+
+def test_a_cell_with_many_quotes_shows_three_and_expands_on_demand(matrix_env, qapp):
+    from pdfkit.domain.annotations import Segment
+
+    bridge, resource, _toasts = matrix_env
+    document_id = bridge.pdf.currentDocument["documentId"]
+    for i in range(4):  # Yontem hucresi: 1 + 4 = 5 alinti
+        text = f"ek yontem alintisi {i}"
+        bridge.ctx.pdf_library.annotations().create_highlight(document_id, text, [Segment(0, 100 + i * 20, 110 + i * 20, text)], "method")
+    engine, window = _open_matrix(qapp, bridge)
+    assert len(_visible(window, "matrixQuote")) == 3 + 1  # yontem hucresinde ilk 3 + bulgu hucresinde 1
+    toggle = _visible(window, "matrixCellToggle")[0]
+    assert toggle.property("text") == "+ 2 alıntı daha"
+
+    click(qapp, window, toggle)
+    pump(qapp, 20)
+    assert len(_visible(window, "matrixQuote")) == 5 + 1
+    assert _visible(window, "matrixCellToggle")[0].property("text") == "Daha az göster"
+
+    click(qapp, window, _visible(window, "matrixCellToggle")[0])
+    pump(qapp, 20)
+    assert len(_visible(window, "matrixQuote")) == 3 + 1
+    assert "(öneri)" in find_named(window, "matrixRowKey").property("text")
+    assert engine.captured_warnings == []
+
+
+# ---- Ayarlar > Matris ----
+
+
+def test_column_order_and_obsidian_options_are_saved_and_drive_the_matrix_and_the_vault(matrix_env):
+    bridge, _resource, _toasts = matrix_env
+    synthesis = bridge.synthesis
+    synthesis.setActive(True)
+    seen = []
+    bridge.ctx.vault_sync.set_matrix_options = lambda options: seen.append(options)  # vault yazimi baska testte
+
+    synthesis.moveColumn("method", -2)  # yontem, onemli'nin onune: method, important, finding...
+    synthesis.setVaultColumn("critique", False)
+    synthesis.setCellLimit(4)
+
+    assert [c["key"] for c in synthesis.matrix["columns"]][:3] == ["method", "important", "finding"]
+    assert [c["key"] for c in synthesis.columnSettings][:2] == ["method", "important"]
+    assert next(c for c in synthesis.columnSettings if c["key"] == "critique")["vault"] is False
+    assert next(c for c in synthesis.columnSettings if c["key"] == "method")["vault"] is True and synthesis.cellLimit == 4
+    settings = bridge.ctx.user_settings
+    assert settings.get("matrix_columns")[0] == "method" and "critique" not in settings.get("matrix_vault_columns") and settings.get("matrix_cell_limit") == 4
+    assert seen[-1].order[0] == "method" and "critique" not in seen[-1].vault_columns and seen[-1].cell_limit == 4  # vault'a iletildi
+    assert "| Kaynak | Yöntem | Önemli |" in synthesis.markdown()  # disa aktarma da ayni sira
+    synthesis.moveColumn("method", -5)  # zaten ilk: degismez
+    assert synthesis.columnSettings[0]["key"] == "method"
+
+    synthesis.resetOptions()
+    assert [c["key"] for c in synthesis.matrix["columns"]][0] == "important" and synthesis.cellLimit == 10
+    assert settings.get("matrix_columns") is None and settings.get("matrix_vault_columns") is None
+
+
+def test_a_filter_keeps_the_user_column_order_and_a_corrupt_setting_falls_back_to_defaults(matrix_env):
+    bridge, _resource, _toasts = matrix_env
+    bridge.ctx.user_settings.set("matrix_columns", ["uydurma", "general"])
+    bridge.ctx.user_settings.set("matrix_cell_limit", "cok")
+    options = bridge.ctx.matrix_options()
+    assert options.order[0] == "general" and options.cell_limit == 10
+
+    bridge.synthesis._options = options
+    bridge.synthesis.setActive(True)
+    bridge.synthesis.toggleLabel("finding")
+    bridge.synthesis.toggleLabel("general")
+    assert bridge.synthesis.activeLabels == ["general", "finding"]  # kullanici sirasi
+    assert "kaynak: " not in bridge.synthesis._filter_note() and bridge.synthesis._filter_note().startswith("Genel · Bulgu")
+
+
+def test_the_settings_matrix_tab_lists_columns_and_reorders_them_on_click(matrix_env, qapp):
+    bridge, _resource, _toasts = matrix_env
+    engine, window = open_window(qapp, bridge, "settings", width=1300, height=900)
+    click(qapp, window, find_named(window, "matrixSettingsTab"))
+    pump(qapp, 20)
+    rows = _visible(window, "matrixColumnRow")
+    assert len(rows) == 6
+
+    down = [i for i in walk(rows[0]) if i.objectName() == "moveColumnDown"][0]
+    click(qapp, window, down)  # ilk sutun (Onemli) bir asagi
+    pump(qapp, 20)
+    assert [c["key"] for c in bridge.synthesis.columnSettings][:2] == ["finding", "important"]
+
+    toggle = [i for i in walk(_visible(window, "matrixColumnRow")[0]) if i.objectName() == "vaultColumnToggle"][0]
+    click(qapp, window, toggle)
+    pump(qapp, 10)
+    assert bridge.synthesis.columnSettings[0]["vault"] is False
+    chip = next(c for c in _visible(window, "cellLimitChip") if c.property("text") == "5")
+    click(qapp, window, chip)
+    pump(qapp, 10)
+    assert bridge.synthesis.cellLimit == 5
+
+    click(qapp, window, find_named(window, "resetMatrixOptionsButton"))
+    pump(qapp, 10)
+    assert bridge.synthesis.columnSettings[0]["key"] == "important" and engine.captured_warnings == []

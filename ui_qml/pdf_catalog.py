@@ -43,8 +43,13 @@ class ResourceCatalog:
 
     def describe(self, resource_id: int) -> SourceInfo | None:
         resource = self._resources.get_resource(resource_id)
-        if resource is None:
-            return None
+        return self._info(resource) if resource is not None else None
+
+    def describe_many(self, resource_ids: list[int]) -> dict[int, SourceInfo]:
+        return {resource_id: self._info(resource) for resource_id, resource in self._resources.get_resources(resource_ids).items()}
+
+    @staticmethod
+    def _info(resource) -> SourceInfo:
         meta = resource.extra_metadata or {}
         authors = meta.get("authors") or []
         year = meta.get("year")

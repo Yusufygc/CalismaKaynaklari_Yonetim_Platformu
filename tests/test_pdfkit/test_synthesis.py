@@ -159,3 +159,85 @@ def test_a_note_content_converts_to_a_matrix_row():
     row = matrix_row_for(sample_content())
 
     assert row.citekey == "lecun2015deep" and row.title == "Deep learning" and row.annotation_count == 3
+
+
+# ---- onerilen atif anahtari (vault notu olusmadan) ----
+
+
+def test_provisional_citekeys_are_suggested_only_for_rows_without_one_and_never_collide():
+    from pdfkit.domain.synthesis import with_provisional_citekeys
+
+    real = sample_rows()[1]  # lecun2015deep: gercek anahtari var
+    twin_document = Document(3, "ef" * 32, "store/ef/z.pdf", 10, 8, True, None, None, None, "local", None, None)
+    same_info = SourceInfo("Deep learning", ("Yann LeCun",), 2015)
+    first = build_row(OTHER_DOCUMENT, same_info, None, [annotation("WF66", "method", "x")], resource_id=9)
+    second = build_row(twin_document, same_info, None, [annotation("WG77", "method", "y")], resource_id=10)
+
+    result = {row.document.id: row for row in with_provisional_citekeys([second, real, first])}
+
+    assert result[1].provisional_citekey is None and result[1].citekey == "lecun2015deep"  # gercek anahtara dokunulmaz
+    assert result[2].provisional_citekey == "lecun2015deep" + "a"  # gercek anahtarla cakisan taban 'a' son ekini alir
+    assert result[3].provisional_citekey == "lecun2015deep" + "b"  # ikincisi 'b': belge kimligi sirasiyla, tekrarlanabilir
+    assert all(row.citekey is None for row in (result[2], result[3]))  # oneri, atama degil
+    assert [r.document.id for r in with_provisional_citekeys([first, second])] == [2, 3]  # sira korunur
+
+
+def test_a_provisional_citekey_never_becomes_a_wiki_link_or_changes_the_table_or_sort_order():
+    from pdfkit.domain.synthesis import with_provisional_citekeys
+
+    keyed = with_provisional_citekeys(sample_rows())
+    nokey = build_row(OTHER_DOCUMENT, OTHER_INFO, None, [annotation("WF66", "method", "Metin", None, [], page=0)], resource_id=9)
+    suggested = with_provisional_citekeys([nokey])
+
+    assert render_table(make_matrix(keyed)) == render_table(make_matrix(sample_rows()))  # gercek anahtarlilar degismez
+    assert suggested[0].provisional_citekey and "[[" not in render_table(make_matrix(suggested))[2]
+    assert [r.document.id for r in make_matrix(suggested + sample_rows()[1:]).rows][-1] == 2  # anahtarsiz satir hala sonda
+
+
+# ---- sutun sirasi, Obsidian secenekleri, hucre siniri ----
+
+
+def test_column_order_is_user_defined_with_missing_columns_appended_and_unknown_dropped():
+    from pdfkit.domain.synthesis import ordered_columns
+
+    assert ordered_columns(None) == column_keys() and ordered_columns(()) == column_keys()
+    assert ordered_columns(["method", "uydurma", "method", "general"]) == ("method", "general", "important", "finding", "concept", "critique")
+    assert [key for key in make_matrix(sample_rows(), order=["critique", "method"]).columns][:2] == ["critique", "method"]
+    assert make_matrix(sample_rows(), MatrixFilter(labels=("finding", "method")), order=["method", "finding"]).columns == ("method", "finding")
+
+
+def test_options_from_settings_are_sanitized():
+    from pdfkit.domain.synthesis import MatrixOptions
+
+    default = MatrixOptions.normalized(None, None, 10)
+    assert default == MatrixOptions((), None, 10)
+    assert MatrixOptions.normalized(column_keys(), None, 10).order == ()  # varsayilan sira "ayar yok" sayilir
+    odd = MatrixOptions.normalized("bozuk", ["method", "uydurma"], "cok")
+    assert odd.order == () and odd.vault_columns == ("method",) and odd.cell_limit == 10
+    assert MatrixOptions.normalized(["finding"], [], -5).cell_limit == 0
+    assert MatrixOptions.normalized(None, None, 10_000).cell_limit == 200
+    assert MatrixOptions.normalized(None, None, True).cell_limit == 10  # bool sayi sayilmaz
+
+
+def test_a_cell_limit_keeps_the_first_quotes_and_says_how_many_were_left_out():
+    row = sample_rows()[1]  # lecun: yontem hucresinde 2 alinti
+    matrix = make_matrix([row])
+
+    unlimited = render_table(matrix)
+    limited = render_table(matrix, cell_limit=1)
+
+    assert "ve 1 alıntı daha" not in "\n".join(unlimited) and unlimited == render_table(matrix, cell_limit=0)
+    assert "Geri yayılım" in limited[2] and "Evrişimli" not in limited[2] and "… ve 1 alıntı daha (uygulamada)" in limited[2]
+    assert "Doğruluk" in limited[2]  # tek alintili hucre kesilmez
+
+
+def test_the_vault_matrix_uses_the_options_and_is_empty_when_no_chosen_column_has_quotes():
+    from pdfkit.domain.synthesis import MatrixOptions
+
+    rows = sample_rows()
+    content = MatrixContent(rows, MatrixOptions(order=("finding", "method"), vault_columns=("finding", "method"), cell_limit=1))
+    body = "\n".join(content.body_lines())
+    assert "| Kaynak | Bulgu / Sonuç | Yöntem |" in body and "Eleştiri" not in body and "ve 1 alıntı daha" in body
+    none_chosen = MatrixContent(rows, MatrixOptions(vault_columns=("concept",)))
+    assert none_chosen.is_empty and none_chosen.body_lines() == ["_Henüz alıntı yok._"]
+    assert MatrixContent(rows).body_lines() == MatrixContent(rows, MatrixOptions(vault_columns=None, cell_limit=10)).body_lines()

@@ -7,7 +7,7 @@ import "../theme"
 Item {
     id: root
 
-    property int activeTab: 0 // 0: Kategoriler, 1: Etiketler, 2: Obsidian, 3: Künye
+    property int activeTab: 0 // 0: Kategoriler, 1: Etiketler, 2: Obsidian, 3: Künye, 4: Matris
     property string newCategoryColor: Theme.accent
 
     // Silme onayı bekleyen öğe: kind "category" | "tag"
@@ -52,7 +52,7 @@ Item {
                 spacing: 16
 
                 Rectangle {
-                    width: 520
+                    width: 650
                     height: 36
                     radius: Theme.radiusSm
                     color: Theme.bgElevated
@@ -65,7 +65,7 @@ Item {
                         spacing: 4
 
                         Rectangle {
-                            width: (parent.width - 12) / 4
+                            width: (parent.width - 16) / 5
                             height: parent.height
                             radius: Theme.radiusXs
                             color: root.activeTab === 0 ? Theme.bgSurface : "transparent"
@@ -99,7 +99,7 @@ Item {
                         }
 
                         Rectangle {
-                            width: (parent.width - 12) / 4
+                            width: (parent.width - 16) / 5
                             height: parent.height
                             radius: Theme.radiusXs
                             color: root.activeTab === 1 ? Theme.bgSurface : "transparent"
@@ -134,7 +134,7 @@ Item {
 
                         Rectangle {
                             objectName: "vaultTab"
-                            width: (parent.width - 12) / 4
+                            width: (parent.width - 16) / 5
                             height: parent.height
                             radius: Theme.radiusXs
                             color: root.activeTab === 2 ? Theme.bgSurface : "transparent"
@@ -169,7 +169,7 @@ Item {
 
                         Rectangle {
                             objectName: "metadataTab"
-                            width: (parent.width - 12) / 4
+                            width: (parent.width - 16) / 5
                             height: parent.height
                             radius: Theme.radiusXs
                             color: root.activeTab === 3 ? Theme.bgSurface : "transparent"
@@ -199,6 +199,41 @@ Item {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: root.activeTab = 3
+                            }
+                        }
+
+                        Rectangle {
+                            objectName: "matrixSettingsTab"
+                            width: (parent.width - 16) / 5
+                            height: parent.height
+                            radius: Theme.radiusXs
+                            color: root.activeTab === 4 ? Theme.bgSurface : "transparent"
+                            border.width: root.activeTab === 4 ? 1 : 0
+                            border.color: Theme.borderStrong
+
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: 6
+                                AppIcon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    name: "fa5s.table"
+                                    size: 11
+                                    color: root.activeTab === 4 ? Theme.accentText : Theme.textSecondary
+                                }
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Matris"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSm
+                                    font.weight: root.activeTab === 4 ? Font.DemiBold : Font.Normal
+                                    color: root.activeTab === 4 ? Theme.textPrimary : Theme.textSecondary
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.activeTab = 4
                             }
                         }
                     }
@@ -237,6 +272,12 @@ Item {
                 // --- KÜNYE PANELİ ---
                 MetadataSettingsPanel {
                     visible: root.activeTab === 3
+                    width: parent.width
+                }
+
+                // --- MATRİS PANELİ ---
+                MatrixSettingsPanel {
+                    visible: root.activeTab === 4
                     width: parent.width
                 }
 

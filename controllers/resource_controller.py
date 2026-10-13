@@ -16,6 +16,15 @@ class ResourceController:
     def load_resources_with_filters(self, filters: dict) -> list[Resource]:
         return self._svc.query_resources(filters)
 
+    def get_resources(self, resource_ids: list[int]) -> dict[int, Resource]:
+        """Kimlik -> kaynak, tek sorguyla (toplu okuyanlar icin; N+1 yerine). Hatada bos sozluk."""
+        try:
+            return self._svc.get_many(resource_ids)
+        except Exception as exc:
+            log.exception("Kaynaklar getirilemedi")
+            event_bus.error_occurred.emit(str(exc))
+            return {}
+
     def get_resource(self, resource_id: int) -> Resource | None:
         try:
             return self._svc.get_by_id(resource_id)

@@ -276,7 +276,7 @@ def serialize_search_group(group, expanded: bool = False) -> dict:
 
 def serialize_matrix(matrix) -> dict:
     """Literatur matrisi (QML icin): sutunlar [{key, name, color, count}], satirlar [{resourceId, title, citekey, year,
-    count, cells}]; `cells` sutunlarla ayni sirada alinti listeleri ([{id, uid, page (0 tabanli), pageLabel, text,
+    count, cells}] (`suggestedCitekey`: vault notu olusmadan onerilen kisa ad); `cells` sutunlarla ayni sirada alinti listeleri ([{id, uid, page (0 tabanli), pageLabel, text,
     comment, orphaned, tags}]). Uzun alinti/yorum kisaltilir (tam metin okuyucuda)."""
     columns = []
     for key in matrix.columns:
@@ -306,6 +306,7 @@ def serialize_matrix(matrix) -> dict:
                 "resourceId": row.resource_id or 0,
                 "title": row.title or "İsimsiz",
                 "citekey": row.citekey or "",
+                "suggestedCitekey": "" if row.citekey else (row.provisional_citekey or ""),
                 "year": row.year or 0,
                 "count": row.annotation_count,
                 "cells": cells,

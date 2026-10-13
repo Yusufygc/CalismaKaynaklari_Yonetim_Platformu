@@ -48,6 +48,10 @@ class NullCatalog:
     def describe(self, resource_id):
         return None
 
+    def describe_many(self, resource_ids):
+        found = {resource_id: self.describe(resource_id) for resource_id in resource_ids}
+        return {resource_id: info for resource_id, info in found.items() if info is not None}
+
 
 @pytest.fixture()
 def pdf_library(qapp, session, pdf_store):

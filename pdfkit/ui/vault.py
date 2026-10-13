@@ -20,7 +20,7 @@ from pdfkit.domain.vault_summary import (
     matrix_row_for,
     vocabulary_section_for,
 )
-from pdfkit.domain.synthesis import MatrixRow
+from pdfkit.domain.synthesis import MatrixOptions, MatrixRow
 from pdfkit.infra.vault_writer import VaultWriter, WriteOutcome
 from pdfkit.ui.library import PdfLibrary
 from pdfkit.ui.workers import CallWorker, submit
@@ -100,6 +100,8 @@ class VaultSync(QObject):
         self._full_pass = False  # calisan esitleme tam mi?
         self._cache: dict[int, tuple[IndexEntry, VocabularySection, MatrixRow]] = {}  # belge -> dizin/kelime/matris parcalari
         self._cache_complete = False  # onbellek tum belgeleri kapsiyor mu? (degilse ozet notlari yazilmaz)
+        self._matrix_options = MatrixOptions()  # `_Matris.md` sutun/sira/hucre siniri (kullanici ayari)
+        self._resummarize = False  # calisan yazim bitince ozet notlari yeniden yazilsin (ayar degisti)
         self._running = False
         self._state = STATE_DISABLED
         self._message = ""
@@ -133,6 +135,26 @@ class VaultSync(QObject):
         writer.check()
         self._writer = writer
         self._set_status(STATE_IDLE, "")
+
+    def set_matrix_options(self, options: MatrixOptions) -> None:
+        """`_Matris.md` ayarlarini degistirir; vault acik ve onbellek tamsa ozet notlari (yalniz degisen dosya yazilir)
+        hemen yeniden uretilir, degilse sonraki tam esitlemede uygulanir."""
+        if options == self._matrix_options:
+            return
+        self._matrix_options = options
+        if self._writer is not None and self._cache_complete:
+            self._rewrite_summaries()
+
+    def _rewrite_summaries(self) -> None:
+        if self._running:
+            self._resummarize = True
+            return
+        writer, summaries = self._writer, self._summaries()
+        if writer is None or not summaries:
+            return
+        self._running = True
+        self._set_status(STATE_SYNCING, "")
+        submit(self._thread_pool(), CallWorker(lambda: write_batch(writer, [], summaries), self._on_written), self._dispatch)
 
     def status(self) -> dict:
         return {
@@ -233,7 +255,7 @@ class VaultSync(QObject):
         return [
             IndexContent([entry for entry, _section, _row in parts]),
             VocabularyContent([section for _entry, section, _row in parts]),
-            MatrixContent([row for _entry, _section, row in parts]),
+            MatrixContent([row for _entry, _section, row in parts], self._matrix_options),
         ]
 
     def _dispatch(self, callback, result, error) -> None:
@@ -249,6 +271,9 @@ class VaultSync(QObject):
         else:
             self._set_status(STATE_IDLE, f"{report.written} not yazıldı, {report.unchanged} değişmedi")
         self.syncFinished.emit(report)
+        if self._resummarize:
+            self._resummarize = False
+            self._rewrite_summaries()
         if self._dirty and self._writer is not None:
             self._timer.start()
 

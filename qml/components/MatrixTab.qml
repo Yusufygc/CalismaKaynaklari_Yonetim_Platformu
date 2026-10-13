@@ -16,6 +16,7 @@ Item {
     readonly property int headerWidth: 220
     readonly property int columnWidth: 280
     readonly property int tableWidth: headerWidth + matrix.columns.length * columnWidth
+    readonly property int collapsedQuotes: 3  // hücrede ilk bu kadar alıntı görünür, gerisi "daha fazla" ile açılır
 
     onVisibleChanged: bridge.synthesis.setActive(visible)
     Component.onCompleted: bridge.synthesis.setActive(visible)
@@ -274,13 +275,17 @@ Item {
                             }
                         }
                         Text {
+                            objectName: "matrixRowKey"
+                            readonly property string key: matrixRow.modelData.citekey !== ""
+                                ? matrixRow.modelData.citekey
+                                : (matrixRow.modelData.suggestedCitekey !== "" ? matrixRow.modelData.suggestedCitekey + " (öneri)" : "")
                             width: parent.width
                             elide: Text.ElideRight
-                            text: (matrixRow.modelData.citekey !== "" ? matrixRow.modelData.citekey : "")
-                                  + (matrixRow.modelData.year > 0 ? (matrixRow.modelData.citekey !== "" ? " · " : "") + matrixRow.modelData.year : "")
+                            text: key + (matrixRow.modelData.year > 0 ? (key !== "" ? " · " : "") + matrixRow.modelData.year : "")
                             visible: text !== ""
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontXs
+                            font.italic: matrixRow.modelData.citekey === ""
                             color: Theme.textMuted
                         }
                     }
@@ -293,6 +298,8 @@ Item {
                         id: cell
                         required property var modelData
                         required property int index
+                        property bool expanded: false
+                        readonly property bool collapsible: modelData.length > root.collapsedQuotes
                         objectName: "matrixCell"
                         Layout.preferredWidth: root.columnWidth
                         Layout.fillHeight: true
@@ -309,7 +316,7 @@ Item {
                             spacing: 6
 
                             Repeater {
-                                model: cell.modelData
+                                model: cell.expanded ? cell.modelData : cell.modelData.slice(0, root.collapsedQuotes)
 
                                 delegate: Rectangle {
                                     id: quoteItem
@@ -364,6 +371,24 @@ Item {
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: bridge.synthesis.openAnnotation(matrixRow.modelData.resourceId, quoteItem.modelData.page, quoteItem.modelData.uid)
                                     }
+                                }
+                            }
+
+                            Text {
+                                objectName: "matrixCellToggle"
+                                visible: cell.collapsible
+                                text: cell.expanded ? "Daha az göster" : "+ " + (cell.modelData.length - root.collapsedQuotes) + " alıntı daha"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontXs
+                                font.underline: toggleMouse.containsMouse
+                                color: Theme.accentText
+
+                                MouseArea {
+                                    id: toggleMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: cell.expanded = !cell.expanded
                                 }
                             }
                         }
