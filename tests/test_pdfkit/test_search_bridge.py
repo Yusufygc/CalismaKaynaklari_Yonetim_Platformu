@@ -183,3 +183,26 @@ def test_a_result_that_arrives_after_a_newer_search_or_a_clear_is_dropped(bridge
     bridge.contentSearch.search("   ")  # temizleme yoldaki aramayi gecersiz kilar
     bridge.contentSearch._show(pending, [], None)
     assert not bridge.contentSearch.searched
+
+
+def test_a_search_hit_opens_the_reader_at_the_matching_line_with_the_original_spelling(bridge, tmp_path):
+    lines = [f"satir {i} bu cumle yeterince uzun bir metin olsun diye eklendi" for i in range(24)] + ["ÖRNEK burada geciyor ve devam ediyor"]
+    resource = _import(bridge, tmp_path, "uzunsayfa", [lines])
+    (group,) = _search(bridge, "ornek")
+    assert group["hits"][0]["find"] == "ÖRNEK"  # katlanmamis, ozgun yazim
+
+    bridge.contentSearch.openHit(resource.id, 0)
+    bridge.pdf.openDocument(resource.id)
+
+    target = bridge.pdf.jumpTarget
+    assert target["page"] == 0 and target["find"] == "ÖRNEK"
+    assert target["y"] > 400  # 25. satir sayfanin altina dogru: sayfa basina degil o satira atlar
+
+
+def test_without_a_known_match_the_jump_goes_to_the_page_start_without_a_find_key(bridge, tmp_path):
+    resource = _import(bridge, tmp_path, "kuantum", PAGES)
+
+    bridge.contentSearch.openHit(resource.id, 2)  # arama yapilmadi: bilinen eslesme yok
+    bridge.pdf.openDocument(resource.id)
+
+    assert bridge.pdf.jumpTarget["page"] == 2 and "find" not in bridge.pdf.jumpTarget and bridge.pdf.jumpTarget["y"] == 0.0

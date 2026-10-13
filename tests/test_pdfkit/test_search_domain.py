@@ -72,3 +72,12 @@ def test_snippet_without_a_match_falls_back_to_the_page_start_and_empty_text_is_
     assert make_snippet("Baslangic metni", parse_query("yok")).spans == ()
     assert make_snippet("", parse_query("x")).text == ""
     assert make_snippet("a " * 200, parse_query("yok"), width=20).text.endswith("…")
+
+
+def test_found_word_keeps_the_original_spelling_so_the_reader_can_match_it():
+    from pdfkit.domain.search import found_word
+
+    query = parse_query("ogrenme")
+    assert found_word("Cocuklarin ÖĞRENME sekli ve ogrenmenin sonuclari", query) == "ÖĞRENME"
+    assert found_word("Cocuklarin öğrenmenin sonuclari", parse_query("ogren")) == "öğrenmenin"  # onek
+    assert found_word("hic eslesme yok", query) == ""

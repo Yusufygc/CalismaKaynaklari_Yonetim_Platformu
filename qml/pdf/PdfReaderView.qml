@@ -53,7 +53,26 @@ Item {
         if (pdfDoc.status !== PdfDocument.Ready || restoredResourceId !== resourceId || resourceId === 0)
             return
         appliedJumpToken = target.token
+        if (target.find) {
+            // Tam metin aramasi sonucu: arama cubugu aranan sozcukle acilir (sayfadaki eslesmeler boyanir). Cubugun
+            // acilmasi sayfa alaninin yuksekligini degistirdigi icin atlama yerlesim oturduktan sonra yapilir.
+            root.searchOpen = true
+            searchInput.text = target.find
+            deferredJump = target
+            findJumpTimer.restart()
+            return
+        }
         pageArea.goToLocation(target.page, Qt.point(target.x, target.y), 0)
+    }
+    property var deferredJump: null
+    Timer {
+        id: findJumpTimer
+        interval: 120
+        onTriggered: {
+            if (root.deferredJump)
+                pageArea.goToLocation(root.deferredJump.page, Qt.point(root.deferredJump.x, root.deferredJump.y), 0)
+            root.deferredJump = null
+        }
     }
     property bool textLayerBannerDismissed: false
 

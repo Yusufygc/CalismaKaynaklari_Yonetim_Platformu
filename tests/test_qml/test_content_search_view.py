@@ -119,3 +119,22 @@ def test_unsearchable_pdfs_are_listed_in_a_panel_and_open_in_the_reader(bridge, 
 
     assert bridge.currentView == "pdfReader"
     assert engine.captured_warnings == []
+
+
+def test_a_hit_opens_the_reader_with_the_word_in_the_search_bar_and_the_page_scrolled_to_it(bridge, qapp, tmp_path):
+    lines = [f"satir {i} bu cumle yeterince uzun bir metin olsun diye eklendi" for i in range(24)] + ["ÖRNEK burada geciyor ve devam ediyor"]
+    resource = _import(bridge, tmp_path, "uzunsayfa", [lines])
+    engine, window = _open_tab(qapp, bridge)
+    _type_query(qapp, window, "ornek")
+
+    click(qapp, window, _visible(window, "hitRow")[0])
+    QTest.qWait(900)
+    pump(qapp, 30)
+
+    assert bridge.currentView == "pdfReader" and bridge.reader.currentReaderResource["id"] == resource.id
+    reader = find_item(window, lambda i: i.property("searchOpen") is not None and i.property("appliedJumpToken") is not None)
+    assert reader.property("searchOpen") is True
+    assert find_named(window, "searchInput").property("text") == "ÖRNEK"  # PDFium'un eslestirecegi ozgun yazim
+    assert reader.property("appliedJumpToken") == bridge.pdf.jumpTarget["token"]
+    assert bridge.pdf.jumpTarget["y"] > 400
+    assert engine.captured_warnings == []

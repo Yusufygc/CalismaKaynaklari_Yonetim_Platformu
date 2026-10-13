@@ -106,9 +106,18 @@ class SearchBridge(QObject):
 
     @Slot(int, int)
     def openHit(self, resource_id: int, page: int) -> None:
-        """Sonuca tiklandi: okuyucu `page` (0 tabanli) sayfasinda acilir."""
-        self._pdf.requestJump(resource_id, page, "")
+        """Sonuca tiklandi: okuyucu `page` (0 tabanli) sayfasinda, sorguyla eslesen sozcugun satirinda acilir ve
+        eslesmeler vurgulanir."""
+        find = self._found_word(resource_id, page)
+        if find:
+            self._pdf.requestJumpToText(resource_id, page, find)
+        else:
+            self._pdf.requestJump(resource_id, page, "")
         self._reader.openReader(resource_id)
+
+    def _found_word(self, resource_id: int, page: int) -> str:
+        group = self._found.get(resource_id)
+        return next((hit.found for hit in (group.hits if group else []) if hit.page == page), "")
 
     def _run(self) -> None:
         self._request += 1

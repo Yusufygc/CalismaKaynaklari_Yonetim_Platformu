@@ -4,6 +4,7 @@ from core.logger import log
 
 from pdfkit.domain.annotations import STATUS_ORPHANED
 from pdfkit.domain.labels import LABELS, effective_color, name_for_label
+from pdfkit.infra.text import locate_text
 from pdfkit.ui.commands import AnnotationCommands
 from pdfkit.ui.library import PdfLibrary
 from pdfkit.ui.models import AnnotationListModel, NoteListModel
@@ -43,7 +44,7 @@ class PdfBridge(QObject):
         self._header: dict = {}
         self._revision = 0
         self._reading_state: dict = {}
-        self._pending_jump: tuple[int, int, str] | None = None  # (kaynak, sayfa, uid): belge acilinca cozulur
+        self._pending_jump: tuple[int, int, str, str] | None = None  # (kaynak, sayfa, uid, aranan): belge acilinca cozulur
         self._jump_target: dict = {}
         self._jump_token = 0
         self._focused_annotation = 0
@@ -115,13 +116,23 @@ class PdfBridge(QObject):
         """`resource_id` kaynaginin belgesinde `page` (0 tabanli; -1 = belirtilmedi) sayfasina ya da `ann_uid`
         kimlikli alinti/nota/kelimeye gitmeyi ister. Belge zaten aciksa hemen, degilse `openDocument` sonrasinda
         cozulur."""
-        if self._header.get("resourceId") == resource_id:
-            self._resolve_jump(page, ann_uid)
-        else:
-            self._pending_jump = (resource_id, page, ann_uid)
+        self._request_jump(resource_id, page, ann_uid, "")
 
-    def _resolve_jump(self, page: int, ann_uid: str) -> None:
-        target = self._locate(page, ann_uid)
+    @Slot(int, int, str)
+    def requestJumpToText(self, resource_id: int, page: int, find: str) -> None:
+        """`page` (0 tabanli) sayfasinda `find` metninin ilk gectigi satira gitmeyi ister (tam metin aramasi sonucu).
+        Okuyucu ayrica arama cubugunu `find` ile doldurup sayfadaki eslesmeleri vurgular. Metin bulunamazsa sayfanin
+        basina gidilir."""
+        self._request_jump(resource_id, page, "", find)
+
+    def _request_jump(self, resource_id: int, page: int, ann_uid: str, find: str) -> None:
+        if self._header.get("resourceId") == resource_id:
+            self._resolve_jump(page, ann_uid, find)
+        else:
+            self._pending_jump = (resource_id, page, ann_uid, find)
+
+    def _resolve_jump(self, page: int, ann_uid: str, find: str = "") -> None:
+        target = self._locate(page, ann_uid, find)
         if target is None:
             return
         self._jump_token += 1
@@ -131,7 +142,7 @@ class PdfBridge(QObject):
         if target["annotationId"]:
             self._focus_timer.start()
 
-    def _locate(self, page: int, ann_uid: str) -> dict | None:
+    def _locate(self, page: int, ann_uid: str, find: str = "") -> dict | None:
         """Hedefin sayfasi ve sayfa ici konumu: once alinti, sonra sayfa notu, sonra kelime; bulunamazsa istenen sayfa."""
         if ann_uid:
             found = self._model.find_by_uid(ann_uid)
@@ -148,8 +159,25 @@ class PdfBridge(QObject):
                 return {"page": term.segments[0].page, "x": 0.0, "y": 0.0, "annotationId": 0}
         if page >= 0:
             count = self._session.document.page_count if self._session.document else 0
-            return {"page": min(page, max(count - 1, 0)), "x": 0.0, "y": 0.0, "annotationId": 0}
+            where = min(page, max(count - 1, 0))
+            target = {"page": where, "x": 0.0, "y": 0.0, "annotationId": 0}
+            if find:
+                target["find"] = find
+                found = self._find_position(where, find)
+                if found:
+                    target["y"] = max(found[1] - _JUMP_MARGIN, 0.0)
+            return target
         return None
+
+    def _find_position(self, page: int, find: str) -> tuple[float, float] | None:
+        document = self._session.document
+        if document is None:
+            return None
+        try:
+            return locate_text(self._library.file_path(document), page, find)
+        except Exception:  # konum bulunamazsa sayfa basina gidilir; atlama asla patlamasin
+            log.warning("Aranan metnin konumu bulunamadi.", exc_info=True)
+            return None
 
     def _set_focused_annotation(self, annotation_id: int) -> None:
         if annotation_id != self._focused_annotation:
@@ -211,7 +239,7 @@ class PdfBridge(QObject):
         # varligini bu sinyalden once bilmelidir.
         pending, self._pending_jump = self._pending_jump, None
         if opened and pending and pending[0] == resource_id:
-            self._resolve_jump(pending[1], pending[2])
+            self._resolve_jump(pending[1], pending[2], pending[3])
         self._set_header(
             {
                 "resourceId": resource_id,

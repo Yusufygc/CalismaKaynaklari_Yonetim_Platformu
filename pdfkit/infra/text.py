@@ -24,6 +24,33 @@ def extract_page_texts(data: bytes) -> list[str]:
 
 
 
+def locate_text(path: Path, page: int, needle: str) -> tuple[float, float] | None:
+    """`needle`in (buyuk/kucuk harf duyarsiz) sayfadaki ilk eslesmesinin sol-ust kosesi: (x, y), sayfa noktasi, ORIGIN
+    SOL-UST (alinti dikdortgenleriyle ayni). Bulunamazsa ya da PDF acilamazsa None. Tek sayfa icin milisaniyeler surer."""
+    if not needle.strip() or page < 0:
+        return None
+    with PDFIUM_LOCK:
+        try:
+            pdf = pdfium.PdfDocument(str(path))
+        except (pdfium.PdfiumError, OSError):
+            return None
+        try:
+            if page >= len(pdf):
+                return None
+            sheet = pdf[page]
+            height = sheet.get_height()
+            textpage = sheet.get_textpage()
+            found = textpage.search(needle).get_next()
+            if not found:
+                return None
+            left, _bottom, _right, top = textpage.get_charbox(found[0])
+            return (float(left), float(height - top))
+        except pdfium.PdfiumError:
+            return None
+        finally:
+            pdf.close()
+
+
 def iter_page_texts(path: Path, max_pages: int | None = None) -> Iterator[str]:
     """PDF'in sayfa metinlerini TEK TEK uretir (tam metin dizini icin). PDFium kilidi yalniz sayfa basina tutulur:
     uzun bir belge indekslenirken ice aktarma/inceleme gibi diger PDFium isleri araya girebilir, cagiran sayfalar

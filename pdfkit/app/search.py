@@ -5,7 +5,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from core.logger import log
-from pdfkit.domain.search import SearchHit, fold, make_snippet, parse_query
+from pdfkit.domain.search import SearchHit, fold, found_word, make_snippet, parse_query
 from pdfkit.domain.text import sanitize_text
 from pdfkit.infra.search_schema import ROWID_SPAN
 from pdfkit.infra.search_repository import (
@@ -58,7 +58,10 @@ class SearchService:
         except OperationalError as exc:  # bozuk MATCH ifadesi vb.: arama bos doner, uygulama durmaz
             log.warning("Tam metin sorgusu basarisiz: %s", exc)
             return []
-        return [SearchHit(document_id, page, make_snippet(original, query), rank) for document_id, page, original, rank in rows]
+        return [
+            SearchHit(document_id, page, make_snippet(original, query), rank, found_word(original, query))
+            for document_id, page, original, rank in rows
+        ]
 
     def search_by_resource(self, text: str, limit: int = DEFAULT_LIMIT) -> list[SearchGroup]:
         """Sonuclari kaynaga gore gruplar; gruplar en alakali sayfasina gore, sayfalar bm25 sirasiyla. Kaynagi

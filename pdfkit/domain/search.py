@@ -109,11 +109,20 @@ def _match_spans(text: str, query: ParsedQuery) -> list[tuple[int, int]]:
     return spans
 
 
+def found_word(original: str, query: ParsedQuery) -> str:
+    """Sayfadaki ilk eslesen sozcuk, OZGUN yazimiyla ("ogrenme" aramasi icin "öğrenme"): okuyucu arama kutusuna bu
+    yazilir; PDFium Turkce katlama yapmadigi icin katlanmis sorgu orada eslesmezdi. Eslesme yoksa bos."""
+    text = " ".join((original or "").split())
+    matches = _match_spans(text, query)
+    return text[matches[0][0]:matches[0][1]] if matches else ""
+
+
 @dataclass(frozen=True)
 class SearchHit:
-    """Bir sayfa eslesmesi. `page` 0 tabanli; `rank` kucuk = daha alakali (bm25)."""
+    """Bir sayfa eslesmesi. `page` 0 tabanli; `rank` kucuk = daha alakali (bm25); `found` sayfadaki ilk eslesen sozcuk."""
 
     document_id: int
     page: int
     snippet: Snippet
     rank: float
+    found: str = ""

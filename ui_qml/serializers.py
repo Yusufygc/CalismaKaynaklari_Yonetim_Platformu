@@ -268,7 +268,7 @@ def serialize_search_group(group, expanded: bool = False) -> dict:
     return {
         "resourceId": group.resource_id,
         "title": group.title or "İsimsiz",
-        "hits": [{"page": hit.page, "html": snippet_html(hit.snippet)} for hit in shown],
+        "hits": [{"page": hit.page, "html": snippet_html(hit.snippet), "find": hit.found} for hit in shown],
         "more": max(group.total - len(shown), 0),
         "expanded": expanded,
     }
