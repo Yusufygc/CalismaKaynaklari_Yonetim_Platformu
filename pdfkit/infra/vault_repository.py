@@ -13,6 +13,10 @@ class VaultRepository:
     def get(self, document_id: int) -> PdfVaultNoteRow | None:
         return self._session.get(PdfVaultNoteRow, document_id)
 
+    def citekeys(self) -> dict[int, str]:
+        """belge id -> citekey (yalniz atanmis olanlar)."""
+        return {document_id: citekey for document_id, citekey in self._session.execute(select(PdfVaultNoteRow.document_id, PdfVaultNoteRow.citekey))}
+
     def taken_citekeys(self) -> set[str]:
         return set(self._session.scalars(select(PdfVaultNoteRow.citekey)))
 

@@ -32,6 +32,12 @@ class DocumentRepository:
         row = self._session.get(PdfDocumentRow, document_id)
         return _to_domain(row) if row else None
 
+    def documents_by_ids(self, document_ids: list[int]) -> dict[int, Document]:
+        if not document_ids:
+            return {}
+        rows = self._session.scalars(select(PdfDocumentRow).where(PdfDocumentRow.id.in_(document_ids)))
+        return {row.id: _to_domain(row) for row in rows}
+
     def get_by_sha(self, sha256: str) -> Document | None:
         row = self._session.scalar(select(PdfDocumentRow).where(PdfDocumentRow.sha256 == sha256))
         return _to_domain(row) if row else None

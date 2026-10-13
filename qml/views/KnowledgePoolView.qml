@@ -9,7 +9,7 @@ import "../js/text.js" as TextUtils
 Item {
     id: root
 
-    property int activeTab: 0 // 0: Alıntılar, 1: Kelimeler, 2: Metinde Ara (PDF içeriği)
+    property int activeTab: 0 // 0: Alıntılar, 1: Kelimeler, 2: Metinde Ara (PDF içeriği), 3: Matris (literatür matrisi)
     property string searchQuery: ""
     property string rawQuery: "" // katlanmamış arama metni (Metinde Ara: tırnaklı ifade, özgün yazım)
     property string labelFilter: "" // Alıntılar: akademik anlam etiketi ("" = tümü)
@@ -18,6 +18,7 @@ Item {
     // Metinde Ara sekmesi açıkken sorgu (ya da sekme) değişince PDF içeriğinde arar; bekletme köprüdedir.
     function syncContentSearch() {
         bridge.contentSearch.search(root.activeTab === 2 ? root.rawQuery : "")
+        bridge.synthesis.setTitleQuery(root.activeTab === 3 ? root.rawQuery : "")  // Matris: kaynak süzgeci
     }
     onRawQueryChanged: syncContentSearch()
     onActiveTabChanged: syncContentSearch()
@@ -40,7 +41,7 @@ Item {
                 // Sekme Butonları (Pill Bar)
                 Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 420
+                    width: 540
                     height: 36
                     radius: Theme.radiusSm
                     color: Theme.bgElevated
@@ -54,7 +55,7 @@ Item {
 
                         // Alıntılar Sekmesi
                         Rectangle {
-                            width: (parent.width - 8) / 3
+                            width: (parent.width - 12) / 4
                             height: parent.height
                             radius: Theme.radiusXs
                             color: root.activeTab === 0 ? Theme.bgSurface : "transparent"
@@ -89,7 +90,7 @@ Item {
 
                         // Kelime Dağarcığı Sekmesi
                         Rectangle {
-                            width: (parent.width - 8) / 3
+                            width: (parent.width - 12) / 4
                             height: parent.height
                             radius: Theme.radiusXs
                             color: root.activeTab === 1 ? Theme.bgSurface : "transparent"
@@ -125,7 +126,7 @@ Item {
                         // Metinde Ara Sekmesi (PDF içeriği)
                         Rectangle {
                             objectName: "contentSearchTab"
-                            width: (parent.width - 8) / 3
+                            width: (parent.width - 12) / 4
                             height: parent.height
                             radius: Theme.radiusXs
                             color: root.activeTab === 2 ? Theme.bgSurface : "transparent"
@@ -157,6 +158,42 @@ Item {
                                 onClicked: root.activeTab = 2
                             }
                         }
+
+                        // Matris Sekmesi (literatür matrisi: kaynak x anlam etiketi)
+                        Rectangle {
+                            objectName: "matrixTab"
+                            width: (parent.width - 12) / 4
+                            height: parent.height
+                            radius: Theme.radiusXs
+                            color: root.activeTab === 3 ? Theme.bgSurface : "transparent"
+                            border.width: root.activeTab === 3 ? 1 : 0
+                            border.color: Theme.borderStrong
+
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: 6
+                                AppIcon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    name: "fa5s.th"
+                                    size: 11
+                                    color: root.activeTab === 3 ? Theme.accentText : Theme.textSecondary
+                                }
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Matris"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSm
+                                    font.weight: root.activeTab === 3 ? Font.DemiBold : Font.Normal
+                                    color: root.activeTab === 3 ? Theme.textPrimary : Theme.textSecondary
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.activeTab = 3
+                            }
+                        }
                     }
                 }
 
@@ -164,7 +201,7 @@ Item {
                 AppSearchBar {
                     anchors.verticalCenter: parent.verticalCenter
                     width: 280
-                    placeholder: root.activeTab === 0 ? "Alıntılarda ara..." : (root.activeTab === 1 ? "Kelimelerde ara..." : "PDF'lerin içinde ara...")
+                    placeholder: root.activeTab === 0 ? "Alıntılarda ara..." : (root.activeTab === 1 ? "Kelimelerde ara..." : (root.activeTab === 2 ? "PDF'lerin içinde ara..." : "Kaynak ara (başlık, atıf anahtarı)..."))
                     onSearchChanged: function(q) { root.searchQuery = TextUtils.foldTr(q); root.rawQuery = q }
                     onSearchCleared: { root.searchQuery = ""; root.rawQuery = "" }
                 }
@@ -222,6 +259,11 @@ Item {
             ContentSearchTab {
                 anchors.fill: parent
                 visible: root.activeTab === 2
+            }
+
+            MatrixTab {
+                anchors.fill: parent
+                visible: root.activeTab === 3
             }
         }
     }

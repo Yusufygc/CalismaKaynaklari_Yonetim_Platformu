@@ -13,6 +13,7 @@ from ui_qml.bridges.searches_bridge import SearchesBridge
 from ui_qml.bridges.settings_bridge import SettingsBridge
 from ui_qml.bridges.metadata_bridge import MetadataBridge
 from ui_qml.bridges.search_bridge import SearchBridge
+from ui_qml.bridges.synthesis_bridge import SynthesisBridge
 from ui_qml.bridges.vault_bridge import VaultBridge
 from ui_qml.context import BridgeContext, Controllers
 from ui_qml.deep_links import DeepLinkRouter
@@ -31,6 +32,7 @@ class QmlBridge(QObject):
     - `bridge.pdf`      -- pdfkit: PDF belgesi, alinti modelleri (artimli), sayfa filtreleri (bkz. docs/plans/pdfkit-faz3-plani.md)
     - `bridge.vault`    -- Obsidian vault klasoru, esitleme durumu (pdfkit.VaultSync)
     - `bridge.contentSearch` -- PDF icerigi tam metin aramasi (pdfkit.SearchService / TextIndexer)
+    - `bridge.synthesis` -- Bilgi Havuzu > Matris: literatur matrisi (kaynak x anlam etiketi), suzgecler, Markdown disa aktarim
     - `bridge.metadata` -- Ayarlar > Kunye: yeni PDF'in kunyesini OpenAlex'ten otomatik doldurma (acik/kapali)
     - `bridge.citations` -- atif metni, OpenAlex bilgisi, referans/atif listeleri
     - `bridge.market`   -- Makale Market aramasi, sayfalama, gecmis, kaydetme/disa aktarma
@@ -82,6 +84,7 @@ class QmlBridge(QObject):
         self._vault = VaultBridge(self._ctx, self)
         self._content_search = SearchBridge(self._ctx, self._reader, self._pdf, self)
         self._metadata = MetadataBridge(self._ctx, self)
+        self._synthesis = SynthesisBridge(self._ctx, self._reader, self._pdf, self)
         self.deep_links = DeepLinkRouter(self, self._ctx, self)
         self.deep_links.activationRequested.connect(self.windowActivationRequested)
         # Alinti/not/kelime ya da kaynak kunyesi (baslik, durum) degisince vault notu yeniden uretilir (1,5 sn birlesik).
@@ -125,6 +128,10 @@ class QmlBridge(QObject):
     @Property(QObject, constant=True)
     def metadata(self) -> QObject:
         return self._metadata
+
+    @Property(QObject, constant=True)
+    def synthesis(self) -> QObject:
+        return self._synthesis
 
     @Property(QObject, constant=True)
     def citations(self) -> QObject:

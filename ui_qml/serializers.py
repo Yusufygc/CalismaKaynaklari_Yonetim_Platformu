@@ -8,7 +8,18 @@ from typing import TYPE_CHECKING
 
 from core.constants.highlight_labels import label_for_color
 from models import Highlight, PdfNote, Resource, Vocabulary
-from pdfkit.api import Annotation, PageNote, ResourceAnnotations, Term, effective_color, name_for_label
+from pdfkit.api import (
+    STATUS_ORPHANED,
+    Annotation,
+    PageNote,
+    ResourceAnnotations,
+    Term,
+    color_for_label,
+    column_name,
+    effective_color,
+    name_for_label,
+    shorten_text,
+)
 from services.library_index import LibraryIndex
 from services.paper_market_service import PaperResult
 from utils.date_utils import format_local_datetime
@@ -288,3 +299,43 @@ def serialize_search_group(group) -> dict:
         "hits": [{"page": hit.page, "html": snippet_html(hit.snippet)} for hit in shown],
         "more": group.total - len(shown),
     }
+
+
+def serialize_matrix(matrix) -> dict:
+    """Literatur matrisi (QML icin): sutunlar [{key, name, color, count}], satirlar [{resourceId, title, citekey, year,
+    count, cells}]; `cells` sutunlarla ayni sirada alinti listeleri ([{id, uid, page (0 tabanli), pageLabel, text,
+    comment, orphaned, tags}]). Uzun alinti/yorum kisaltilir (tam metin okuyucuda)."""
+    columns = []
+    for key in matrix.columns:
+        count = sum(len(row.cells.get(key, ())) for row in matrix.rows)
+        columns.append({"key": key, "name": column_name(key), "color": color_for_label(key) or "", "count": count})
+    rows = []
+    for row in matrix.rows:
+        cells = []
+        for key in matrix.columns:
+            cells.append(
+                [
+                    {
+                        "id": a.id,
+                        "uid": a.uid,
+                        "page": a.page if a.page is not None else -1,
+                        "pageLabel": f"s. {a.page + 1}" if a.page is not None and a.status != STATUS_ORPHANED else "",
+                        "text": shorten_text(" ".join(a.quote_exact.split())),
+                        "comment": shorten_text(" ".join((a.comment or "").split())),
+                        "orphaned": a.status == STATUS_ORPHANED or a.page is None,
+                        "tags": list(a.tags),
+                    }
+                    for a in row.cells.get(key, ())
+                ]
+            )
+        rows.append(
+            {
+                "resourceId": row.resource_id or 0,
+                "title": row.title or "İsimsiz",
+                "citekey": row.citekey or "",
+                "year": row.year or 0,
+                "count": row.annotation_count,
+                "cells": cells,
+            }
+        )
+    return {"columns": columns, "rows": rows, "rowCount": len(rows), "annotationCount": matrix.annotation_count}

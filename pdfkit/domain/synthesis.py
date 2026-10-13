@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pdfkit.domain.annotations import STATUS_ORPHANED, Annotation
 from pdfkit.domain.labels import GENERAL_KEY, GENERAL_NAME, LABELS, is_known_label, name_for_label
 from pdfkit.domain.models import Document, SourceInfo
+from pdfkit.domain.search import fold
 from pdfkit.domain.vault_note import annotation_sort_key, inline_text, page_link
 
 MAX_QUOTE_LENGTH = 220
@@ -98,6 +99,28 @@ def make_matrix(rows: Iterable[MatrixRow], matrix_filter: MatrixFilter | None = 
     return Matrix(columns, tuple(kept))
 
 
+def document_ids_matching(rows: Iterable[MatrixRow], query: str | None) -> frozenset[int] | None:
+    """Baslik/citekey/yil Turkce-duyarsiz alt metin eslesmesiyle kaynak suzgeci icin belge kimlikleri; sorgu bos ise
+    None (suzgec yok)."""
+    wanted = fold((query or "").strip())
+    if not wanted:
+        return None
+    return frozenset(
+        row.document.id for row in rows if wanted in fold(f"{row.title} {row.citekey or ''} {row.year or ''}")
+    )
+
+
+def tag_counts(rows: Iterable[MatrixRow]) -> list[tuple[str, int]]:
+    """Alintilardaki serbest etiketler ve sayilari (cok kullanilandan aza, esitlikte ada gore)."""
+    counts: dict[str, int] = {}
+    for row in rows:
+        for items in row.cells.values():
+            for annotation in items:
+                for tag in annotation.tags:
+                    counts[tag] = counts.get(tag, 0) + 1
+    return sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+
+
 # ---------------------------------------------------------------------- #
 # Markdown
 # ---------------------------------------------------------------------- #
@@ -109,18 +132,18 @@ def _cell_text(text: str) -> str:
     return cleaned.replace("|", "\\|").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def _shorten(text: str) -> str:
+def shorten(text: str) -> str:
     return text if len(text) <= MAX_QUOTE_LENGTH else text[: MAX_QUOTE_LENGTH - 1].rstrip() + "…"
 
 
 def quote_markdown(document: Document, annotation: Annotation) -> str:
     """Hucredeki tek alinti: `• “alinti” ([s. 3](pkm://…)) — yorum`."""
-    line = f"• “{_shorten(_cell_text(annotation.quote_exact))}”"
+    line = f"• “{shorten(_cell_text(annotation.quote_exact))}”"
     if annotation.status != STATUS_ORPHANED and annotation.page is not None:
         line += f" ({page_link(document, annotation.page, annotation.uid)})"
     comment = _cell_text(annotation.comment or "")
     if comment:
-        line += f" — {_shorten(comment)}"
+        line += f" — {shorten(comment)}"
     return line
 
 
@@ -153,11 +176,12 @@ def matrix_summary(matrix: Matrix) -> str:
     return f"{len(matrix.rows)} kaynak · {matrix.annotation_count} alıntı"
 
 
-def render_markdown(matrix: Matrix, title: str = "Literatür Matrisi") -> str:
-    """Disa aktarilacak tam Markdown (baslik + ozet + tablo). Satir yoksa yalniz baslik ve aciklama."""
+def render_markdown(matrix: Matrix, title: str = "Literatür Matrisi", note: str = "") -> str:
+    """Disa aktarilacak tam Markdown (baslik + ozet + varsa suzgec notu + tablo). Satir yoksa yalniz baslik ve aciklama."""
     lines = [f"# {title}", ""]
     table = render_table(matrix)
     if not table:
         return "\n".join(lines + ["_Eşleşen alıntı yok._"]) + "\n"
-    return "\n".join(lines + [f"_{matrix_summary(matrix)}_", ""] + table) + "\n"
+    summary = [f"_{matrix_summary(matrix)}_"] + ([f"_Süzgeç: {_cell_text(note)}_"] if note else [])
+    return "\n".join(lines + summary + [""] + table) + "\n"
 
