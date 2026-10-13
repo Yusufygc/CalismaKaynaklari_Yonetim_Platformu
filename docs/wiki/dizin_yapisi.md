@@ -50,7 +50,6 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   ├── tag_repo.py
 │   ├── highlight_repo.py
 │   ├── vocabulary_repo.py
-│   └── pdf_note_repo.py        # Native PDF satır/nokta notu
 │
 ├── services/                   # İş mantığı ve doğrulama katmanı
 │   ├── resource_service.py
@@ -58,7 +57,6 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   ├── tag_service.py
 │   ├── highlight_service.py
 │   ├── vocabulary_service.py
-│   ├── pdf_note_service.py     # Native PDF satır/nokta notu
 │   ├── scraper_service.py      # URL OpenGraph ve meta veri çekici
 │   ├── article_extraction_service.py # Zengin HTML / PDF tam metin çıkarıcı
 │   ├── paper_market_service.py # OpenAlex API ile akademik makale arama (+ referans/atıf, DOI arama)
@@ -79,7 +77,6 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   ├── tag_controller.py
 │   ├── highlight_controller.py
 │   ├── vocabulary_controller.py
-│   ├── pdf_note_controller.py
 │   └── saved_search_controller.py
 │
 ├── ui_qml/                     # Python ↔ QML köprü katmanı
@@ -148,7 +145,7 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 ├── pdfkit/                     # Bağımsız PDF modülü (bkz. [[pdfkit]]); dış dünya yalnız pdfkit.api
 │   ├── domain/                 # Saf Python: Document, PdfInspection, DOI çıkarımı, hatalar, ReadingState (reading.py)
 │   ├── app/                    # Use-case: prepare_pdf, DocumentService, ResourceCatalogPort
-│   ├── infra/                  # file_store (CAS), inspector/text (pypdfium2), downloader, orm, repository
+│   ├── infra/                  # file_store (CAS), inspector/text/outline (pypdfium2), downloader, orm, repository, search/vault/reading repo'ları
 │   └── ui/                     # Qt cephesi: PdfLibrary (içe aktarma, indirme, benimseme, çöp toplama), AnnotationListModel/NoteListModel/PageFilterModel, DocumentSession, AnnotationCommands (yazma), PdfBridge (bridge.pdf)
 ├── scripts/                    # Bakım betikleri (make_lock.py: geçişli requirements.lock üretimi; bench_pdf.py: PDF okuyucu performans ölçümü)
 ├── migrations/                 # Alembic veritabanı migrasyonları

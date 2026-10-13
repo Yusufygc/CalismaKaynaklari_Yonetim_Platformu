@@ -32,7 +32,7 @@
 - `core/`: En alt altyapı katmanıdır (logger, paths, config, exceptions, net_utils, events). Üst katmanlara bağımlılığı kesinlikle yoktur.
 
 ## Controller Mimarisi
-- **Controller'lar doğrudan enjekte edilir** (2026-09-30): eski `MainController` facade'i kaldırıldı (37 metotluk salt delege sınıf; her özellik 4-5 dosyada delege gerektiriyordu). `ui_qml/context.py::Controllers` yedi controller'ı (`resources, categories, tags, highlights, vocabulary, pdf_notes, saved_searches`) tek `session`'dan kurar; alt-bridge'ler yalnızca ihtiyaç duyduklarını `BridgeContext.controllers` üzerinden kullanır.
+- **Controller'lar doğrudan enjekte edilir** (2026-09-30): eski `MainController` facade'i kaldırıldı (37 metotluk salt delege sınıf; her özellik 4-5 dosyada delege gerektiriyordu). `ui_qml/context.py::Controllers` altı controller'ı (`resources, categories, tags, highlights, vocabulary, saved_searches`; `pdf_notes` Faz 8'de kalktı) tek `session`'dan kurar; alt-bridge'ler yalnızca ihtiyaç duyduklarını `BridgeContext.controllers` üzerinden kullanır.
 
 ## Konfigürasyon, Hata, Log
 - **Config:** `core/config.py` (Pydantic BaseSettings veya `os.environ`)

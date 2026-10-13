@@ -102,7 +102,7 @@ Aynı desen: `create_vocabulary(resource_id, word, translation, context_sentence
 ### ArticleExtractionService — `services/article_extraction_service.py` (2026-07-06, PDF desteği + birleşik indirme 2026-09-28)
 `ScraperService`'ten bilerek ayrı: `ScraperService` hafif og:meta scraping yapar, bu servis makalenin gövde metnini HTML olarak çıkarır — farklı sorumluluk/hata modu (`None` döner, dict fallback değil). `extract_full_text(url) -> str | None`.
 
-**PDF desteği (2026-09-28):** URL doğrudan bir PDF'e işaret ediyorsa (`%PDF-` dosya imzası veya `.pdf` uzantısı) `pypdf` ile sayfa-numaralı HTML üretilir (`<h3>Sayfa N</h3><p>...</p>`) — arXiv gibi kaynaklarda artık sadece HTML özet sayfası değil, gerçek tam metin okunabiliyor. Gerçek arXiv PDF'iyle canlı doğrulandı (15 sayfa, 40073 karakter).
+**PDF desteği (2026-09-28):** URL doğrudan bir PDF'e işaret ediyorsa (`%PDF-` dosya imzası veya `.pdf` uzantısı) `pypdfium2` ile (başlangıçta `pypdf`; pdfkit Faz 1'de değişti) sayfa-numaralı HTML üretilir (`<h3>Sayfa N</h3><p>...</p>`) — arXiv gibi kaynaklarda artık sadece HTML özet sayfası değil, gerçek tam metin okunabiliyor. Gerçek arXiv PDF'iyle canlı doğrulandı (15 sayfa, 40073 karakter).
 
 **Birleşik indirme + SSRF-redirect düzeltmesi (2026-09-28):** Önceden `trafilatura.fetch_url()` kendi içinde `urllib3 Retry(redirect=...)` ile redirect takip ediyordu ve her hop'ta `is_blocked_host` tekrar çağrılmıyordu (TOCTOU/SSRF riski, backlog'daydı). Artık tek bir `requests`-tabanlı indirme adımı (`core/net_utils.py::safe_http_get` — `ScraperService`'teki `_safe_get` ile aynı, paylaşılan yardımcıya çıkarıldı) her yönlendirme adımında `is_blocked_host`'u tekrar çalıştırıyor; PDF binary içerik de HTML da aynı bu tek adımdan geçiyor, sonra içerik türüne göre `pypdf` veya `trafilatura.extract(output_format="html")`'e dallanıyor.
 
@@ -148,8 +148,8 @@ Kaynak araması (`ResourceRepository.search_by_keyword` / `query_filtered(keywor
 - `services/schemas.py::HighlightPosition(page, start_index, length)` — `create_highlight(resource_id, content, color, position)` (3 katmanda 6 parametre → 4). Konumsuz (HTML okuyucu) alıntıda `None`.
 - `ExportService.resource_markdown` bölümlere ayrıldı (`_citation_block`, `_highlights_section`, `_notes_section`, `_vocabulary_section`, `_personal_notes_section`); çıktı birebir aynı.
 
-### PdfNoteService — `services/pdf_note_service.py` (2026-09-29)
-Native PDF okuyucudaki nokta-bazlı margin notları (`create_note`, `update_note`, `get_by_resource`, `delete_note`) — `HighlightService`'in üçlü katman deseninin (repo/service/controller) birebir kopyası, yeni `models.PdfNote` için. `Highlight`'tan farkı: metin aralığı değil `(page, x, y)` tek nokta + serbest metin tutar. `ui_qml/bridges/reader_bridge.py::addPdfNote`/`updatePdfNote`/`deletePdfNote` üzerinden QML'e bağlanır — bkz. [[qml_arayuz]].
+### PdfNoteService (KALDIRILDI — pdfkit Faz 8, 2026-10-13)
+Native PDF okuyucudaki nokta-bazlı margin notları artık `pdfkit` tarafındadır (`pdf_page_notes`, `AnnotationService`; bkz. [[pdfkit]]). Eski `PdfNoteService`/`PdfNoteRepository`/`PdfNoteController` ve `PdfNote` modeli Faz 8'de silindi.
 
 > **Eski (Faz 3d'de kaldırıldı):** `PdfFileManager.load_document/highlight_geometry/select_text` artık yok; seçim ve geometri `pdfkit` içindedir (bkz. [[pdfkit]]). Aşağıdaki kısıt bilgisi hâlâ geçerlidir (QML'den `QPdfSelection` dönen metotlar çağrılamaz).
 

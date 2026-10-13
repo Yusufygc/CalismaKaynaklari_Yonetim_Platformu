@@ -81,17 +81,8 @@ Repo/servis: `repositories/highlight_repo.py::HighlightRepository`, `services/hi
 
 Repo/servis: `repositories/vocabulary_repo.py::VocabularyRepository`, `services/vocabulary_service.py::VocabularyService`. Okuyucu sayfasında kelime seçilip "Kelime olarak kaydet" → ceviri icin inline popover ile olusturulur.
 
-### `pdf_notes` (Native PDF Satır/Nokta Notu — 2026-09-29'da eklendi)
-| Alan | Tip | Not |
-|------|-----|-----|
-| id | Integer PK | |
-| resource_id | FK | `resources.id`, `ondelete=CASCADE` |
-| page | Integer | Required — 0-bazlı sayfa indeksi |
-| x, y | Float | Required — page-point uzayında (PDF nokta birimi, `document.pagePointSize(page)`), çözünürlük/zoom'dan bağımsız |
-| note_text | Text | Required |
-| created_at | DateTime | |
-
-Repo/servis/controller: `repositories/pdf_note_repo.py::PdfNoteRepository`, `services/pdf_note_service.py::PdfNoteService`, `controllers/pdf_note_controller.py::PdfNoteController` — `Highlight` üçlüsünün (repo/service/controller) birebir aynı iskeleti, yeni model için kopyalandı. `Highlight`'tan kavramsal farkı: bir metin aralığı değil **tek bir nokta** referans alır (native PDF okuyucudaki "Not Ekle" modunda sayfaya tıklanan yer). Sadece o kaynağın PDF okuyucusunda görünür/yönetilir — Bilgi Havuzu'na eklenmedi (cross-resource bir not listesi istenmedi).
+### `pdf_notes` (KALDIRILDI — pdfkit Faz 8, migration `c9f4e2b7a815`, 2026-10-13)
+Eski tablo (`id, resource_id, page, x, y, note_text, created_at`) artık yazılmıyor; sayfa notları `pdf_page_notes` tablosundadır. Migration tabloyu **yalnız boşsa** siler; içinde taşınmamış satır varsa tablo korunur ve `LegacyAnnotationImporter` son satırı taşıyınca tabloyu kendisi kaldırır (kullanıcı verisi hiçbir koşulda silinmez). `PdfNote` ORM modeli, `PdfNoteRepository`, `PdfNoteService` ve `PdfNoteController` silindi. Bkz. [[pdfkit]] 'Daraltma (Faz 8)'.
 
 ### `saved_searches` (Makale Market Kayıtlı Arama — 2026-09-30'da eklendi, migration `c4d9a6b1e2f3`)
 | Alan | Tip | Not |

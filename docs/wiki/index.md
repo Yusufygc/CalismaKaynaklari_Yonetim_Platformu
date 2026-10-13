@@ -17,7 +17,7 @@
 
 | Sayfa | Özet |
 |-------|------|
-| [[veritabani_semasi]] | Tüm tablolar (categories, tags, resources, highlights, vocabulary), alan tanımları |
+| [[veritabani_semasi]] | Tüm tablolar (categories, tags, resources, highlights, vocabulary ve pdfkit tabloları: belgeler, alıntı/not/kelime, okuma durumu, vault citekey, tam metin dizini), alan tanımları |
 | [[veritabani_migrasyonlari]] | Alembic'e geçiş: env.py yapılandırması, init_db() fresh/legacy/managed akışı, yeni migration ekleme |
 
 ## Servisler ve İş Mantığı
@@ -30,7 +30,7 @@
 
 | Sayfa | Özet |
 |-------|------|
-| [[pdfkit]] | Bağımsız PDF paketi: içerik adresli belge deposu, SHA-256 ile tekrar önleme, PDFium incelemesi (metin katmanı, DOI), akış halinde indirme, karantina, eski dosyaların benimsenmesi |
+| [[pdfkit]] | Bağımsız PDF paketi (Faz 0–8 tamam): içerik adresli belge deposu, alıntı çapası ve artımlı modeller, okuma durumu, Obsidian vault (belge/dizin/kelime defteri/matris notları, `pkm://` derin bağlantı), PDF içi tam metin araması (FTS5), künye doldurma, literatür matrisi, daraltma (eski yol temizliği, `repair_paths`) |
 
 ## Arayüz (UI/UX)
 

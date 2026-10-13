@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] REFACTOR | pdfkit Faz 8: daraltma (eski PDF notu yolu, pypdf, repair_paths)
+
+Genişlet/daralt'ın son adımı; kullanıcı verisine dokunulmadan. (1) Eski PDF notu yolu silindi: `PdfNote` modeli, repo, servis, controller, `event_bus.pdf_note_*`, `Controllers.pdf_notes`, kaynak sözlüğündeki kullanılmayan `vocabulary`/`pdfNotes` anahtarları. (2) Migration `c9f4e2b7a815`: eski `pdf_notes` tablosu yalnız boşsa silinir, satır varsa korunur ve eski kayıt içe aktarıcısı son satırı taşıyınca tabloyu kendisi kaldırır; gerçek veri kopyasında denendi (tablo boştu, taşınan not yerinde, otomatik yedek alındı). (3) `pypdf` çalışma zamanından çıktı: anahat `pdfkit/infra/outline.py` ile `pypdfium2`'den okunur (56 yer imlik karmaşık PDF'te birebir aynı sonuç, gerçek PDF'lerde 236 ms → 3 ms), `pypdf` `requirements-dev.txt`'e (yalnız test PDF fabrikası) taşındı. (4) `PdfLibrary.repair_paths()`: veri kökü taşınınca kırılan kaynak yollarını depodaki dosyaya yeniden bağlar (yalnız eksik yollar; dosya silinmez/taşınmaz); `pkmpdf://` kapsam dışı bırakıldı. Test 960. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz8-raporu.md`.
+
+---
+
 ## [2026-10-13] FEAT | pdfkit Faz 7b: Matris sekmesi (literatür matrisi arayüzü)
 
 Bilgi Havuzu'nda dördüncü sekme **Matris**: kaynak × anlam etiketi tablosu, etiket / serbest etiket chip süzgeçleri, kaynak süzgeci (üst çubuktaki arama kutusu), alıntıya tıklayınca okuyucu o alıntıda açılır, süzülmüş matris Markdown'a aktarılır / panoya kopyalanır. `SynthesisService` (toplu okuma, citekey atamaz), `bridge.synthesis` (veritabanı yalnız sekme görünürken ve veri değişince okunur; süzgeç önbellekten), `serialize_matrix`, `MatrixTab.qml`. Test +18 (961). Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz7b-raporu.md`.
