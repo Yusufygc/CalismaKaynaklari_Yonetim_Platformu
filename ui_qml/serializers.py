@@ -3,6 +3,7 @@
 `QmlBridge._serialize_resource` yalnizca PDF durumuna bagli kisimlari (dosya URL'si, indirme
 durumu, alinti geometrisi) hesaplar; geri kalan donusum burada test edilebilir parcalardadir.
 """
+import html
 from typing import TYPE_CHECKING
 
 from core.constants.highlight_labels import label_for_color
@@ -262,3 +263,28 @@ def annotate_library(items: list[dict], index: LibraryIndex) -> bool:
             item["libraryResourceId"] = match
             changed = True
     return changed
+
+
+def snippet_html(snippet) -> str:
+    """Ozet parcasi, eslesmeleri `<b>` ile vurgulanmis QML `Text.StyledText` metni (metin kacirilir)."""
+    parts, cursor = [], 0
+    for start, end in snippet.spans:
+        parts.append(html.escape(snippet.text[cursor:start]))
+        parts.append(f"<b>{html.escape(snippet.text[start:end])}</b>")
+        cursor = end
+    parts.append(html.escape(snippet.text[cursor:]))
+    return "".join(parts)
+
+
+MAX_HITS_SHOWN_PER_RESOURCE = 5
+
+
+def serialize_search_group(group) -> dict:
+    """Tam metin aramasi sonucu: kaynak + (en cok 5) sayfa eslesmesi; `more` gosterilmeyen sayfa sayisi."""
+    shown = group.hits[:MAX_HITS_SHOWN_PER_RESOURCE]
+    return {
+        "resourceId": group.resource_id,
+        "title": group.title or "İsimsiz",
+        "hits": [{"page": hit.page, "html": snippet_html(hit.snippet)} for hit in shown],
+        "more": group.total - len(shown),
+    }

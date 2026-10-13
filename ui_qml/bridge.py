@@ -11,6 +11,7 @@ from ui_qml.bridges.market_bridge import MarketBridge
 from ui_qml.bridges.reader_bridge import ReaderBridge
 from ui_qml.bridges.searches_bridge import SearchesBridge
 from ui_qml.bridges.settings_bridge import SettingsBridge
+from ui_qml.bridges.search_bridge import SearchBridge
 from ui_qml.bridges.vault_bridge import VaultBridge
 from ui_qml.context import BridgeContext, Controllers
 from ui_qml.deep_links import DeepLinkRouter
@@ -28,6 +29,7 @@ class QmlBridge(QObject):
     - `bridge.annotations` -- alinti, kelime havuzu, PDF sayfa notlari
     - `bridge.pdf`      -- pdfkit: PDF belgesi, alinti modelleri (artimli), sayfa filtreleri (bkz. docs/plans/pdfkit-faz3-plani.md)
     - `bridge.vault`    -- Obsidian vault klasoru, esitleme durumu (pdfkit.VaultSync)
+    - `bridge.contentSearch` -- PDF icerigi tam metin aramasi (pdfkit.SearchService / TextIndexer)
     - `bridge.citations` -- atif metni, OpenAlex bilgisi, referans/atif listeleri
     - `bridge.market`   -- Makale Market aramasi, sayfalama, gecmis, kaydetme/disa aktarma
     - `bridge.discovery` -- Market kart kesfi (referans/atif/benzer/yazar) ve kutuphaneden oneriler
@@ -76,6 +78,7 @@ class QmlBridge(QObject):
         self._pdf.contentChanged.connect(self._on_pdf_content_changed)
         self._pdf.readingProgressChanged.connect(lambda _resource_id: self._library.refresh_progress())
         self._vault = VaultBridge(self._ctx, self)
+        self._content_search = SearchBridge(self._ctx, self._reader, self._pdf, self)
         self.deep_links = DeepLinkRouter(self, self._ctx, self)
         self.deep_links.activationRequested.connect(self.windowActivationRequested)
         # Alinti/not/kelime ya da kaynak kunyesi (baslik, durum) degisince vault notu yeniden uretilir (1,5 sn birlesik).
@@ -111,6 +114,10 @@ class QmlBridge(QObject):
     @Property(QObject, constant=True)
     def vault(self) -> QObject:
         return self._vault
+
+    @Property(QObject, constant=True)
+    def contentSearch(self) -> QObject:
+        return self._content_search
 
     @Property(QObject, constant=True)
     def citations(self) -> QObject:

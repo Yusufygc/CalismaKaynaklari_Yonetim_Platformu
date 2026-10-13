@@ -254,3 +254,17 @@ def test_enqueue_ignores_duplicates_and_a_rescan_does_nothing_when_everything_is
     QTest.qWait(30)
 
     assert indexer.status()["total"] == 1 and indexer.status()["pending"] == 0
+
+
+def test_results_are_grouped_by_resource_and_documents_without_a_resource_are_skipped(session, pdf_store, tmp_path, document):
+    other = _add(session, pdf_store, tmp_path, "baska", [["kuantum baska belge ve yeterince uzun bir metin cumlesi"]])
+    _index(session, document.id, [" ".join(p) for p in PAGES])
+    _index(session, other.id, ["kuantum baska belge"])
+
+    groups = SearchService(session).search_by_resource("kuantum")
+
+    assert {g.document_id: (g.title, g.total) for g in groups} == {document.id: ("kuantum", 2), other.id: ("baska", 1)}
+    assert all(g.resource_id for g in groups)
+    session.execute(delete(PdfResourceLinkRow).where(PdfResourceLinkRow.document_id == other.id))
+    session.commit()  # kaynagi silinmis belge (dizinde yetim kalmis): sonuclarda gorunmez
+    assert [g.document_id for g in SearchService(session).search_by_resource("kuantum")] == [document.id]

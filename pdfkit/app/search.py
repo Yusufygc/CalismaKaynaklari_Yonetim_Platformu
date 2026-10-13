@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
@@ -17,6 +18,20 @@ from pdfkit.infra.search_repository import (
 INDEX_VERSION = 1  # cikarim/katlama kurali degisirse artirilir: eski belgeler yeniden dizinlenir
 MAX_INDEXED_PAGES = 2000  # belge basina ust sinir (dev ciltler veritabanini sisirmesin)
 DEFAULT_LIMIT = 60
+
+
+@dataclass
+class SearchGroup:
+    """Bir kaynagin eslesen sayfalari (en alakali once). `total` bu sorguda o kaynaktan bulunan sayfa sayisidir."""
+
+    resource_id: int
+    title: str
+    document_id: int
+    hits: list[SearchHit] = field(default_factory=list)
+
+    @property
+    def total(self) -> int:
+        return len(self.hits)
 
 
 class SearchService:
@@ -39,6 +54,20 @@ class SearchService:
             log.warning("Tam metin sorgusu basarisiz: %s", exc)
             return []
         return [SearchHit(document_id, page, make_snippet(original, query), rank) for document_id, page, original, rank in rows]
+
+    def search_by_resource(self, text: str, limit: int = DEFAULT_LIMIT) -> list[SearchGroup]:
+        """Sonuclari kaynaga gore gruplar; gruplar en alakali sayfasina gore, sayfalar bm25 sirasiyla. Kaynagi
+        kalmamis belgeler (silinmis kaynak) atlanir."""
+        hits = self.search(text, limit)
+        owners = self._repo.resources_for(sorted({hit.document_id for hit in hits}))
+        groups: dict[int, SearchGroup] = {}
+        for hit in hits:
+            owner = owners.get(hit.document_id)
+            if owner is None:
+                continue
+            group = groups.setdefault(hit.document_id, SearchGroup(owner[0], owner[1] or "", hit.document_id))
+            group.hits.append(hit)
+        return list(groups.values())
 
 
 class IndexService:

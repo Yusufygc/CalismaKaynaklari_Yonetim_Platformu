@@ -1,5 +1,5 @@
 """Tam metin dizini sorgulari (FTS5). Yalnizca SQL; commit/rollback servistedir."""
-from sqlalchemy import select, text
+from sqlalchemy import bindparam, select, text
 from sqlalchemy.orm import Session
 
 from pdfkit.infra.orm import PdfDocumentRow, PdfTextIndexRow
@@ -98,6 +98,20 @@ class PageIndexRepository:
         ).scalar_one()
 
     # ---- arama ----
+    def resources_for(self, document_ids: list[int]) -> dict[int, tuple[int, str]]:
+        """belge id -> (kaynak id, baslik); ayni belge birden cok kaynaktaysa en kucuk kaynak id'si."""
+        if not document_ids:
+            return {}
+        # `resources` tablosu uygulamanindir (pdfkit modelini bilmez): ham SQL, `annotation_repository` ile ayni yol.
+        rows = self._session.execute(
+            text(
+                "SELECT l.document_id, r.id, r.title FROM pdf_resource_documents l "
+                "JOIN resources r ON r.id = l.resource_id WHERE l.document_id IN :ids ORDER BY r.id DESC"
+            ).bindparams(bindparam("ids", expanding=True)),
+            {"ids": document_ids},
+        )
+        return {document_id: (resource_id, title) for document_id, resource_id, title in rows}
+
     def query(self, match: str, limit: int) -> list[tuple[int, int, str, float]]:
         """(belge, sayfa, ozgun metin, bm25) uclulari, en alakali once. Yalniz `ok` belgeler."""
         rows = self._session.execute(
