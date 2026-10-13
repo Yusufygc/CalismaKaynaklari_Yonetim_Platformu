@@ -31,6 +31,9 @@ class DocumentService:
     def store(self) -> FileStore:
         return self._store
 
+    def get(self, document_id: int) -> Document | None:
+        return self._repo.get_by_id(document_id)
+
     def find_by_sha(self, sha256: str) -> Document | None:
         return self._repo.get_by_sha(sha256)
 

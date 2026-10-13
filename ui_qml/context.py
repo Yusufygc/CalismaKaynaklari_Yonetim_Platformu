@@ -17,7 +17,7 @@ from controllers.tag_controller import TagController
 from controllers.vocabulary_controller import VocabularyController
 from core.events import event_bus
 from core.user_settings import UserSettings, default_settings_path
-from pdfkit.api import PdfLibrary, VaultSync
+from pdfkit.api import ImportOutcome, PdfLibrary, TextIndexer, VaultSync
 from services.library_index import LibraryIndex
 from services.pdf_download_service import stream_fetch
 from ui_qml.full_text import FullTextExtractor
@@ -25,6 +25,8 @@ from ui_qml.notifier import Notifier
 from ui_qml.pdf_catalog import ResourceCatalog
 from ui_qml.pdf_files import PdfFileManager
 from ui_qml.serializers import ResourceSerializer
+
+AUTO_INDEX = True  # PDF'ler ice aktarilinca/acilista tam metin dizinine kendiliginden alinir (testler kapatir)
 
 
 @dataclass
@@ -98,6 +100,22 @@ class BridgeContext:
         )
         self.pdf_library.downloadFinished.connect(self.pdf_files.on_download_finished)
         self.vault_sync = VaultSync(self.pdf_library, thread_pool=lambda: self.thread_pool)
+        self.text_indexer = TextIndexer(self.pdf_library, thread_pool=lambda: self.thread_pool)
+        if AUTO_INDEX:
+            self.pdf_library.importFinished.connect(self._index_imported)
+            self.pdf_library.downloadFinished.connect(self._index_downloaded)
+            self.pdf_library.legacyAdoptionFinished.connect(lambda _count: self.text_indexer.scan())
         self.extractor = FullTextExtractor(self)
         self.library_index = LibraryIndexCache(controllers.resources)
         self.serializer = ResourceSerializer(self.pdf_files, self.pdf_library)
+
+    def _index_imported(self, outcome: ImportOutcome) -> None:
+        if outcome.status == "created" and outcome.document is not None:
+            self.text_indexer.enqueue(outcome.document.id)
+
+    def _index_downloaded(self, resource_id: int, path: object) -> None:
+        if path is None:
+            return
+        document = self.pdf_library.documents().document_for_resource(resource_id)
+        if document is not None:
+            self.text_indexer.enqueue(document.id)

@@ -13,6 +13,7 @@ from core.logger import log
 from pdfkit.app.annotations import AnnotationService
 from pdfkit.app.documents import DocumentService
 from pdfkit.app.reading import ReadingService
+from pdfkit.app.search import IndexService, SearchService
 from pdfkit.app.vault import NoteBuilder
 from pdfkit.app.legacy_import import LegacyAnnotationImporter, LegacyMigrationReport
 from pdfkit.app.importing import prepare_pdf, prepare_remote_pdf
@@ -95,6 +96,12 @@ class PdfLibrary(QObject):
 
     def reading(self) -> ReadingService:
         return ReadingService(self._session)
+
+    def searching(self) -> SearchService:
+        return SearchService(self._session)
+
+    def indexing(self) -> IndexService:
+        return IndexService(self._session)
 
     def progress_map(self) -> dict[int, float]:
         """{kaynak kimligi: okunan oran}: kaynak kartlarindaki ilerleme cubugu icin tek sorgu."""

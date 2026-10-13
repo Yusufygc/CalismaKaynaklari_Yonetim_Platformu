@@ -104,6 +104,7 @@ def main() -> None:
     # market-search) varsa, onu bitene kadar bekle -- aksi halde worker daha
     # sonra artik yok edilmis bridge'e sinyal atmaya calisip "Internal C++
     # object already deleted" hatasi/kararsizligina yol acabiliyordu.
+    bridge.ctx.text_indexer.cancel()  # calisan metin cikarimi sayfalar arasinda durur; yarim dizin sonraki acilista yeniden yapilir
     QThreadPool.globalInstance().waitForDone(5000)
 
     del engine

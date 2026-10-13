@@ -15,6 +15,8 @@ from pdfkit.domain.models import Document, PdfInspection, SourceInfo
 from pdfkit.domain.vault_note import obsidian_tag
 from pdfkit.infra.text import extract_page_texts
 from pdfkit.ui.bridge import PdfBridge
+from pdfkit.domain.search import SearchHit, Snippet
+from pdfkit.ui.indexer import TextIndexer
 from pdfkit.ui.library import ImportOutcome, PdfLibrary, ResourceAnnotations
 from pdfkit.ui.vault import SyncReport, VaultSync
 
@@ -34,9 +36,12 @@ __all__ = [
     "PdfkitError",
     "ResourceAnnotations",
     "ResourceCatalogPort",
+    "SearchHit",
+    "Snippet",
     "SourceInfo",
     "SyncReport",
     "Term",
+    "TextIndexer",
     "TooLargeError",
     "VaultSync",
     "VaultUnavailableError",

@@ -21,6 +21,13 @@ def _isolated_user_settings(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _no_auto_indexing(monkeypatch):
+    """Testlerde PDF'ler kendiliginden tam metin dizinine alinmaz (arka plan isi testi bitince de surerdi); dizin
+    testleri `TextIndexer`i dogrudan kullanir."""
+    monkeypatch.setattr("ui_qml.context.AUTO_INDEX", False)
+
+
+@pytest.fixture(autouse=True)
 def _no_real_registry(monkeypatch):
     """Testler gercek Windows kayit defterine (pkm:// protokol kaydi) dokunmasin: `winreg` yok sayilir; kayit
     testleri sahte bir kayit defteri verir."""

@@ -187,6 +187,15 @@ def _first_visible_page(area) -> int:
     return top["page"] + 1 if top["y"] > 350 else top["page"]
 
 
+def _wait_for(predicate, timeout=6000) -> None:
+    """Kosul saglanana kadar bekler (sabit sure yerine: yuklu makinede atlama/yerlesim gecikebilir, cerceve ise yalniz
+    ~2,5 sn gorunur)."""
+    waited = 0
+    while not predicate() and waited < timeout:
+        QTest.qWait(30)
+        waited += 30
+
+
 def test_reader_jumps_to_the_linked_page_and_frames_the_linked_annotation(env, qapp):
     bridge, resources, _toasts, _activations = env
     resource = resources["altı-sayfa"]
@@ -194,13 +203,13 @@ def test_reader_jumps_to_the_linked_page_and_frames_the_linked_annotation(env, q
     engine, window = open_window(qapp, bridge, "showcase", width=1400, height=900)
 
     bridge.deep_links.open_link(build_open_link(_document(bridge, resource).sha256, ann_uid=annotation.uid))
-    pump(qapp, 150)
-    QTest.qWait(900)
 
-    area = find_named(window, "pageArea")
-    assert _first_visible_page(area) == 2
-    frame = find_named(window, "focusFrame")
-    assert frame is not None and frame.property("visible"), "baglantiyla acilan alinti cerceveyle vurgulanmali"
+    def framed_on_target_page() -> bool:
+        area, frame = find_named(window, "pageArea"), find_named(window, "focusFrame")
+        return area is not None and frame is not None and bool(frame.property("visible")) and _first_visible_page(area) == 2
+
+    _wait_for(framed_on_target_page)
+    assert framed_on_target_page(), "baglantiyla acilan alinti hedef sayfada cerceveyle vurgulanmali"
     assert bridge.pdf.focusedAnnotationId == annotation.id
     assert engine.captured_warnings == []
 

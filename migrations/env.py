@@ -20,6 +20,7 @@ import models.tag  # noqa: E402,F401
 import models.resource  # noqa: E402,F401
 import pdfkit.infra.orm  # noqa: E402,F401
 from models.base import Base  # noqa: E402
+from pdfkit.infra.search_schema import include_object  # noqa: E402
 from core.config import settings  # noqa: E402
 
 # this is the Alembic Config object, which provides
@@ -61,6 +62,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -82,7 +84,7 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, target_metadata=target_metadata, include_object=include_object
         )
 
         with context.begin_transaction():

@@ -60,3 +60,17 @@ def write_outline_pdf(path: Path, titles: list[str]) -> Path:
     with open(path, "wb") as handle:
         writer.write(handle)
     return path
+
+
+def write_multipage_text_pdf(path: Path, pages: list[list[str]]) -> Path:
+    """Her `pages` ogesi (satir listesi) ayri bir metin sayfasi olan PDF (pypdf ile birlestirilir)."""
+    from io import BytesIO
+
+    from pypdf import PdfReader, PdfWriter
+
+    writer = PdfWriter()
+    for lines in pages:
+        writer.add_page(PdfReader(BytesIO(build_text_pdf(lines))).pages[0])
+    with open(path, "wb") as handle:
+        writer.write(handle)
+    return path
