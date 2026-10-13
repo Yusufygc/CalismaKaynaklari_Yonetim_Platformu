@@ -1,6 +1,6 @@
 """Markdown disa aktarimi icin kaynak gorunumu: PDF belgesi olan kaynaklarin alinti/not/kelimeleri pdfkit'ten gelir.
 
-`ExportService` eski `Resource` iliskilerini (highlights / pdf_notes / vocabulary) okur. PDF belgesi olan kaynaklar icin
+`ExportService` `highlights`, `pdf_notes` ve `vocabulary` alanlarini okur: eski `Resource` iliskilerinde yalniz `highlights`/`vocabulary` vardir (HTML makaleler), `pdf_notes` yalniz burada uretilen PDF gorunumunde bulunur. PDF belgesi olan kaynaklar icin
 bu alanlari pdfkit verisiyle dolduran hafif bir kopya verilir; diger kaynaklar (HTML makaleler) oldugu gibi gecer.
 Gecici: Faz 8'de eski tablolar kalkinca sadelesir.
 """

@@ -7,13 +7,11 @@ import html
 from typing import TYPE_CHECKING
 
 from core.constants.highlight_labels import label_for_color
-from models import Highlight, PdfNote, Resource, Vocabulary
+from models import Highlight, Resource, Vocabulary
 from pdfkit.api import (
     STATUS_ORPHANED,
     Annotation,
-    PageNote,
     ResourceAnnotations,
-    Term,
     color_for_label,
     column_name,
     effective_color,
@@ -95,16 +93,6 @@ def serialize_pool_pdf_term(entry) -> dict:
     }
 
 
-def serialize_pdf_note(note: "PageNote | PdfNote") -> dict:
-    if isinstance(note, PageNote):
-        return {"id": note.id, "page": note.page, "x": note.x, "y": note.y, "text": note.text}
-    return {"id": note.id, "page": note.page, "x": note.x, "y": note.y, "text": note.note_text}
-
-
-def serialize_pdf_term(term: Term) -> dict:
-    return {"id": term.id, "word": term.word, "translation": term.translation, "context": term.context_sentence or ""}
-
-
 def serialize_pool_highlight(highlight: Highlight) -> dict:
     """Bilgi Havuzu'ndaki alinti satiri (kaynak basligi ve olusturma zamani ile)."""
     return {
@@ -133,15 +121,6 @@ def serialize_pool_vocabulary(entry: Vocabulary) -> dict:
         "translation": entry.translation,
         "context_sentence": entry.context_sentence or "",
         "created_at": format_local_datetime(entry.created_at),
-    }
-
-
-def serialize_vocabulary_entry(entry: Vocabulary) -> dict:
-    return {
-        "id": entry.id,
-        "word": entry.word,
-        "translation": entry.translation,
-        "context": entry.context_sentence or "",
     }
 
 
@@ -192,19 +171,11 @@ def _core_fields(resource: Resource) -> dict:
 
 
 def _annotation_fields(resource: Resource, pdf_data: ResourceAnnotations | None) -> dict:
-    """Alinti/kelime/not alanlari: PDF belgesi olan kaynaklarda pdfkit'ten, digerlerinde (HTML makale) eski
-    tablolardan. Geometri burada hesaplanmaz (PDF okuyucu `bridge.pdf` modellerini kullanir)."""
+    """Cekmecedeki alintilar: PDF belgesi olan kaynaklarda pdfkit'ten, digerlerinde (HTML makale) eski `highlights`
+    tablosundan. Geometri burada hesaplanmaz (PDF okuyucu `bridge.pdf` modellerini kullanir)."""
     if pdf_data is not None:
-        return {
-            "highlights": [serialize_pdf_highlight(a) for a in pdf_data.highlights],
-            "vocabulary": [serialize_pdf_term(t) for t in pdf_data.terms],
-            "pdfNotes": [serialize_pdf_note(n) for n in pdf_data.notes],
-        }
-    return {
-        "highlights": [serialize_highlight(h) for h in (resource.highlights or [])],
-        "vocabulary": [serialize_vocabulary_entry(v) for v in (resource.vocabulary or [])],
-        "pdfNotes": [serialize_pdf_note(n) for n in (resource.pdf_notes or [])],
-    }
+        return {"highlights": [serialize_pdf_highlight(a) for a in pdf_data.highlights]}
+    return {"highlights": [serialize_highlight(h) for h in (resource.highlights or [])]}
 
 
 def _relation_fields(resource: Resource) -> dict:

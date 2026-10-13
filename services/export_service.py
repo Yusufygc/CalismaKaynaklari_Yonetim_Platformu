@@ -14,12 +14,12 @@ class ExportService:
 
     Tez ve literatür taraması için: her kaynak APA atfıyla başlar; alıntılar
     akademik anlam etiketine (Yöntem, Bulgu / Sonuç, ...) göre gruplanır ve
-    sayfa numarası taşır.
+    sayfa numarası taşır. `pdf_notes` yalnız PDF kaynaklarının görünümünde (`ui_qml/export_view.py`) bulunur.
     """
 
     @classmethod
     def has_content(cls, resource: Resource) -> bool:
-        return bool(resource.highlights or resource.pdf_notes or resource.vocabulary or resource.content)
+        return bool(resource.highlights or getattr(resource, "pdf_notes", None) or resource.vocabulary or resource.content)
 
     @classmethod
     def resource_markdown(cls, resource: Resource, level: int = 1) -> str:
@@ -78,7 +78,7 @@ class ExportService:
 
     @staticmethod
     def _notes_section(resource: Resource, section: str) -> list[str]:
-        notes = sorted(resource.pdf_notes or [], key=lambda n: (n.page, n.y))
+        notes = sorted(getattr(resource, "pdf_notes", None) or [], key=lambda n: (n.page, n.y))
         if not notes:
             return []
         return [f"{section} Sayfa Notları", ""] + [f"- s. {n.page + 1}: {_quote(n.note_text)}" for n in notes] + [""]

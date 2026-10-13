@@ -54,11 +54,18 @@ class LegacyAnnotationImporter:
         self._session = session
         self._repo = AnnotationRepository(session)
 
+    def _has_table(self, name: str) -> bool:
+        """Eski tablo (ornegin `pdf_notes`) daraltma sonrasi yoksa ilgili adim atlanir."""
+        return self._session.execute(
+            text("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = :name"), {"name": name}
+        ).first() is not None
+
     def migrate(self) -> LegacyMigrationReport:
         """Kopyala/guncelle, sonra kopyasi olan eski satirlari sil; tek islemde commit."""
         copied = updated = 0
         try:
-            for sync in (self._sync_highlights, self._sync_notes, self._sync_terms):
+            syncs = [self._sync_highlights, self._sync_terms] + ([self._sync_notes] if self._has_table("pdf_notes") else [])
+            for sync in syncs:
                 a, u = sync()
                 copied, updated = copied + a, updated + u
             removed = self._delete_migrated_originals()
@@ -78,6 +85,8 @@ class LegacyAnnotationImporter:
             ("pdf_notes", self._repo.legacy_note_ids()),
             ("vocabulary", self._repo.legacy_term_ids()),
         ):
+            if not self._has_table(table):
+                continue
             for legacy_id in ids:
                 removed += self._session.execute(text(f"DELETE FROM {table} WHERE id = :id"), {"id": legacy_id}).rowcount
         return removed

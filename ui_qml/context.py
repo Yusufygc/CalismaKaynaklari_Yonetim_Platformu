@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from controllers.category_controller import CategoryController
 from controllers.highlight_controller import HighlightController
-from controllers.pdf_note_controller import PdfNoteController
 from controllers.resource_controller import ResourceController
 from controllers.saved_search_controller import SavedSearchController
 from controllers.tag_controller import TagController
@@ -39,7 +38,6 @@ class Controllers:
     tags: TagController
     highlights: HighlightController
     vocabulary: VocabularyController
-    pdf_notes: PdfNoteController
     saved_searches: SavedSearchController
     session: Session
 
@@ -51,7 +49,6 @@ class Controllers:
             tags=TagController(session),
             highlights=HighlightController(session),
             vocabulary=VocabularyController(session),
-            pdf_notes=PdfNoteController(session),
             saved_searches=SavedSearchController(session),
             session=session,
         )

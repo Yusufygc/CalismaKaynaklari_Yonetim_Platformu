@@ -4,7 +4,6 @@ from .tag import Tag
 from .saved_search import SavedSearch
 from .resource import (
     Highlight,
-    PdfNote,
     Resource,
     ResourceStatus,
     Vocabulary,
@@ -19,7 +18,6 @@ __all__ = [
     "Resource",
     "ResourceStatus",
     "Highlight",
-    "PdfNote",
     "Vocabulary",
     "SavedSearch",
     "resource_tags_link",

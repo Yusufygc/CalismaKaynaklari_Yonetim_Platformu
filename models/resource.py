@@ -5,7 +5,6 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Enum,
-    Float,
     ForeignKey,
     Integer,
     JSON,
@@ -97,9 +96,6 @@ class Resource(Base):
     vocabulary: Mapped[list["Vocabulary"]] = relationship(  # type: ignore[name-defined]
         "Vocabulary", back_populates="resource", cascade="all, delete-orphan"
     )
-    pdf_notes: Mapped[list["PdfNote"]] = relationship(  # type: ignore[name-defined]
-        "PdfNote", back_populates="resource", cascade="all, delete-orphan"
-    )
 
     def __repr__(self) -> str:
         return f"<Resource id={self.id} title={self.title!r} status={self.status.value}>"
@@ -152,30 +148,3 @@ class Vocabulary(Base):
 
     def __repr__(self) -> str:
         return f"<Vocabulary id={self.id} word={self.word!r}>"
-
-
-class PdfNote(Base):
-    """Native PDF okuyucuda bir noktaya (satir/paragraf) birakilan margin not.
-
-    Highlight'tan farkli: metin araligi degil tek bir nokta (page-point
-    uzayinda, cozunurlukten bagimsiz) referans alir.
-    """
-
-    __tablename__ = "pdf_notes"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    resource_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("resources.id", ondelete="CASCADE"), nullable=False
-    )
-    page: Mapped[int] = mapped_column(Integer, nullable=False)
-    x: Mapped[float] = mapped_column(Float, nullable=False)
-    y: Mapped[float] = mapped_column(Float, nullable=False)
-    note_text: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=func.now()
-    )
-
-    resource: Mapped["Resource"] = relationship("Resource", back_populates="pdf_notes")
-
-    def __repr__(self) -> str:
-        return f"<PdfNote id={self.id} resource_id={self.resource_id} page={self.page}>"

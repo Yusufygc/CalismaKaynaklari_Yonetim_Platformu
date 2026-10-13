@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from models import Category, Highlight, PdfNote, Resource, ResourceStatus, Tag, Vocabulary
+from models import Category, Highlight, Resource, ResourceStatus, Tag
 from pdfkit.api import Annotation, Document, PageNote, ResourceAnnotations, Term
 from pdfkit.domain.annotations import STATUS_OK, Segment
 from ui_qml.serializers import (
@@ -15,7 +15,7 @@ from ui_qml.serializers import (
 _RESOURCE_KEYS = {
     "id", "title", "url", "domain", "categoryId", "categoryName", "categoryColor", "status", "priority",
     "isPinned", "isFavorite", "content", "fullText", "thumbnailUrl", "description", "readingMinutes", "tags",
-    "highlights", "vocabulary", "pdfNotes", "pdfFileUrl", "pdfState", "paper", "createdAt",
+    "highlights", "pdfFileUrl", "pdfState", "paper", "createdAt",
 }
 
 
@@ -53,8 +53,6 @@ def test_serialize_resource_maps_fields_and_defaults_for_a_non_pdf_resource():
                                          "year": 2020, "citation_count": 3, "openalex_id": "W1"})
     resource.category = Category(id=2, name="Makale", color_hex="#123456")
     resource.tags = [Tag(id=5, name="ai")]
-    resource.vocabulary = [Vocabulary(id=1, word="kelime", translation="word", context_sentence=None)]
-    resource.pdf_notes = [PdfNote(id=2, page=1, x=1.5, y=2.5, note_text="not")]
     resource.highlights = [Highlight(id=3, resource_id=7, content="web alintisi", color="#EAB308")]
 
     data = serialize_resource(resource, pdf_data=None, pdf_file_url="file:///a.pdf", pdf_state="ready")
@@ -62,8 +60,6 @@ def test_serialize_resource_maps_fields_and_defaults_for_a_non_pdf_resource():
     assert data["domain"] == "example.com" and data["categoryName"] == "Makale" and data["categoryColor"] == "#123456"
     assert data["thumbnailUrl"] == "https://x/i.png" and data["description"] == "Aciklama"
     assert data["tags"] == [{"id": 5, "name": "ai"}]
-    assert data["vocabulary"] == [{"id": 1, "word": "kelime", "translation": "word", "context": ""}]
-    assert data["pdfNotes"] == [{"id": 2, "page": 1, "x": 1.5, "y": 2.5, "text": "not"}]
     assert data["paper"]["authors"] == ["Ada"] and data["paper"]["openalexId"] == "W1" and data["paper"]["citationCount"] == 3
     assert [h["content"] for h in data["highlights"]] == ["web alintisi"]
     assert data["pdfFileUrl"] == "file:///a.pdf" and data["pdfState"] == "ready"
@@ -85,8 +81,6 @@ def test_pdf_resources_take_highlights_notes_and_terms_from_pdfkit_and_ignore_or
     data = serialize_resource(resource, pdf_data=pdf_data, pdf_file_url="file:///a.pdf", pdf_state="ready")
 
     assert [h["content"] for h in data["highlights"]] == ["alinti metni"]
-    assert data["pdfNotes"] == [{"id": 2, "page": 1, "x": 1.5, "y": 2.5, "text": "pdf notu"}]
-    assert data["vocabulary"] == [{"id": 3, "word": "tilki", "translation": "fox", "context": "Hizli tilki."}]
 
 
 def test_serialize_resource_without_category_url_or_metadata():

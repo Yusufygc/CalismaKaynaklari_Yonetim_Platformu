@@ -1,4 +1,6 @@
-from models import Highlight, PdfNote, Resource, Vocabulary
+from types import SimpleNamespace
+
+from models import Highlight, Resource, Vocabulary
 from services.export_service import ExportService
 
 
@@ -15,7 +17,7 @@ def _resource():
         Highlight(content="BLEU 28.4", color="#22C55E", page_number=7, start_index=5),
         Highlight(content="ilk sayfa alintisi", color="#06B6D4", page_number=0, start_index=1),
     ]
-    r.pdf_notes = [PdfNote(page=2, x=1.0, y=2.0, note_text="Bunu tekrar oku")]
+    r.pdf_notes = [SimpleNamespace(page=2, y=2.0, note_text="Bunu tekrar oku")]  # PDF kaynaklarinin gorunumu (export_view) bunu saglar
     r.vocabulary = [Vocabulary(word="attention", translation="dikkat", context_sentence="We use  attention\nlayers.")]
     return r
 

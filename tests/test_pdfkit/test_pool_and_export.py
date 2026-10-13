@@ -115,7 +115,6 @@ def test_drawer_summary_uses_pdfkit_data_without_geometry_computation(env):
 
     selected = bridge.library.selectedResource
     assert [h["label"] for h in selected["highlights"]] == ["Önemli"]
-    assert selected["pdfNotes"][0]["text"] == "not"
     assert "boundsPolygons" not in selected["highlights"][0]
 
 

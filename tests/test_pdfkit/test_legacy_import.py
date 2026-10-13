@@ -2,9 +2,24 @@ from datetime import datetime, timezone
 
 import pytest
 
-from models import Highlight, PdfNote, Resource, Vocabulary
+from sqlalchemy import text
+
+from models import Highlight, Resource, Vocabulary
 from pdfkit.app.legacy_import import LegacyAnnotationImporter
 from pdfkit.domain.annotations import STATUS_PENDING, STATUS_UNANCHORED, Segment
+
+
+LEGACY_NOTES_TABLE = (
+    "CREATE TABLE pdf_notes (id INTEGER PRIMARY KEY AUTOINCREMENT, resource_id INTEGER NOT NULL, page INTEGER NOT NULL, "
+    "x FLOAT NOT NULL, y FLOAT NOT NULL, note_text TEXT NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+)
+
+
+@pytest.fixture()
+def legacy_notes(session):
+    """Eski `pdf_notes` tablosu (ORM modeli Faz 8'de kalkti; eski surumden gelen veritabanlarinda hala bulunabilir)."""
+    session.execute(text(LEGACY_NOTES_TABLE))
+    session.commit()
 
 
 @pytest.fixture()
@@ -98,13 +113,14 @@ def test_natively_created_annotations_are_never_touched(session, annotations, im
     assert [a.id for a in annotations.list_highlights(document.id)] == [native.id]
 
 
-def test_notes_and_terms_are_moved_and_originals_deleted(session, annotations, importer, resource_with_document):
+def test_notes_and_terms_are_moved_and_originals_deleted(session, annotations, importer, resource_with_document, legacy_notes):
     resource, document, _p = resource_with_document
-    session.add_all(
-        [
-            PdfNote(resource_id=resource.id, page=2, x=10.0, y=20.0, note_text="Tekrar oku"),
-            Vocabulary(resource_id=resource.id, word="ubiquitous", translation="her yerde", context_sentence="It is ubiquitous.", mastery_level=2),
-        ]
+    session.execute(
+        text("INSERT INTO pdf_notes (resource_id, page, x, y, note_text) VALUES (:r, 2, 10.0, 20.0, 'Tekrar oku')"),
+        {"r": resource.id},
+    )
+    session.add(
+        Vocabulary(resource_id=resource.id, word="ubiquitous", translation="her yerde", context_sentence="It is ubiquitous.", mastery_level=2)
     )
     session.commit()
 
@@ -117,4 +133,13 @@ def test_notes_and_terms_are_moved_and_originals_deleted(session, annotations, i
     assert (term.word, term.translation, term.context_sentence, term.mastery_level, term.status) == (
         "ubiquitous", "her yerde", "It is ubiquitous.", 2, STATUS_UNANCHORED,
     )
-    assert session.query(PdfNote).count() == 0 and session.query(Vocabulary).count() == 0
+    assert session.execute(text("SELECT count(*) FROM pdf_notes")).scalar_one() == 0 and session.query(Vocabulary).count() == 0
+
+
+def test_the_importer_works_when_the_legacy_notes_table_no_longer_exists(session, annotations, importer, resource_with_document):
+    resource, document, _p = resource_with_document  # `pdf_notes` tablosu yok (daraltilmis veritabani)
+    _highlight(session, resource.id)
+
+    report = importer.migrate()
+
+    assert (report.copied, report.removed) == (1, 1) and len(annotations.list_highlights(document.id)) == 1
