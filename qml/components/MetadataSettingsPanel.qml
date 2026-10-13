@@ -11,7 +11,7 @@ Column {
 
     Text {
         text: "Künyeyi Otomatik Doldur"
-        font.family: Theme.fontFamily
+        font.family: Theme.fontHeading
         font.pixelSize: Theme.fontMd
         font.weight: Font.DemiBold
         color: Theme.textPrimary

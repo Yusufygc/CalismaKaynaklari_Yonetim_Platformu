@@ -261,7 +261,8 @@ class Guide:
         target = OUTPUT / f"{name}.png"
         image = window.grabWindow()
         image.save(str(target))
-        print(f"{target.relative_to(ROOT)}  {image.width()}x{image.height()}")
+        shown = target.relative_to(ROOT) if target.is_relative_to(ROOT) else target
+        print(f"{shown}  {image.width()}x{image.height()}")
         return target
 
 

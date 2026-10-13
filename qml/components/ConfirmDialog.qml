@@ -31,7 +31,7 @@ Popup {
 
         Text {
             text: root.title
-            font.family: Theme.fontFamily
+            font.family: Theme.fontHeading
             font.pixelSize: Theme.fontMd
             font.weight: Font.Bold
             color: Theme.textPrimary

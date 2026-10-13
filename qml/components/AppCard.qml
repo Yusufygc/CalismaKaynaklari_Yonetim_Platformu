@@ -365,8 +365,8 @@ Item {
                     // Column'un padding'i çocukları kaydırır: genişlikten düşülmezse metin sağdan taşıp kırpılır.
                     width: parent.width - parent.leftPadding - parent.rightPadding
                     text: root.title
-                    font.family: Theme.fontFamily
-                    font.pixelSize: root.isSimple ? Theme.fontBase : (Theme.fontBase + 1)
+                    font.family: Theme.fontHeading
+                    font.pixelSize: root.isSimple ? Theme.fontBase : (Theme.fontBase + 2)
                     font.weight: Font.DemiBold
                     color: Theme.textPrimary
                     lineHeight: root.isSimple ? 1.15 : 1.25

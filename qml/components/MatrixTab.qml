@@ -338,8 +338,8 @@ Item {
                                             width: parent.width
                                             wrapMode: Text.Wrap
                                             text: "“" + quoteItem.modelData.text + "”"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontXs
+                                            font.family: Theme.fontReading
+                                            font.pixelSize: Theme.fontSm
                                             font.italic: true
                                             lineHeight: 1.2
                                             color: Theme.textPrimary

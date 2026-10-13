@@ -67,7 +67,7 @@ Item {
                     anchors.leftMargin: 20
                     anchors.verticalCenter: parent.verticalCenter
                     text: "İçindekiler"
-                    font.family: Theme.fontFamily
+                    font.family: Theme.fontHeading
                     font.pixelSize: Theme.fontMd
                     font.weight: Font.DemiBold
                     color: Theme.textPrimary
@@ -174,7 +174,7 @@ Item {
 
                 Text {
                     text: "Kullanım Kılavuzu"
-                    font.family: Theme.fontFamily
+                    font.family: Theme.fontHeading
                     font.pixelSize: Theme.font2Xl
                     font.weight: Font.Bold
                     color: Theme.textPrimary
@@ -221,7 +221,7 @@ Item {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: (section.index + 1) + ". " + section.modelData.title
-                            font.family: Theme.fontFamily
+                            font.family: Theme.fontHeading
                             font.pixelSize: Theme.fontXl
                             font.weight: Font.DemiBold
                             color: Theme.textPrimary

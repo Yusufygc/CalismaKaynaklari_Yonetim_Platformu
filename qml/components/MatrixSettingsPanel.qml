@@ -15,7 +15,7 @@ Column {
 
     Text {
         text: "Literatür Matrisi"
-        font.family: Theme.fontFamily
+        font.family: Theme.fontHeading
         font.pixelSize: Theme.fontMd
         font.weight: Font.DemiBold
         color: Theme.textPrimary

@@ -50,7 +50,7 @@ Column {
                 Text {
                     width: parent.width
                     text: "“" + modelData.content + "”"
-                    font.family: Theme.fontFamily
+                    font.family: Theme.fontReading
                     font.pixelSize: Theme.fontSm
                     font.italic: true
                     color: Theme.textPrimary

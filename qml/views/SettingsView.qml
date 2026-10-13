@@ -289,7 +289,7 @@ Item {
 
                     Text {
                         text: "Yeni Kategori Ekle"
-                        font.family: Theme.fontFamily
+                        font.family: Theme.fontHeading
                         font.pixelSize: Theme.fontMd
                         font.weight: Font.DemiBold
                         color: Theme.textPrimary
@@ -369,7 +369,7 @@ Item {
 
                     Text {
                         text: "Mevcut Kategoriler (" + bridge.settings.categories.length + ")"
-                        font.family: Theme.fontFamily
+                        font.family: Theme.fontHeading
                         font.pixelSize: Theme.fontMd
                         font.weight: Font.DemiBold
                         color: Theme.textPrimary
@@ -399,7 +399,7 @@ Item {
 
                     Text {
                         text: "Yeni Etiket Ekle"
-                        font.family: Theme.fontFamily
+                        font.family: Theme.fontHeading
                         font.pixelSize: Theme.fontMd
                         font.weight: Font.DemiBold
                         color: Theme.textPrimary
@@ -471,7 +471,7 @@ Item {
 
                     Text {
                         text: "Mevcut Etiketler (" + bridge.settings.tags.length + ")"
-                        font.family: Theme.fontFamily
+                        font.family: Theme.fontHeading
                         font.pixelSize: Theme.fontMd
                         font.weight: Font.DemiBold
                         color: Theme.textPrimary

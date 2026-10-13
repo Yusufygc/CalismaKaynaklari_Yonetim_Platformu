@@ -80,7 +80,7 @@ Rectangle {
                 anchors.right: buttonRow.left
                 anchors.rightMargin: 8
                 text: root.paper.title
-                font.family: Theme.fontFamily
+                font.family: Theme.fontHeading
                 font.pixelSize: Theme.fontMd
                 font.weight: Font.Bold
                 color: Theme.textPrimary

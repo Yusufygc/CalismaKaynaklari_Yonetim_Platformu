@@ -34,7 +34,7 @@ Popup {
                 width: parent.width - fetchButton.width - 8
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Atıf ve Kaynak Bilgisi"
-                font.family: Theme.fontFamily
+                font.family: Theme.fontHeading
                 font.pixelSize: Theme.fontMd
                 font.weight: Font.Bold
                 color: Theme.textPrimary

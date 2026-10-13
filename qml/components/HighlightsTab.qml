@@ -253,7 +253,7 @@ Item {
                 Text {
                     width: parent.width - 50
                     text: "“" + modelData.content + "”"
-                    font.family: Theme.fontFamily
+                    font.family: Theme.fontReading
                     font.pixelSize: Theme.fontBase
                     font.italic: true
                     lineHeight: 1.3

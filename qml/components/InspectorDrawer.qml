@@ -65,7 +65,7 @@ Rectangle {
                 Text {
                     width: parent.width - 40
                     text: root.resource && root.resource.title ? root.resource.title : "İsimsiz Kaynak"
-                    font.family: Theme.fontFamily
+                    font.family: Theme.fontHeading
                     font.pixelSize: Theme.fontLg
                     font.weight: Font.Bold
                     color: Theme.textPrimary

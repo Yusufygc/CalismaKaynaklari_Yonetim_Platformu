@@ -7,76 +7,79 @@ QtObject {
     // Tema durumu (Bridge'e bağlı)
     property bool isDark: true
 
-    // Arka planlar (Notion / Linear tarzı katmanlar)
-    readonly property color bgBase: isDark ? "#0D0F17" : "#F8F9FA"
-    readonly property color bgSidebar: isDark ? "#121520" : "#FFFFFF"
-    readonly property color bgSurface: isDark ? "#181B28" : "#FFFFFF"
-    readonly property color bgElevated: isDark ? "#1F2335" : "#FFFFFF"
-    readonly property color bgHover: isDark ? "#262C42" : "#F3F4F6"
-    readonly property color bgActive: isDark ? "#2F3652" : "#E5E7EB"
+    // Akademik palet: mürekkep laciverti + kâğıt tonları. Açık temada sıcak "kâğıt" zemin (göz yormaz), koyu temada
+    // derin lacivert zemin; metinler her iki temada da WCAG AA (≥ 4.5:1) kontrastın üstündedir.
 
-    // Kenarlıklar (Subtle 1px borders)
-    readonly property color borderSubtle: isDark ? "#22273A" : "#E5E7EB"
-    readonly property color borderStrong: isDark ? "#353D5A" : "#D1D5DB"
-    readonly property color borderFocus: isDark ? "#6366F1" : "#4F46E5"
+    // Arka planlar (katmanlı yüzeyler)
+    readonly property color bgBase: isDark ? "#0B1020" : "#F4F1E9"
+    readonly property color bgSidebar: isDark ? "#0F1629" : "#ECE8DC"
+    readonly property color bgSurface: isDark ? "#141C33" : "#FBFAF6"
+    readonly property color bgElevated: isDark ? "#1B2542" : "#FFFFFF"
+    readonly property color bgHover: isDark ? "#243154" : "#E7E2D3"
+    readonly property color bgActive: isDark ? "#2E3E69" : "#DAD3BF"
+
+    // Kenarlıklar
+    readonly property color borderSubtle: isDark ? "#25314F" : "#DDD6C3"
+    readonly property color borderStrong: isDark ? "#3A4B78" : "#BDB49B"
+    readonly property color borderFocus: isDark ? "#7FA8FF" : "#1E4FA8"
 
     // Metinler
-    readonly property color textPrimary: isDark ? "#F9FAFB" : "#111827"
-    readonly property color textSecondary: isDark ? "#9CA3AF" : "#4B5563"
-    readonly property color textMuted: isDark ? "#64748B" : "#9CA3AF"
+    readonly property color textPrimary: isDark ? "#F5F2EA" : "#14213D"
+    readonly property color textSecondary: isDark ? "#C3CCE3" : "#3A4561"
+    readonly property color textMuted: isDark ? "#9AA7C8" : "#525D7A"
     readonly property color textOnAccent: "#FFFFFF"
 
-    // Vurgu (Accent - Indigo / Electric Sky)
-    readonly property color accent: isDark ? "#6366F1" : "#4F46E5"
-    readonly property color accentHover: isDark ? "#818CF8" : "#6366F1"
-    readonly property color accentSubtle: isDark ? "#1E223D" : "#EEF2FF"
-    readonly property color accentText: isDark ? "#A5B4FC" : "#4338CA"
+    // Vurgu (akademik mavi)
+    readonly property color accent: isDark ? "#3866D6" : "#1E4FA8"
+    readonly property color accentHover: isDark ? "#5E8CF0" : "#2A63C9"
+    readonly property color accentSubtle: isDark ? "#182750" : "#E4EBF8"
+    readonly property color accentText: isDark ? "#A9C2FF" : "#1B3F86"
 
-    // Durum Renkleri
-    readonly property color statusInbox: "#A855F7"
-    readonly property color statusPlanned: "#38BDF8"
-    readonly property color statusInProgress: "#F59E0B"
-    readonly property color statusCompleted: "#10B981"
+    // Durum Renkleri (açık temada daha koyu, koyu temada daha parlak: iki yüzeyde de okunur)
+    readonly property color statusInbox: isDark ? "#B99CF7" : "#6D3FC4"
+    readonly property color statusPlanned: isDark ? "#5CC3F5" : "#0B6FA8"
+    readonly property color statusInProgress: isDark ? "#F5B83D" : "#9A5208"
+    readonly property color statusCompleted: isDark ? "#3DD6A0" : "#08704E"
 
-    readonly property color statusInboxBg: isDark ? "#281738" : "#F3E8FF"
-    readonly property color statusPlannedBg: isDark ? "#13273D" : "#E0F2FE"
-    readonly property color statusInProgressBg: isDark ? "#332210" : "#FEF3C7"
-    readonly property color statusCompletedBg: isDark ? "#122E23" : "#D1FAE5"
+    readonly property color statusInboxBg: isDark ? "#2A1D47" : "#EBE3FA"
+    readonly property color statusPlannedBg: isDark ? "#10304A" : "#DCEEF9"
+    readonly property color statusInProgressBg: isDark ? "#3A2A0F" : "#FAEBCF"
+    readonly property color statusCompletedBg: isDark ? "#0F3328" : "#D5F0E3"
 
     // Aksiyon Renkleri
-    readonly property color danger: "#EF4444"
-    readonly property color dangerHover: "#DC2626"
-    readonly property color dangerSubtle: isDark ? "#32161A" : "#FEE2E2"
-    readonly property color dangerText: isDark ? "#FCA5A5" : "#B91C1C"
+    readonly property color danger: isDark ? "#F0645F" : "#C62828"
+    readonly property color dangerHover: isDark ? "#F47E7A" : "#A61F1F"
+    readonly property color dangerSubtle: isDark ? "#3A1B20" : "#FBE3E1"
+    readonly property color dangerText: isDark ? "#FFB4B0" : "#9B1C1C"
 
-    readonly property color favorite: "#EC4899"
-    readonly property color favoriteSubtle: isDark ? "#331627" : "#FCE7F3"
+    readonly property color favorite: isDark ? "#F472A8" : "#B8195F"
+    readonly property color favoriteSubtle: isDark ? "#3A1A2D" : "#FADCE9"
 
-    readonly property color pin: "#F59E0B"
+    readonly property color pin: isDark ? "#F2C04D" : "#A8730E"
 
     // Gölgeler ve Karartma
-    readonly property color shadowColor: isDark ? "#00000088" : "#00000018"
+    readonly property color shadowColor: isDark ? "#00000099" : "#14213D22"
     readonly property color overlayBg: "#00000077"
     readonly property color backdropSubtle: "#00000055"
-    readonly property color tooltipBg: isDark ? "#1E2235" : "#1F2937"
-    readonly property color chipUnselectedBg: isDark ? "#2A2F45" : "#E2E8F0"
-    readonly property color badgeOverlay: isDark ? "#141724DD" : "#FFFFFFEE"
-    readonly property color gradientHeaderStart: isDark ? "#1A2238" : "#EEF2FF"
-    readonly property color fallbackCategoryColor: "#64748B"
-    readonly property color popoverBg: isDark ? "#1A1E2F" : "#FFFFFF"
+    readonly property color tooltipBg: isDark ? "#1B2542" : "#14213D"
+    readonly property color chipUnselectedBg: isDark ? "#27345A" : "#E3DDCB"
+    readonly property color badgeOverlay: isDark ? "#0F1629DD" : "#FBFAF6EE"
+    readonly property color gradientHeaderStart: isDark ? "#16223F" : "#E4EBF8"
+    readonly property color fallbackCategoryColor: "#5B6683"
+    readonly property color popoverBg: isDark ? "#182140" : "#FFFFFF"
     readonly property color swatchBorderLight: "#FFFFFF44"
     readonly property color markerBorderLight: "#FFFFFF66"
     readonly property color thumbnailOverlay: "#00000045"
 
-    // Renk Paletleri
+    // Renk Paletleri (kategori rengi seçici)
     readonly property var categoryPalette: [
-        "#6366F1",
-        "#38BDF8",
-        "#10B981",
-        "#F59E0B",
-        "#EF4444",
-        "#EC4899",
-        "#8B5CF6"
+        "#1E4FA8", // Oxford mavisi
+        "#0F766E", // Çam yeşili-teal
+        "#15803D", // Orman yeşili
+        "#B35F0B", // Kehribar
+        "#9F1239", // Bordo
+        "#6D3FC4", // Mor
+        "#475569"  // Arduvaz
     ]
 
     // Alıntı Fosforlu Renk Paleti
@@ -96,8 +99,19 @@ QtObject {
     readonly property int radiusXl: 18
     readonly property int radiusPill: 999
 
-    // Tipografi
-    readonly property string fontFamily: "Inter, Segoe UI, sans-serif"
+    // Tipografi: arayüz Segoe UI Variable (modern, net), başlıklar Sitka Heading (akademik serif), okunacak metin
+    // (alıntılar) Sitka Text. Kurulu değilse sıradaki aday seçilir (Georgia / Segoe UI hemen her Windows'ta vardır).
+    function pickFamily(candidates, fallback) {
+        const available = Qt.fontFamilies()
+        for (let i = 0; i < candidates.length; i++) {
+            if (available.indexOf(candidates[i]) !== -1)
+                return candidates[i]
+        }
+        return fallback
+    }
+    readonly property string fontFamily: pickFamily(["Segoe UI Variable Text", "Segoe UI", "Inter"], "Segoe UI")
+    readonly property string fontHeading: pickFamily(["Sitka Heading", "Georgia", "Cambria", "Palatino Linotype"], "Georgia")
+    readonly property string fontReading: pickFamily(["Sitka Text", "Georgia", "Cambria", "Palatino Linotype"], "Georgia")
     readonly property int fontXs: 11
     readonly property int fontSm: 12
     readonly property int fontBase: 13

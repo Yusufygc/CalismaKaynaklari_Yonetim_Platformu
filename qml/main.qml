@@ -256,7 +256,7 @@ ApplicationWindow {
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: "PDF'i buraya bırak"
-                    font.family: Theme.fontFamily
+                    font.family: Theme.fontHeading
                     font.pixelSize: Theme.fontLg
                     font.weight: Font.DemiBold
                     color: Theme.accentText

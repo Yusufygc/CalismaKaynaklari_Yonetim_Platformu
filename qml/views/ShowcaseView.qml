@@ -302,7 +302,7 @@ Item {
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: "Henüz kriterlere uygun kaynak yok"
-                    font.family: Theme.fontFamily
+                    font.family: Theme.fontHeading
                     font.pixelSize: Theme.fontMd
                     font.weight: Font.DemiBold
                     color: Theme.textPrimary

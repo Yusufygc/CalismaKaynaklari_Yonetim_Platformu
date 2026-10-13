@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | Akademik renk paleti ve tipografi denemesi (`ui` dalı)
+
+`ui` dalında `Theme.qml` akademik palete geçirildi: açık temada kâğıt tonlu zemin, koyu temada derin lacivert, mürekkep laciverti metin, akademik mavi vurgu; tüm metin/zemin çiftleri WCAG AA (test: `test_theme_contrast.py`). Yazı tipleri: Segoe UI Variable Text (arayüz), Sitka Heading (başlıklar, kart başlıkları, marka), Sitka Text (alıntılar); kurulu değilse Georgia/Segoe UI'ye düşer. Kılavuz görselleri yeni temayla yeniden üretildi. Ayrıntı: [[qml_arayuz]].
+
+---
+
 ## [2026-10-13] FIX | Akademik siteler "Makale" kategorisine girer, site etiketi düzeltildi
 
 Otomatik kategori (`utils/url_utils.py::detect_category_name`, ilk eklemede kategori oluşur, sonra yeniden kullanılır; kullanıcının seçtiği kategori ezilmez) iki eksik taşıyordu. (1) Akademik host listesi birebir alan adı eşliyordu ve kısaydı: artık alt alan adları eşleşir (`journals.plos.org`), liste DergiPark, MDPI, PLOS, Nature, Wiley, Taylor & Francis, Sage, Frontiers, bioRxiv, medRxiv, SSRN, Semantic Scholar, Elsevier ile genişledi; `.edu`, `.edu.tr`, `.ac.uk` uzantılı siteler de "Makale" sayılır. (2) Alan adından etiket üretimi (`site_name`) `.org.tr`, `.edu.tr`, `.co.uk` gibi iki parçalı uzantılarda `#org`/`#edu` üretiyordu: ikinci düzey uzantılar atlanır (`dergipark.org.tr` → `dergipark`, `earsiv.hitit.edu.tr` → `hitit`). Yalnız yeni eklenen kaynaklara uygulanır; mevcut kaynaklar yeniden sınıflandırılmaz. Test 1059.

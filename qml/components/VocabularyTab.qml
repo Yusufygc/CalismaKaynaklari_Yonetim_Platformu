@@ -50,7 +50,7 @@ Item {
 
                     Text {
                         text: modelData.word
-                        font.family: Theme.fontFamily
+                        font.family: Theme.fontHeading
                         font.pixelSize: Theme.fontMd
                         font.weight: Font.Bold
                         color: Theme.textPrimary

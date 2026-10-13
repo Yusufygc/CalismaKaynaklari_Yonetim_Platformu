@@ -128,7 +128,7 @@ Item {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.resourceId > 0 ? "Kaynağı Düzenle" : "Yeni Kaynak Ekle"
-                    font.family: Theme.fontFamily
+                    font.family: Theme.fontHeading
                     font.pixelSize: Theme.fontLg
                     font.weight: Font.Bold
                     color: Theme.textPrimary

@@ -62,7 +62,7 @@ Rectangle {
 
                     Text {
                         text: "Kaynak Yönetim"
-                        font.family: Theme.fontFamily
+                        font.family: Theme.fontHeading
                         font.pixelSize: Theme.fontBase
                         font.weight: Font.Bold
                         color: Theme.textPrimary
