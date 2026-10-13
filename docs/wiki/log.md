@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | pdfkit sınırlarının kapatılması: arama, matris, performans
+
+Faz 8 raporundaki sınırlar çözüldü (OCR, `pkmpdf://`, eski içe aktarıcı, 7c bilerek yapılmadı). (1) SQLite WAL + `synchronous=NORMAL` + `wal_autocheckpoint=100` (en kötü FTS yazım dilimi ≈ 20 ms), dizin yazım dilimi süreye göre. (2) Metinde Ara: gerçek toplam ve "tümünü göster", tavan 10.000 sayfa (sürüm 2, yalnız kesilmiş belgeler yeniden dizinlenir), aranamayan PDF listesi, arama ayrı oturum/thread'de (istek kimliği), sonuç eşleşen sözcüğün satırında açılır ve vurgulanır. (3) Kütüphane arama kutusu: 250 ms bekletme ve "PDF içinde de ara" düğmesi. (4) Matris: künyeler tek sorguyla (205 → 57 ms), yalnız değişen belge yenilenir, Ayarlar > Matris (sütun sırası, Obsidian sütunları, hücre sınırı), uygulamada hücre başına ilk 3 alıntı, vault notu olmayan satırlarda önerilen kısa ad. Test 1003. Ayrıntı: [[pdfkit]], [[qml_arayuz]], [[veritabani_semasi]].
+
+---
+
 ## [2026-10-13] REFACTOR | pdfkit Faz 8: daraltma (eski PDF notu yolu, pypdf, repair_paths)
 
 Genişlet/daralt'ın son adımı; kullanıcı verisine dokunulmadan. (1) Eski PDF notu yolu silindi: `PdfNote` modeli, repo, servis, controller, `event_bus.pdf_note_*`, `Controllers.pdf_notes`, kaynak sözlüğündeki kullanılmayan `vocabulary`/`pdfNotes` anahtarları. (2) Migration `c9f4e2b7a815`: eski `pdf_notes` tablosu yalnız boşsa silinir, satır varsa korunur ve eski kayıt içe aktarıcısı son satırı taşıyınca tabloyu kendisi kaldırır; gerçek veri kopyasında denendi (tablo boştu, taşınan not yerinde, otomatik yedek alındı). (3) `pypdf` çalışma zamanından çıktı: anahat `pdfkit/infra/outline.py` ile `pypdfium2`'den okunur (56 yer imlik karmaşık PDF'te birebir aynı sonuç, gerçek PDF'lerde 236 ms → 3 ms), `pypdf` `requirements-dev.txt`'e (yalnız test PDF fabrikası) taşındı. (4) `PdfLibrary.repair_paths()`: veri kökü taşınınca kırılan kaynak yollarını depodaki dosyaya yeniden bağlar (yalnız eksik yollar; dosya silinmez/taşınmaz); `pkmpdf://` kapsam dışı bırakıldı. Test 960. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz8-raporu.md`.

@@ -113,6 +113,9 @@ Modeller `pdfkit/infra/orm.py::PdfReadingStateRow`. Birincil anahtar `document_i
 ### `pdf_annotations` / `pdf_page_notes` / `pdf_terms` (pdfkit alıntı alanı — 2026-10-12, migration `d7e3b1a94c52`)
 Modeller `pdfkit/infra/orm.py`. Ortak: `uid` (ULID, benzersiz), `document_id` (FK → pdf_documents, CASCADE), `legacy_id` (eski tablodaki id; benzersiz, geçici köprü için). `pdf_annotations`: `label_key`, `color`, `comment`, `tags` (JSON), `quote_exact/prefix/suffix`, `page`, `segments` (JSON), `engine_fp`, `anchor_status`, `created_at`, `updated_at`. `pdf_page_notes`: `page`, `x`, `y`, `text`. `pdf_terms`: `word`, `translation`, `context_sentence`, `mastery_level`, `page`, `segments`, `engine_fp`, `anchor_status`. Eski `highlights`/`pdf_notes`/`vocabulary` Faz 8'e kadar durur. Bkz. [[pdfkit]].
 
+## SQLite modu (WAL — 2026-10-13)
+Dosya veritabanı her bağlantıda `journal_mode=WAL`, `synchronous=NORMAL`, `busy_timeout=5000`, `wal_autocheckpoint=100` ile açılır (`utils/db_utils.py::configure_sqlite_connection`; bellek içi veritabanında atlanır). WAL kalıcı bir dosya modudur: `pkm_app.db` yanında `-wal`/`-shm` dosyaları görünebilir (uygulama kapanınca temizlenir). Veritabanını elle kopyalarken uygulamayı kapat; yedekleme kodu SQLite backup API'sini kullanır (WAL'ı kapsar). `pdf_text_index.version` 2: eski tavana (2000 sayfa) takılmış belgeler yeniden dizinlenir.
+
 ## Hafif Migration
 `utils/db_utils.py:_apply_lightweight_migrations()` mevcut SQLite dosyalarına eksik kolonları ekler (idempotent). `init_db()` her başlangıçta önce bunu çağırır, sonra `Base.metadata.create_all` ile yeni tabloları oluşturur. Şu an listedeki tek migration: `resources.is_favorite` kolonu (2026-05-17).
 
