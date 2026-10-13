@@ -92,7 +92,44 @@ _ACADEMIC_HOSTS = {
     "dl.acm.org",
     "acm.org",
     "openalex.org",
+    "dergipark.org.tr",
+    "mdpi.com",
+    "plos.org",
+    "nature.com",
+    "wiley.com",
+    "tandfonline.com",
+    "sagepub.com",
+    "frontiersin.org",
+    "biorxiv.org",
+    "medrxiv.org",
+    "ssrn.com",
+    "semanticscholar.org",
+    "elsevier.com",
 }
+
+# Universite/akademik kurum uzantilari: bu uzantilarla biten host'lar da "Makale" sayilir.
+_ACADEMIC_SUFFIXES = (".edu", ".edu.tr", ".ac.uk")
+
+# Ulke kodlu alan adlarinda (`.tr`, `.uk`, `.pk`) tescilli adin onundeki ikinci duzey uzantilar (`org.tr`, `co.uk`).
+_SECOND_LEVEL_LABELS = frozenset({"org", "com", "net", "edu", "gov", "ac", "co", "k12", "gen", "web", "info", "biz", "bel", "av"})
+
+
+def _is_academic_host(host: str) -> bool:
+    return (
+        any(host == known or host.endswith(f".{known}") for known in _ACADEMIC_HOSTS)
+        or host.endswith(_ACADEMIC_SUFFIXES)
+    )
+
+
+def site_name(host: str) -> str | None:
+    """Host'un siteyi tanitan etiketi: `dergipark.org.tr` -> 'dergipark', `earsiv.hitit.edu.tr` -> 'hitit',
+    `bbc.co.uk` -> 'bbc', `example.org` -> 'example'. Ikinci duzey uzantilar (`org.tr`, `edu.tr`, `co.uk`) siteyi
+    tanitmaz, atlanir. Tek parcali host (`localhost`) oldugu gibi doner; bos host None."""
+    parts = [part for part in host.lower().split(".") if part]
+    if len(parts) < 2:
+        return parts[0] if parts else None
+    registered_depth = 3 if len(parts) >= 3 and len(parts[-1]) == 2 and parts[-2] in _SECOND_LEVEL_LABELS else 2
+    return parts[-registered_depth] if len(parts) >= registered_depth else parts[0]
 
 
 def detect_category_name(url: str | None) -> str | None:
@@ -117,7 +154,7 @@ def _web_category_name(parsed) -> str | None:
     host = (parsed.hostname or "").lower().removeprefix("www.")
     if not host:
         return None
-    if host in _ACADEMIC_HOSTS or parsed.path.lower().endswith(".pdf"):
+    if _is_academic_host(host) or parsed.path.lower().endswith(".pdf"):
         return "Makale"
     platform = _match_platform_name(host)
     if platform:

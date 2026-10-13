@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FIX | Akademik siteler "Makale" kategorisine girer, site etiketi düzeltildi
+
+Otomatik kategori (`utils/url_utils.py::detect_category_name`, ilk eklemede kategori oluşur, sonra yeniden kullanılır; kullanıcının seçtiği kategori ezilmez) iki eksik taşıyordu. (1) Akademik host listesi birebir alan adı eşliyordu ve kısaydı: artık alt alan adları eşleşir (`journals.plos.org`), liste DergiPark, MDPI, PLOS, Nature, Wiley, Taylor & Francis, Sage, Frontiers, bioRxiv, medRxiv, SSRN, Semantic Scholar, Elsevier ile genişledi; `.edu`, `.edu.tr`, `.ac.uk` uzantılı siteler de "Makale" sayılır. (2) Alan adından etiket üretimi (`site_name`) `.org.tr`, `.edu.tr`, `.co.uk` gibi iki parçalı uzantılarda `#org`/`#edu` üretiyordu: ikinci düzey uzantılar atlanır (`dergipark.org.tr` → `dergipark`, `earsiv.hitit.edu.tr` → `hitit`). Yalnız yeni eklenen kaynaklara uygulanır; mevcut kaynaklar yeniden sınıflandırılmaz. Test 1059.
+
+---
+
 ## [2026-10-13] FEAT | Esnek vitrin ızgarası, YouTube videosu tarayıcıda açılır
 
 (1) Vitrin kartları satırı doldurur: sütun sayısı en az 290 px'lik hücreye göre, kalan genişlik kartlara dağıtılır. (2) YouTube video adresleri video sayılır (`is_video_url`, video kimliği ayrıştırma scraper'dan `utils/url_utils.py`'ye taşındı): okuyucu açılmaz, video tarayıcıda açılır; kartta oynat simgesi, panelde "Videoyu Aç". Diğer video siteleri elle (okuyucuda) kalır. Test 1028. Ayrıntı: [[qml_arayuz]].

@@ -111,6 +111,9 @@ def test_add_resource_merges_url_tag_with_manual_tags(session):
         ("https://instagram.com/reel/abc", "instagram"),
         ("https://github.com/example/repo", "github"),
         ("https://docs.python.org/3/", "python"),
+        ("https://dergipark.org.tr/tr/pub/x", "dergipark"),  # .org.tr: "org" degil site adi
+        ("https://earsiv.hitit.edu.tr/xmlui/handle/1", "hitit"),
+        ("https://www.bbc.co.uk/news", "bbc"),
     ],
 )
 def test_add_resource_derives_tags_from_url(session, url, expected_tag):
@@ -251,3 +254,10 @@ def test_query_resources_supports_scalar_and_alias_filter_keys(session):
     res_pri = service.query_resources({"priority": 2})
     assert [r.id for r in res_pri] == [r2.id]
 
+
+def test_academic_sites_get_the_article_category_on_first_add_and_reuse_it(session):
+    service = ResourceService(session)
+    first = service.add_new_resource(ResourceCreateSchema(title="A", url="https://dergipark.org.tr/tr/pub/a"))
+    second = service.add_new_resource(ResourceCreateSchema(title="B", url="https://journals.plos.org/plosone/article?id=1"))
+
+    assert first.category.name == "Makale" and second.category_id == first.category_id  # ilk eklemede olusur, sonra yeniden kullanilir

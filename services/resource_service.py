@@ -14,7 +14,7 @@ from repositories.category_repo import CategoryRepository
 from repositories.resource_repo import ResourceFilter, ResourceRepository
 from repositories.tag_repo import TagRepository
 from utils.reading_time import estimate_reading_minutes
-from utils.url_utils import PLATFORM_NAMES, detect_category_name
+from utils.url_utils import PLATFORM_NAMES, detect_category_name, site_name
 from .schemas import ResourceCreateSchema, ResourceUpdateSchema
 
 _AUTO_CATEGORY_COLORS = {
@@ -120,10 +120,8 @@ def _url_tag_names(url: str | None) -> list[str]:
     if platform:
         return [platform]
 
-    parts = [part for part in host.split(".") if part]
-    if len(parts) >= 2:
-        return [parts[-2]]
-    return parts[:1]
+    name = site_name(host)
+    return [name] if name else []
 
 
 def _merge_tag_names(tag_names: list[str], url: str | None) -> list[str]:
