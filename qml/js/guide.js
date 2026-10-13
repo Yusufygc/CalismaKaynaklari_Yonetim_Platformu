@@ -155,7 +155,7 @@ var sections = [
         ],
         image: "ayarlar-gorunum.png",
         caption: "Ayarlar > Görünüm: mod, renk teması ve yazı tipi çifti.",
-        tip: "Bir yazı tipi bilgisayarında kurulu değilse, kartın altında yazan benzer bir yazı tipi kullanılır."
+        tip: "Seçeneklerdeki yazı tiplerinin çoğu uygulamayla birlikte gelir, ayrıca bir şey kurman gerekmez. Bir yazı tipi bulunamazsa kartın altında yazan benzeri kullanılır."
     },
     {
         id: "makale-market",

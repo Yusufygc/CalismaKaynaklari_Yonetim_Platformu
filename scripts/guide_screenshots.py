@@ -378,6 +378,9 @@ SCENES = [
 
 def main(argv: list[str]) -> int:
     app = QApplication.instance() or QApplication(["guide"])
+    from core.fonts import register_bundled_fonts
+
+    register_bundled_fonts()  # uygulamayla gelen yazi tipleri (yazi tipi cifti ornekleri dogru gorunsun)
     app.setFont(QFont("Segoe UI", 9))
     # Theme.fontFamily ("Inter, Segoe UI, sans-serif") tek bir ad olarak aranır; offscreen eklentisinde bulunamayınca dar
     # bir yazı tipine düşerdi. Gerçek (windows) eklentisinde görünen Segoe UI'ya eşlenir.

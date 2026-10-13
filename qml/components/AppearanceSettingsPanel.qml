@@ -168,7 +168,7 @@ Column {
         Text {
             width: parent.width
             wrapMode: Text.Wrap
-            text: "Başlık, arayüz ve alıntı yazı tipleri bir çift olarak seçilir. Önerilen yazı tipi bilgisayarında kurulu değilse benzer bir yazı tipi kullanılır."
+            text: "Başlık, arayüz ve alıntı yazı tipleri bir çift olarak seçilir. Yazı tiplerinin çoğu uygulamayla birlikte gelir; bulunamayan olursa benzeri kullanılır."
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontXs
             color: Theme.textMuted

@@ -11,6 +11,7 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 
+from core.fonts import register_bundled_fonts
 from core.logger import log
 from core.paths import pdf_storage_dir
 from core.single_instance import SingleInstance, default_name, send_message
@@ -45,6 +46,8 @@ def _create_application() -> QGuiApplication:
     app = QGuiApplication(sys.argv)
     app.setApplicationName("PKM")
     app.setOrganizationName("PKM")
+    # Uygulamayla gelen yazi tipleri (Ayarlar > Gorunum): QML motoru yuklenmeden once kaydedilir.
+    register_bundled_fonts()
     return app
 
 

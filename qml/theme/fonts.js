@@ -3,7 +3,8 @@
 // Yazı tipi çiftleri (başlık + gövde + okuma). Her rol için sıralı aday listesi vardır; makinede kurulu ilk aday seçilir,
 // hiçbiri yoksa son aday (Windows'ta her zaman bulunan bir yazı tipi) kullanılır. Böylece Google Fonts yazı tipleri
 // (EB Garamond, Inter, Playfair Display...) kuruluysa kullanılır, değilse benzer bir Windows yazı tipine düşülür.
-// Bu dosya yazı tipi DOSYASI paketlemez.
+// Google Fonts yazı tiplerinin çoğu `assets/fonts/` altında uygulamayla birlikte gelir (core/fonts.py kaydeder), yani
+// kurulu olmasalar da kullanılır; sistem yazı tipleri (Sitka, Garamond, Georgia...) yedek ve varsayılan çifttir.
 
 var pairs = [
     {
@@ -25,7 +26,7 @@ var pairs = [
     {
         id: "tez-kapagi",
         name: "Tez Kapağı",
-        description: "Playfair Display + Source Sans: yüksek kontrastlı başlık, nötr gövde.",
+        description: "Playfair Display + Source Sans + Source Serif: yüksek kontrastlı başlık, nötr gövde.",
         heading: ["Playfair Display", "Sitka Display", "Book Antiqua", "Georgia"],
         body: ["Source Sans 3", "Source Sans Pro", "Segoe UI Variable Text", "Segoe UI"],
         reading: ["Source Serif 4", "Source Serif Pro", "Cambria", "Georgia"]
@@ -44,7 +45,7 @@ var pairs = [
         description: "Cormorant Garamond + Inter: ince, şık başlık.",
         heading: ["Cormorant Garamond", "Garamond", "Palatino Linotype", "Georgia"],
         body: ["Inter", "Segoe UI Variable Text", "Segoe UI"],
-        reading: ["Garamond", "Palatino Linotype", "Georgia"]
+        reading: ["EB Garamond", "Garamond", "Palatino Linotype", "Georgia"]
     },
     {
         id: "bilimsel",
@@ -52,15 +53,15 @@ var pairs = [
         description: "IBM Plex: teknik yayınlar için tasarlanmış ikili.",
         heading: ["IBM Plex Serif", "Cambria", "Georgia"],
         body: ["IBM Plex Sans", "Segoe UI Variable Text", "Segoe UI"],
-        reading: ["IBM Plex Serif", "Merriweather", "Cambria", "Georgia"]
+        reading: ["IBM Plex Serif", "Cambria", "Georgia"]
     },
     {
         id: "poster",
         name: "Poster",
-        description: "Montserrat + Merriweather: güçlü geometrik başlık, rahat okuma.",
+        description: "Montserrat + Source Serif: güçlü geometrik başlık, rahat okuma.",
         heading: ["Montserrat", "Bahnschrift", "Segoe UI Semibold", "Segoe UI"],
         body: ["Source Sans 3", "Source Sans Pro", "Segoe UI Variable Text", "Segoe UI"],
-        reading: ["Merriweather", "Georgia"]
+        reading: ["Source Serif 4", "Source Serif Pro", "Cambria", "Georgia"]
     }
 ]
 

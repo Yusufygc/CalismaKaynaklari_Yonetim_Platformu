@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | Yazı tipleri uygulamayla paketlendi (`ui` dalı)
+
+Kullanıcı onayıyla Google Fonts'tan (SIL OFL) 10 aile indirilip `assets/fonts/` altına konuldu (≈ 11 MB; Inter, EB Garamond, Lato, Playfair Display, Source Sans 3, Source Serif 4, Cormorant Garamond, IBM Plex Sans/Serif, Montserrat; lisanslar `LICENSES.txt`). `core/fonts.py` uygulama açılışında kaydeder; Görünüm'deki varsayılan dışı tüm yazı tipi çiftleri artık kurulum gerektirmez. Merriweather çok büyük olduğundan (4,6 MB) paketlenmedi. Test 1120. Ayrıntı: [[qml_arayuz]].
+
+---
+
 ## [2026-10-13] FEAT | Ayarlar > Görünüm: 6 renk teması, 7 yazı tipi çifti, kalıcı mod (`ui` dalı)
 
 Renkler `qml/theme/palettes.js` motoruna taşındı: 5 temel renkten açık/koyu mod türetilir, metin ve vurgu renkleri otomatik WCAG AA'ya düzeltilir. Altı tema (Akademik Mavi, Klasik Akademik, Modern Akademik, Kütüphane, Bilimsel/Teknik, Prestijli Üniversite) ve yedi yazı tipi çifti (`fonts.js`; kurulu olmayan yazı tipi benzerine düşer). Ayarlar'a **Görünüm** sekmesi (mod, tema kartları, yazı tipi örnekleri); seçimler ve açık/koyu mod kalıcı (`ui_palette`, `ui_font_pair`, `ui_dark`). Kılavuza "Renk ve yazı tipi seçimi" bölümü; kılavuz görselleri artık gerçek Windows eklentisiyle (doğru yazı tipi adları) üretilir. Test 1117. Ayrıntı: [[qml_arayuz]].

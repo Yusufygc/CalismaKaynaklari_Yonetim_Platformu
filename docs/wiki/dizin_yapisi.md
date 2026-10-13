@@ -16,6 +16,7 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │
 ├── assets/
 │   ├── icons/                  # Özel SVG ikonlar
+│   ├── fonts/                  # Paketlenmiş yazı tipleri (Google Fonts, SIL OFL; LICENSES.txt) — core/fonts.py kaydeder
 │   └── guide/                  # Kullanım Kılavuzu ekran görüntüleri (scripts/guide_screenshots.py ile üretilir)
 │
 ├── core/                       # Yapılandırma, sabitler, temel araçlar

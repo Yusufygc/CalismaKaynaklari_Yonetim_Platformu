@@ -157,3 +157,46 @@ def test_mode_buttons_switch_between_light_and_dark(bridge, qapp):
     click(qapp, window, find_named(window, "darkModeButton"))
     pump(qapp, 10)
     assert bridge.isDarkTheme is True and engine.captured_warnings == []
+
+
+# ---- uygulamayla gelen yazi tipleri ----
+
+
+def test_bundled_fonts_register_and_cover_every_non_default_pair(qapp):
+    from PySide6.QtGui import QFontDatabase
+
+    from core.fonts import bundled_font_dir, register_bundled_fonts
+
+    families = register_bundled_fonts()
+    assert len(list(bundled_font_dir().glob("*.ttf"))) >= 15 and (bundled_font_dir() / "LICENSES.txt").is_file()
+    expected = {"Inter", "EB Garamond", "Lato", "Playfair Display", "Source Sans 3", "Source Serif 4", "Cormorant Garamond",
+                "IBM Plex Sans", "IBM Plex Serif", "Montserrat"}
+    assert expected <= set(families)
+
+    engine = _js("fonts.js", qapp)
+    available = ", ".join(f'"{n}"' for n in QFontDatabase.families())
+    for pair in FONT_PAIR_IDS:
+        resolved = engine.evaluate(f'resolve("{pair}", [{available}])').toVariant()
+        if pair != DEFAULT_FONT_PAIR:  # varsayilan cift sistem yazi tipleri (Sitka) kullanir; digerlerinin hepsi paketli
+            assert resolved["installed"] == {"heading": True, "body": True, "reading": True}, pair
+
+
+def test_bundled_variable_fonts_expose_the_weights_the_ui_uses(qapp):
+    from PySide6.QtGui import QFontDatabase
+
+    from core.fonts import register_bundled_fonts
+
+    register_bundled_fonts()
+    for family in ("Inter", "Source Sans 3", "Montserrat", "EB Garamond"):
+        styles = QFontDatabase.styles(family)
+        assert {"Regular", "SemiBold", "Bold"} <= set(styles), (family, styles)
+    assert {"Regular", "Medium", "SemiBold", "Bold"} <= set(QFontDatabase.styles("Lato"))
+    assert "Italic" in QFontDatabase.styles("IBM Plex Serif") and "Italic" in QFontDatabase.styles("Source Serif 4")
+
+
+def test_a_missing_or_broken_font_file_is_skipped_without_failing(qapp, tmp_path):
+    from core.fonts import register_bundled_fonts
+
+    (tmp_path / "bozuk.ttf").write_bytes(b"yazi tipi degil")
+    assert register_bundled_fonts(tmp_path) == []  # bozuk dosya atlanir, hata yok
+    assert register_bundled_fonts(tmp_path / "yok") == []  # klasor yok: bos liste
