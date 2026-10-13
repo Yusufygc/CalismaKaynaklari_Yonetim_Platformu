@@ -10,15 +10,15 @@ Column {
     spacing: 16
 
     readonly property var status: bridge.vault.status
-    readonly property bool enabled: status.enabled === true
+    readonly property bool syncEnabled: status.enabled === true
     readonly property color stateColor: status.state === "error" ? Theme.danger
                                       : status.state === "syncing" || status.state === "pending" ? Theme.statusInProgress
-                                      : root.enabled ? Theme.statusCompleted : Theme.textMuted
+                                      : root.syncEnabled ? Theme.statusCompleted : Theme.textMuted
     readonly property string stateText: {
         if (status.state === "syncing") return "Eşitleniyor…"
         if (status.state === "pending") return "Değişiklikler bekliyor…"
         if (status.state === "error") return status.message !== "" ? status.message : "Vault klasörü kullanılamıyor."
-        if (!root.enabled) return "Eşitleme kapalı"
+        if (!root.syncEnabled) return "Eşitleme kapalı"
         return status.message !== "" ? status.message : "Hazır"
     }
 
@@ -104,7 +104,7 @@ Column {
 
                 AppButton {
                     objectName: "chooseVaultButton"
-                    text: root.enabled ? "Klasörü Değiştir" : "Klasör Seç"
+                    text: root.syncEnabled ? "Klasörü Değiştir" : "Klasör Seç"
                     iconName: "fa5s.folder-open"
                     variant: "primary"
                     onClicked: folderDialog.open()
@@ -114,7 +114,7 @@ Column {
                     text: "Şimdi Eşitle"
                     iconName: "fa5s.sync"
                     variant: "secondary"
-                    enabledState: root.enabled && root.status.state !== "syncing"
+                    enabledState: root.syncEnabled && root.status.state !== "syncing"
                     onClicked: bridge.vault.syncNow()
                 }
                 AppButton {

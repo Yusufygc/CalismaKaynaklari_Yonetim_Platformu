@@ -152,3 +152,21 @@ def test_comments_are_not_counted_as_usage():
     source = "// bridge.eskiSlot()\n/* bridge.digerEski */\nbridge.market.gercek()"
 
     assert set(_BRIDGE_REF.findall(strip_qml_comments(source))) == {("market", "gercek")}
+
+
+_ITEM_BUILTINS = (
+    "enabled", "visible", "focus", "opacity", "width", "height", "x", "y", "z", "scale", "rotation", "clip", "state",
+    "parent", "data", "children", "implicitWidth", "implicitHeight", "activeFocus", "smooth", "antialiasing",
+)
+
+
+def test_no_qml_file_redeclares_a_builtin_item_property():
+    """`property bool enabled: ...` Item.enabled'i golgeler: Qt konsola 'overrides a member of the base object'
+    uyarisi basar. Ozellige baska bir ad ver (ornegin `syncEnabled`)."""
+    pattern = re.compile(r"^\s*(?:readonly\s+)?property\s+[\w.<>]+\s+(%s)\s*:" % "|".join(_ITEM_BUILTINS), re.MULTILINE)
+    offenders = {
+        str(path.relative_to(QML_DIR)): pattern.findall(re.sub(r"//.*", "", path.read_text(encoding="utf-8")))
+        for path in QML_DIR.rglob("*.qml")
+    }
+    offenders = {file: names for file, names in offenders.items() if names}
+    assert offenders == {}, f"Item ozelligini golgeleyen bildirimler: {offenders}"

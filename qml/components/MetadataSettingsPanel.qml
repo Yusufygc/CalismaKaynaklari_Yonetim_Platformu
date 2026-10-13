@@ -7,7 +7,7 @@ Column {
     id: root
     spacing: 16
 
-    readonly property bool enabled: bridge.metadata.autoFill
+    readonly property bool autoFillOn: bridge.metadata.autoFill
 
     Text {
         text: "Künyeyi Otomatik Doldur"
@@ -48,12 +48,12 @@ Column {
                     width: 8
                     height: 8
                     radius: 4
-                    color: root.enabled ? Theme.statusCompleted : Theme.textMuted
+                    color: root.autoFillOn ? Theme.statusCompleted : Theme.textMuted
                 }
                 Text {
                     objectName: "autoMetadataStateText"
                     anchors.verticalCenter: parent.verticalCenter
-                    text: root.enabled ? "Açık" : "Kapalı"
+                    text: root.autoFillOn ? "Açık" : "Kapalı"
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSm
                     font.weight: Font.DemiBold
@@ -63,9 +63,9 @@ Column {
 
             AppButton {
                 objectName: "autoMetadataButton"
-                text: root.enabled ? "Kapat" : "Etkinleştir"
-                variant: root.enabled ? "secondary" : "primary"
-                onClicked: bridge.metadata.setAutoFill(!root.enabled)
+                text: root.autoFillOn ? "Kapat" : "Etkinleştir"
+                variant: root.autoFillOn ? "secondary" : "primary"
+                onClicked: bridge.metadata.setAutoFill(!root.autoFillOn)
             }
         }
     }
