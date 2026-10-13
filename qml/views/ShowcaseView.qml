@@ -333,13 +333,17 @@ Item {
                 visible: bridge.library.resourcesModel.count > 0
                 clip: true
 
-                cellWidth: 290
+                // Esnek hücre: sütun sayısı en az 290 px'lik hücreye göre seçilir, kalan genişlik kartlara dağıtılır
+                // (sağda boşluk kalmaz); kartlar 274 px ile ~360 px arasında esner.
+                readonly property int minCellWidth: 290
+                readonly property int columns: Math.max(1, Math.floor(width / minCellWidth))
+                cellWidth: Math.floor(width / columns)
                 cellHeight: bridge.isSimpleMode ? 148 : 305
                 model: bridge.library.resourcesModel
 
                 delegate: AppCard {
                     isSimple: bridge.isSimpleMode
-                    cardWidth: 274
+                    cardWidth: grid.cellWidth - 16
                     cardHeight: bridge.isSimpleMode ? 136 : 290
                     onClicked: {
                         bridge.library.selectResource(model.id)

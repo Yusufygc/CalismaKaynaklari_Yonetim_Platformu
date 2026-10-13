@@ -317,3 +317,18 @@ def test_showcase_card_title_stays_inside_the_card(qapp, bridge):
     title_right = title_item.mapToScene(title_item.boundingRect().topRight()).x()
 
     assert title_right <= card_right - 8, "baslik karta sigmali (sag bosluk birakmali)"
+
+
+def test_showcase_cards_fill_the_row_at_any_window_width(qapp, bridge):
+    """Esnek hucre: kalan genislik kartlara dagitilir, sagda bosluk kalmaz; kart en az 274 px."""
+    for i in range(6):
+        bridge.controllers.resources.add_resource({"title": f"Kaynak {i}", "url": f"https://example.org/{i}", "category_id": None, "priority": 2})
+    for width in (1000, 1280, 1500, 1900):
+        engine, window = open_window(qapp, bridge, "showcase", width=width, height=800)
+        pump(qapp, 20)
+        grid = find_item(window, lambda i: i.property("minCellWidth") is not None)
+        columns, cell, grid_width = grid.property("columns"), grid.property("cellWidth"), grid.width()
+        assert columns >= 1 and grid_width - columns * cell < columns  # kalan en fazla sutun basina 1 px (yuvarlama)
+        card = find_item(window, lambda i: i.property("cardWidth") is not None)
+        assert card.property("cardWidth") == cell - 16 and card.property("cardWidth") >= 274
+        assert engine.captured_warnings == []
