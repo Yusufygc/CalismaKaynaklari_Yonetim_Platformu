@@ -123,6 +123,7 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   │   ├── PaperCard.qml       # Makale Market sonuç kartı (rozetler, açılır özet, Kaydet/Kütüphanede)
 │   │   ├── HighlightsTab.qml       # Bilgi Havuzu > Alıntılar (etiket filtresi, toplu seçim/silme)
 │   │   ├── ContentSearchTab.qml    # Bilgi Havuzu > Metinde Ara (PDF içeriğinde arama, bridge.contentSearch)
+│   │   ├── MatrixTab.qml           # Bilgi Havuzu > Matris (literatür matrisi: kaynak × anlam etiketi, bridge.synthesis)
 │   │   ├── MetadataSettingsPanel.qml # Ayarlar > Künye: künye otomatik doldurma açık/kapalı (bridge.metadata)
 │   │   ├── VocabularyTab.qml       # Bilgi Havuzu > Kelimeler
 │   │   ├── MarketSearchBar.qml     # Market: konu arama + son aramalar + sekmeler

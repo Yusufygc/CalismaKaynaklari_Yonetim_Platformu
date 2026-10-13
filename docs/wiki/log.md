@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | pdfkit Faz 7b: Matris sekmesi (literatür matrisi arayüzü)
+
+Bilgi Havuzu'nda dördüncü sekme **Matris**: kaynak × anlam etiketi tablosu, etiket / serbest etiket chip süzgeçleri, kaynak süzgeci (üst çubuktaki arama kutusu), alıntıya tıklayınca okuyucu o alıntıda açılır, süzülmüş matris Markdown'a aktarılır / panoya kopyalanır. `SynthesisService` (toplu okuma, citekey atamaz), `bridge.synthesis` (veritabanı yalnız sekme görünürken ve veri değişince okunur; süzgeç önbellekten), `serialize_matrix`, `MatrixTab.qml`. Test +18 (961). Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz7b-raporu.md`.
+
+---
+
 ## [2026-10-13] FEAT | pdfkit Faz 7a: literatür matrisi çekirdeği ve vault matris notu
 
 Faz 7 alt fazlara bölündü (`docs/plans/pdfkit-faz7-plani.md`). 7a: saf matris modeli (`domain/synthesis.py`: satır = makale, sütun = anlam etiketi, hücre = alıntılar; etiket/serbest etiket/kaynak süzgeçleri), Markdown tablosu üreticisi (hücre içeriği kaçırılır: `|`, satır sonu, `%%`, `<`; derin bağlantılı, kısaltılmış alıntılar; altın dosya) ve vault'ta `Papers/_Matris.md` (5d özet notu çerçevesi; süzgeçsiz tam matris; `VaultSync` önbelleğine üçüncü parça). Test +15 (943). Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz7a-raporu.md`.
