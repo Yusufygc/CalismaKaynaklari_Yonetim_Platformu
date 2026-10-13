@@ -25,6 +25,7 @@ class SearchBridge(QObject):
         self._groups: list[dict] = []
         self._found: dict[int, object] = {}  # kaynak id -> SearchGroup (acilabilsin diye)
         self._searched = False
+        self._request = 0  # her arama bir kimlik alir; gelen sonuc son istek degilse atilir
         self._unsearchable: list[dict] = []
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
@@ -76,6 +77,7 @@ class SearchBridge(QObject):
         self._query = text
         if not text.strip():
             self._timer.stop()
+            self._request += 1  # yoldaki arama sonucu gelirse atilsin
             self._groups, self._found, self._searched = [], {}, False
             self.resultsChanged.emit()
             return
@@ -109,12 +111,17 @@ class SearchBridge(QObject):
         self._reader.openReader(resource_id)
 
     def _run(self) -> None:
-        text = self._query
-        try:
-            groups = self._ctx.pdf_library.searching().search_by_resource(text)
-        except Exception:
-            log.exception("Tam metin aramasi basarisiz")
+        self._request += 1
+        request = self._request
+        self._ctx.pdf_library.search_async(self._query, lambda groups, error: self._show(request, groups, error))
+
+    def _show(self, request: int, groups: list | None, error: Exception | None) -> None:
+        if request != self._request:  # daha yeni bir arama basladi ya da sorgu temizlendi: bu sonuc eskidi
+            return
+        if error is not None:
+            log.error("Tam metin aramasi basarisiz: %s", error)
             groups = []
+        groups = groups or []
         self._found = {group.resource_id: group for group in groups}
         self._groups = [serialize_search_group(group) for group in groups]
         self._searched = True

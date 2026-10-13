@@ -67,9 +67,11 @@ class PdfLibrary(QObject):
         fetch: Fetch,
         max_download_bytes: int = _MAX_DOWNLOAD_BYTES,
         parent: QObject | None = None,
+        read_session: Callable[[], Session] | None = None,
     ) -> None:
         super().__init__(parent)
         self._session = session
+        self._read_session = read_session  # arka plan okumalari icin AYRI oturum uretir (yoksa okuma ana oturumda yapilir)
         self._storage_dir = storage_dir
         self._catalog = catalog
         self._thread_pool = thread_pool
@@ -106,6 +108,27 @@ class PdfLibrary(QObject):
 
     def indexing(self) -> IndexService:
         return IndexService(self._session)
+
+    def search_async(self, text: str, callback: Callable[[Any, Exception | None], None]) -> None:
+        """Kutuphane geneli tam metin aramasi (`SearchService.search_by_resource`): ayri bir okuma oturumu varsa havuz
+        thread'inde (arayuz donmaz; WAL sayesinde yazimi beklemez), yoksa hemen ve ayni thread'de. `callback(gruplar,
+        hata)` her iki durumda da cagrilir; havuz yolunda ana thread'de."""
+        factory = self._read_session
+        if factory is None:
+            try:
+                callback(self.searching().search_by_resource(text), None)
+            except Exception as exc:
+                callback(None, exc)
+            return
+
+        def search() -> Any:
+            session = factory()
+            try:
+                return SearchService(session).search_by_resource(text)
+            finally:
+                session.close()
+
+        self._run(search, callback)
 
     def progress_map(self) -> dict[int, float]:
         """{kaynak kimligi: okunan oran}: kaynak kartlarindaki ilerleme cubugu icin tek sorgu."""

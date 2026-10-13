@@ -6,7 +6,7 @@ verilir (DI). Testler `ctx.thread_pool`'u senkron havuzla degistirebilir.
 from dataclasses import dataclass
 
 from PySide6.QtCore import QThreadPool
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.category_controller import CategoryController
 from controllers.highlight_controller import HighlightController
@@ -27,6 +27,16 @@ from ui_qml.serializers import ResourceSerializer
 
 SETTING_AUTO_METADATA = "auto_metadata"  # kullanici ayari: yeni PDF'in kunyesi OpenAlex'ten otomatik doldurulsun mu (varsayilan acik)
 AUTO_INDEX = True  # PDF'ler ice aktarilinca/acilista tam metin dizinine kendiliginden alinir (testler kapatir)
+
+
+def read_session_factory(session: Session):
+    """Dosya tabanli SQLite'ta arka plan okumalari icin ayri oturum ureten fabrika; bellek ici/baska veritabaninda None
+    (bellek ici SQLite'ta her baglanti ayri bos bir veritabanidir, okuma ana oturumda kalir)."""
+    bind = session.get_bind()
+    database = bind.url.database
+    if bind.url.get_backend_name() != "sqlite" or not database or database == ":memory:" or database.startswith("file::memory:"):
+        return None
+    return sessionmaker(bind=bind, autoflush=False, expire_on_commit=False)
 
 
 @dataclass
@@ -95,6 +105,7 @@ class BridgeContext:
             catalog=ResourceCatalog(controllers.resources),
             thread_pool=lambda: self.thread_pool,  # testler havuzu sonradan degistirebilir
             fetch=stream_fetch,
+            read_session=read_session_factory(controllers.session),
         )
         self.pdf_library.downloadFinished.connect(self.pdf_files.on_download_finished)
         self.vault_sync = VaultSync(self.pdf_library, thread_pool=lambda: self.thread_pool)

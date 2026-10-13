@@ -169,3 +169,17 @@ def test_scanned_pdfs_are_listed_as_unsearchable_and_text_pdfs_are_not(bridge, t
     titles = [item["title"] for item in bridge.contentSearch.unsearchable]
     assert len(titles) == 1 and "taranmis" in titles[0].lower()
     assert text_resource.id not in [item["resourceId"] for item in bridge.contentSearch.unsearchable]
+
+
+def test_a_result_that_arrives_after_a_newer_search_or_a_clear_is_dropped(bridge, tmp_path):
+    _import(bridge, tmp_path, "kuantum", PAGES)
+    assert _search(bridge, "kuantum")
+    stale = bridge.contentSearch._request - 1  # daha eski bir aramanin gec gelen sonucu
+
+    bridge.contentSearch._show(stale, [], None)
+    assert bridge.contentSearch.groups  # yok sayildi
+
+    pending = bridge.contentSearch._request
+    bridge.contentSearch.search("   ")  # temizleme yoldaki aramayi gecersiz kilar
+    bridge.contentSearch._show(pending, [], None)
+    assert not bridge.contentSearch.searched
