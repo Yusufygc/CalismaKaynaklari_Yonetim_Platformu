@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | pdfkit Faz 7a: literatür matrisi çekirdeği ve vault matris notu
+
+Faz 7 alt fazlara bölündü (`docs/plans/pdfkit-faz7-plani.md`). 7a: saf matris modeli (`domain/synthesis.py`: satır = makale, sütun = anlam etiketi, hücre = alıntılar; etiket/serbest etiket/kaynak süzgeçleri), Markdown tablosu üreticisi (hücre içeriği kaçırılır: `|`, satır sonu, `%%`, `<`; derin bağlantılı, kısaltılmış alıntılar; altın dosya) ve vault'ta `Papers/_Matris.md` (5d özet notu çerçevesi; süzgeçsiz tam matris; `VaultSync` önbelleğine üçüncü parça). Test +15 (943). Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz7a-raporu.md`.
+
+---
+
 ## [2026-10-13] FEAT | pdfkit Faz 6c: künye otomatik doldurma sertleştirildi, Ayarlar > Künye
 
 İçe aktarmada DOI'den OpenAlex künyesi doldurma zaten vardı (`PdfImporter`); yeni yol eklenmedi, mevcut yol sertleştirildi: yalnız boş alanlar doldurulur (`source` gibi köken bilgisi artık ezilmez), bulunan makale PDF'in kendi gömülü başlığıyla açıkça çelişiyorsa (DOI atıf yapılan makaleye ait olabilir) hiçbir şey yazılmaz, yeni bir şey yoksa bildirim çıkmaz. Ayarlar'a **Künye** sekmesi: otomatik doldurma açık/kapalı (`auto_metadata`, varsayılan açık = önceki davranış; kapalıyken DOI gönderilmez). `services/metadata_autofill.py`, `MetadataBridge`, `MetadataSettingsPanel.qml`. Test +22 (928). Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz6c-raporu.md`.
