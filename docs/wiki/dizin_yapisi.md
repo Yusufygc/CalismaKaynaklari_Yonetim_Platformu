@@ -70,6 +70,7 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   ├── paper_export_service.py # Market sonuçları → BibTeX / CSV
 │   ├── reading_suggestion_service.py # Kütüphanenin ortak referanslarından okuma önerisi
 │   ├── library_index.py        # DOI/OpenAlex kimliğiyle kütüphane eşleşmesi (Makale Market rozeti, yinelenen kayıt engeli)
+│   ├── metadata_autofill.py    # Künye otomatik doldurma kuralları: yalnız boş alanlar (fill_missing), yanlış makale koruması (titles_conflict)
 │   └── schemas.py              # Pydantic modelleri
 │
 ├── controllers/                # UI-agnostik denetleyiciler (Hata yakalama, sinyal fırlatma)
@@ -121,6 +122,8 @@ Proje kök dizininde çalışır. Yeni modül/sınıf oluştururken bu yapıya s
 │   │   ├── PaperListItem.qml   # Kompakt makale satırı (Kaynakça sekmesi, keşif listeleri)
 │   │   ├── PaperCard.qml       # Makale Market sonuç kartı (rozetler, açılır özet, Kaydet/Kütüphanede)
 │   │   ├── HighlightsTab.qml       # Bilgi Havuzu > Alıntılar (etiket filtresi, toplu seçim/silme)
+│   │   ├── ContentSearchTab.qml    # Bilgi Havuzu > Metinde Ara (PDF içeriğinde arama, bridge.contentSearch)
+│   │   ├── MetadataSettingsPanel.qml # Ayarlar > Künye: künye otomatik doldurma açık/kapalı (bridge.metadata)
 │   │   ├── VocabularyTab.qml       # Bilgi Havuzu > Kelimeler
 │   │   ├── MarketSearchBar.qml     # Market: konu arama + son aramalar + sekmeler
 │   │   ├── MarketFilterBar.qml     # Market: yıl/tür/dil/açık erişim/yazar çipi/öneri düğmesi

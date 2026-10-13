@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | pdfkit Faz 6c: künye otomatik doldurma sertleştirildi, Ayarlar > Künye
+
+İçe aktarmada DOI'den OpenAlex künyesi doldurma zaten vardı (`PdfImporter`); yeni yol eklenmedi, mevcut yol sertleştirildi: yalnız boş alanlar doldurulur (`source` gibi köken bilgisi artık ezilmez), bulunan makale PDF'in kendi gömülü başlığıyla açıkça çelişiyorsa (DOI atıf yapılan makaleye ait olabilir) hiçbir şey yazılmaz, yeni bir şey yoksa bildirim çıkmaz. Ayarlar'a **Künye** sekmesi: otomatik doldurma açık/kapalı (`auto_metadata`, varsayılan açık = önceki davranış; kapalıyken DOI gönderilmez). `services/metadata_autofill.py`, `MetadataBridge`, `MetadataSettingsPanel.qml`. Test +22 (928). Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz6c-raporu.md`.
+
+---
+
 ## [2026-10-13] FEAT | pdfkit Faz 6b: Metinde Ara sekmesi (PDF içeriğinde arama)
 
 Bilgi Havuzu'na üçüncü sekme: PDF'lerin içindeki metinde arama (`bridge.contentSearch`, `ContentSearchTab.qml`). 250 ms bekletmeli sorgu, kaynağa göre gruplu sonuçlar (en çok 5 sayfa + "N daha"), kaçırılmış vurgulu özet, sonuca tıklayınca okuyucu o sayfada açılır (5c atlama yolu), dizinleme ilerleme satırı, indeksleme bitince açık aramanın tazelenmesi. `SearchService.search_by_resource` eklendi. Test +14 (906). Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz6b-raporu.md`.
