@@ -261,14 +261,16 @@ def snippet_html(snippet) -> str:
 MAX_HITS_SHOWN_PER_RESOURCE = 5
 
 
-def serialize_search_group(group) -> dict:
-    """Tam metin aramasi sonucu: kaynak + (en cok 5) sayfa eslesmesi; `more` gosterilmeyen sayfa sayisi."""
-    shown = group.hits[:MAX_HITS_SHOWN_PER_RESOURCE]
+def serialize_search_group(group, expanded: bool = False) -> dict:
+    """Tam metin aramasi sonucu: kaynak + (en cok 5; `expanded` ise hepsi) sayfa eslesmesi; `more` gosterilmeyen sayfa
+    sayisi (gercek toplamdan)."""
+    shown = group.hits if expanded else group.hits[:MAX_HITS_SHOWN_PER_RESOURCE]
     return {
         "resourceId": group.resource_id,
         "title": group.title or "İsimsiz",
         "hits": [{"page": hit.page, "html": snippet_html(hit.snippet)} for hit in shown],
-        "more": group.total - len(shown),
+        "more": max(group.total - len(shown), 0),
+        "expanded": expanded,
     }
 
 

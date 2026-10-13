@@ -82,3 +82,19 @@ def test_leaving_the_tab_clears_the_results_and_returning_searches_again(bridge,
 
     assert len(bridge.contentSearch.groups) == 1  # sorgu (kutuda duruyor) yeniden arandi
     assert engine.captured_warnings == []
+
+
+def test_the_more_link_expands_the_card_to_all_matching_pages(bridge, qapp, tmp_path):
+    _import(bridge, tmp_path, "uzun", [[f"kuantum sayfa {i} bu cumle yeterince uzun bir metin olsun diye eklendi"] for i in range(8)])
+    engine, window = _open_tab(qapp, bridge)
+    _type_query(qapp, window, "kuantum")
+    assert len(_visible(window, "hitRow")) == 5
+    more = find_named(window, "moreHits")
+    assert "tümünü göster" in more.property("text")
+
+    click(qapp, window, more)
+    pump(qapp, 20)
+
+    assert len(_visible(window, "hitRow")) == 8
+    assert not find_named(window, "moreHits").property("visible")
+    assert engine.captured_warnings == []

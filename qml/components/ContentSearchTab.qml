@@ -162,11 +162,24 @@ Item {
                 }
 
                 Text {
+                    objectName: "moreHits"
                     visible: groupCard.modelData.more > 0
-                    text: "+ " + groupCard.modelData.more + " sayfa daha"
+                    text: groupCard.modelData.expanded
+                          ? "+ " + groupCard.modelData.more + " sayfa daha (ilk " + groupCard.modelData.hits.length + " gösteriliyor)"
+                          : "+ " + groupCard.modelData.more + " sayfa daha — tümünü göster"
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontXs
-                    color: Theme.textMuted
+                    font.underline: !groupCard.modelData.expanded && moreMouse.containsMouse
+                    color: groupCard.modelData.expanded ? Theme.textMuted : Theme.accentText
+
+                    MouseArea {
+                        id: moreMouse
+                        anchors.fill: parent
+                        enabled: !groupCard.modelData.expanded
+                        hoverEnabled: true
+                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        onClicked: bridge.contentSearch.expand(groupCard.modelData.resourceId)
+                    }
                 }
             }
         }

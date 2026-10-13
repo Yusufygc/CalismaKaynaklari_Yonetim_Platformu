@@ -22,6 +22,7 @@ class SearchBridge(QObject):
         self._pdf = pdf_bridge
         self._query = ""
         self._groups: list[dict] = []
+        self._found: dict[int, object] = {}  # kaynak id -> SearchGroup (acilabilsin diye)
         self._searched = False
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
@@ -56,7 +57,7 @@ class SearchBridge(QObject):
         self._query = text
         if not text.strip():
             self._timer.stop()
-            self._groups, self._searched = [], False
+            self._groups, self._found, self._searched = [], {}, False
             self.resultsChanged.emit()
             return
         self._timer.start()
@@ -64,6 +65,23 @@ class SearchBridge(QObject):
     @Slot()
     def clear(self) -> None:
         self.search("")
+
+    @Slot(int)
+    def expand(self, resource_id: int) -> None:
+        """Sonuc kartindaki "tumunu goster": o kaynagin eslesen butun sayfalari (en cok 200) listelenir."""
+        group = self._found.get(resource_id)
+        if group is None:
+            return
+        try:
+            hits = self._ctx.pdf_library.searching().pages_of(self._query, group.document_id)
+        except Exception:
+            log.exception("Kaynagin eslesen sayfalari alinamadi")
+            return
+        if not hits:
+            return
+        group.hits = hits
+        self._groups = [serialize_search_group(group, expanded=True) if g["resourceId"] == resource_id else g for g in self._groups]
+        self.resultsChanged.emit()
 
     @Slot(int, int)
     def openHit(self, resource_id: int, page: int) -> None:
@@ -78,6 +96,7 @@ class SearchBridge(QObject):
         except Exception:
             log.exception("Tam metin aramasi basarisiz")
             groups = []
+        self._found = {group.resource_id: group for group in groups}
         self._groups = [serialize_search_group(group) for group in groups]
         self._searched = True
         self.resultsChanged.emit()

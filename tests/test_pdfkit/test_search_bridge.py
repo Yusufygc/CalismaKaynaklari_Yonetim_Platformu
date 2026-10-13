@@ -133,3 +133,25 @@ def test_a_search_failure_shows_no_results_instead_of_raising(bridge, monkeypatc
     monkeypatch.setattr(type(bridge.ctx.pdf_library.searching()), "search_by_resource", broken)
 
     assert _search(bridge, "kuantum") == [] and bridge.contentSearch.searched
+
+
+def test_the_rest_count_is_the_real_total_even_when_the_candidate_limit_cut_the_hits(bridge, tmp_path):
+    _import(bridge, tmp_path, "uzun", [[f"kuantum sayfa {i} {FILLER}"] for i in range(8)])
+
+    (group,) = bridge.ctx.pdf_library.searching().search_by_resource("kuantum", limit=3)
+
+    assert len(group.hits) == 3 and group.total == 8  # "+N sayfa daha" yanlis kucuk gorunmez
+
+
+def test_show_all_expands_one_resource_to_every_matching_page(bridge, tmp_path):
+    resource = _import(bridge, tmp_path, "uzun", [[f"kuantum sayfa {i} {FILLER}"] for i in range(8)])
+    (group,) = _search(bridge, "kuantum")
+    assert not group["expanded"] and group["more"] == 3
+
+    bridge.contentSearch.expand(resource.id)
+
+    (opened,) = bridge.contentSearch.groups
+    assert opened["expanded"] and len(opened["hits"]) == 8 and opened["more"] == 0
+    assert sorted(hit["page"] for hit in opened["hits"]) == list(range(8))
+    bridge.contentSearch.expand(999999)  # bilinmeyen kaynak: hicbir sey olmaz
+    assert len(bridge.contentSearch.groups) == 1

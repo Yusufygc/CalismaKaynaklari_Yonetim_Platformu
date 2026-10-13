@@ -112,15 +112,33 @@ class PageIndexRepository:
         )
         return {document_id: (resource_id, title) for document_id, resource_id, title in rows}
 
-    def query(self, match: str, limit: int) -> list[tuple[int, int, str, float]]:
-        """(belge, sayfa, ozgun metin, bm25) uclulari, en alakali once. Yalniz `ok` belgeler."""
+    def query(self, match: str, limit: int, document_id: int | None = None) -> list[tuple[int, int, str, float]]:
+        """(belge, sayfa, ozgun metin, bm25) uclulari, en alakali once. Yalniz `ok` belgeler; `document_id` verilirse
+        yalniz o belgenin sayfalari."""
+        scope = f"AND {FTS_TABLE}.rowid >= :lo AND {FTS_TABLE}.rowid < :hi " if document_id is not None else ""
+        params = {"span": ROWID_SPAN, "ok": STATUS_OK, "match": match, "limit": limit}
+        if document_id is not None:
+            params |= {"lo": _rowid(document_id, 0), "hi": _rowid(document_id + 1, 0)}
         rows = self._session.execute(
             text(
                 f"SELECT {FTS_TABLE}.rowid, {FTS_TABLE}.original, bm25({FTS_TABLE}) AS rank "
                 f"FROM {FTS_TABLE} "
                 f"JOIN pdf_text_index i ON i.document_id = {FTS_TABLE}.rowid / :span AND i.status = :ok "
-                f"WHERE {FTS_TABLE} MATCH :match ORDER BY rank LIMIT :limit"
+                f"WHERE {FTS_TABLE} MATCH :match {scope}ORDER BY rank LIMIT :limit"
             ),
-            {"span": ROWID_SPAN, "ok": STATUS_OK, "match": match, "limit": limit},
+            params,
         )
         return [(rowid // ROWID_SPAN, rowid % ROWID_SPAN, original, rank) for rowid, original, rank in rows]
+
+    def count_by_document(self, match: str) -> dict[int, int]:
+        """belge id -> eslesen sayfa sayisi (limitsiz; yalniz `ok` belgeler). Sonuc kartindaki "+N sayfa daha" icin."""
+        rows = self._session.execute(
+            text(
+                f"SELECT {FTS_TABLE}.rowid / :span AS doc, count(*) "
+                f"FROM {FTS_TABLE} "
+                f"JOIN pdf_text_index i ON i.document_id = {FTS_TABLE}.rowid / :span AND i.status = :ok "
+                f"WHERE {FTS_TABLE} MATCH :match GROUP BY doc"
+            ),
+            {"span": ROWID_SPAN, "ok": STATUS_OK, "match": match},
+        )
+        return {document_id: count for document_id, count in rows}

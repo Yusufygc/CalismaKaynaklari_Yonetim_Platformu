@@ -17,7 +17,8 @@ from pdfkit.infra.search_repository import (
 
 INDEX_VERSION = 1  # cikarim/katlama kurali degisirse artirilir: eski belgeler yeniden dizinlenir
 MAX_INDEXED_PAGES = 2000  # belge basina ust sinir (dev ciltler veritabanini sisirmesin)
-DEFAULT_LIMIT = 60
+DEFAULT_LIMIT = 300  # gruplamadan once alinan en alakali sayfa sayisi (gosterilen: kaynak basina 5; geri kalani "daha fazla")
+EXPAND_LIMIT = 200  # bir kaynagin "tumunu goster" ile acilan en cok sayfa sayisi
 
 
 @dataclass
@@ -28,10 +29,11 @@ class SearchGroup:
     title: str
     document_id: int
     hits: list[SearchHit] = field(default_factory=list)
+    matches: int = 0  # sorguda bu belgeden eslesen toplam sayfa (hits aday limitiyle kesilmis olabilir)
 
     @property
     def total(self) -> int:
-        return len(self.hits)
+        return max(self.matches, len(self.hits))
 
 
 class SearchService:
@@ -43,13 +45,14 @@ class SearchService:
     def available(self) -> bool:
         return self._repo.available()
 
-    def search(self, text: str, limit: int = DEFAULT_LIMIT) -> list[SearchHit]:
-        """En alakali sayfalar (bm25). Aranacak bir sey yoksa, dizin yoksa ya da sorgu gecersizse bos liste."""
+    def search(self, text: str, limit: int = DEFAULT_LIMIT, document_id: int | None = None) -> list[SearchHit]:
+        """En alakali sayfalar (bm25); `document_id` verilirse yalniz o belgenin. Aranacak bir sey yoksa, dizin yoksa
+        ya da sorgu gecersizse bos liste."""
         query = parse_query(text)
         if query is None or not self._repo.available():
             return []
         try:
-            rows = self._repo.query(query.match, limit)
+            rows = self._repo.query(query.match, limit, document_id)
         except OperationalError as exc:  # bozuk MATCH ifadesi vb.: arama bos doner, uygulama durmaz
             log.warning("Tam metin sorgusu basarisiz: %s", exc)
             return []
@@ -60,14 +63,31 @@ class SearchService:
         kalmamis belgeler (silinmis kaynak) atlanir."""
         hits = self.search(text, limit)
         owners = self._repo.resources_for(sorted({hit.document_id for hit in hits}))
+        counts = self._match_counts(text)
         groups: dict[int, SearchGroup] = {}
         for hit in hits:
             owner = owners.get(hit.document_id)
             if owner is None:
                 continue
-            group = groups.setdefault(hit.document_id, SearchGroup(owner[0], owner[1] or "", hit.document_id))
+            group = groups.setdefault(
+                hit.document_id, SearchGroup(owner[0], owner[1] or "", hit.document_id, matches=counts.get(hit.document_id, 0))
+            )
             group.hits.append(hit)
         return list(groups.values())
+
+    def pages_of(self, text: str, document_id: int, limit: int = EXPAND_LIMIT) -> list[SearchHit]:
+        """Tek belgenin eslesen sayfalari (en alakali once): sonuc kartindaki "tumunu goster"."""
+        return self.search(text, limit, document_id)
+
+    def _match_counts(self, text: str) -> dict[int, int]:
+        query = parse_query(text)
+        if query is None:
+            return {}
+        try:
+            return self._repo.count_by_document(query.match)
+        except OperationalError as exc:
+            log.warning("Tam metin sayimi basarisiz: %s", exc)
+            return {}
 
 
 class IndexService:
