@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | Esnek vitrin ızgarası, YouTube videosu tarayıcıda açılır
+
+(1) Vitrin kartları satırı doldurur: sütun sayısı en az 290 px'lik hücreye göre, kalan genişlik kartlara dağıtılır. (2) YouTube video adresleri video sayılır (`is_video_url`, video kimliği ayrıştırma scraper'dan `utils/url_utils.py`'ye taşındı): okuyucu açılmaz, video tarayıcıda açılır; kartta oynat simgesi, panelde "Videoyu Aç". Diğer video siteleri elle (okuyucuda) kalır. Test 1028. Ayrıntı: [[qml_arayuz]].
+
+---
+
 ## [2026-10-13] FEAT | Kullanım Kılavuzu sayfası (kenar çubuğu, görselli)
 
 Kenar çubuğuna "Kullanım Kılavuzu" eklendi: son kullanıcı için teknik terimsiz, 12 bölümlü, numaralı adımlı ve ekran görüntülü rehber (`GuideView.qml`, içerik `qml/js/guide.js`, görseller `assets/guide/`). Görseller `scripts/guide_screenshots.py` ile gerçek arayüzden üretilir (bellek içi örnek veri; gerçek veriye/ayara/kayıt defterine dokunmaz). Testler: metinde teknik terim yok, her görsel diskte ve yüklenir, içindekiler kaydırır, kenar çubuğu öğesi açar. Test 1009. Ayrıntı: [[qml_arayuz]], [[dizin_yapisi]].
