@@ -2,7 +2,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, QRunnable, Signal
 
-from utils.pdf_outline import read_outline
+from pdfkit.api import read_outline
 
 
 class PdfOutlineWorkerSignals(QObject):
@@ -10,7 +10,7 @@ class PdfOutlineWorkerSignals(QObject):
 
 
 class PdfOutlineWorker(QRunnable):
-    """PDF anahatini (pypdf) arka planda okur: buyuk PDF'lerde UI thread'i bloklanmasin.
+    """PDF anahatini (pypdfium2) arka planda okur: buyuk PDF'lerde UI thread'i bloklanmasin.
     `read_outline` hata yakalayip bos liste dondurdugu icin burada ek try/except gerekmez."""
 
     def __init__(self, file_url: str, path: Path) -> None:

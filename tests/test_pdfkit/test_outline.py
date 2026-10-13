@@ -1,5 +1,5 @@
 from tests.pdf_factory import write_outline_pdf
-from utils.pdf_outline import read_outline
+from pdfkit.infra.outline import read_outline
 
 
 def test_read_outline_returns_titles_levels_and_pages(tmp_path):

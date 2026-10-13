@@ -181,7 +181,7 @@ class ReaderBridge(QObject):
 
     @Slot(str)
     def loadPdfOutline(self, file_url: str) -> None:
-        """PDF anahatini arka planda okur (bkz. utils/pdf_outline.py); sonuc `pdfOutlines`'a yazilir.
+        """PDF anahatini arka planda okur (bkz. pdfkit/infra/outline.py); sonuc `pdfOutlines`'a yazilir.
         Dosya basina bir kez okunur (QML binding'i her alinti/not degisiminde yeniden calisir)."""
         if not file_url or file_url in self._pdf_outlines or file_url in self._pdf_outlines_loading:
             return

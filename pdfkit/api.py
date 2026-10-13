@@ -13,6 +13,7 @@ from pdfkit.domain.errors import (
 from pdfkit.domain.labels import color_for_label, effective_color, name_for_label
 from pdfkit.domain.models import Document, PdfInspection, SourceInfo
 from pdfkit.domain.vault_note import obsidian_tag
+from pdfkit.infra.outline import read_outline
 from pdfkit.infra.text import extract_page_texts
 from pdfkit.ui.bridge import PdfBridge
 from pdfkit.domain.search import SearchHit, Snippet
@@ -72,6 +73,7 @@ __all__ = [
     "name_for_label",
     "obsidian_tag",
     "parse_open_link",
+    "read_outline",
     "render_markdown",
     "shorten_text",
     "tag_counts",

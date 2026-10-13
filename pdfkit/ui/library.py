@@ -280,9 +280,31 @@ class PdfLibrary(QObject):
             log.warning("%d PDF belgesi kilitli, sonraki acilista yeniden denenecek.", report.pending)
 
     def start_maintenance(self) -> None:
-        """Acilista: cop toplama + eski PDF'leri depoya alma (bitince eski alinti/not/kelime pdfkit'e tasinir)."""
+        """Acilista: cop toplama + tasinan veri kokunun yollarini onarma + eski PDF'leri depoya alma (bitince eski
+        alinti/not/kelime pdfkit'e tasinir)."""
         self.collect_garbage()
+        self.repair_paths()
         self.adopt_legacy()
+
+    def repair_paths(self) -> int:
+        """Kaynaklarin PDF baglantisi eksik dosyaya isaret ediyorsa (veri koku tasindi: yedekten donen veritabani, yeni
+        kullanici profili, baska makine) ve belge depoda duruyorsa baglantiyi depodaki dosyaya yonlendirir; onarilan
+        kaynak sayisini dondurur. YALNIZ eksik yollari onarir: var olan bir dosyaya, belge dosyasi depoda bulunmayan
+        kaynaga dokunmaz; hicbir dosya silinmez ya da tasinmaz."""
+        service = self.documents()
+        repaired = 0
+        for item in self._catalog.legacy_pdfs():
+            if item.path.is_file():
+                continue
+            document = service.document_for_resource(item.resource_id)
+            if document is None:
+                continue
+            stored = service.store.absolute(document.rel_path)
+            if stored.is_file() and self._catalog.repoint(item, stored):
+                repaired += 1
+        if repaired:
+            log.info("%d kaynagin PDF yolu depodaki dosyaya yonlendirildi (veri koku tasinmis).", repaired)
+        return repaired
 
     # ------------------------------------------------------------------ #
     # Eski alinti / not / kelime kayitlarinin tasinmasi
