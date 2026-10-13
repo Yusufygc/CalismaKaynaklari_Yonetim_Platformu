@@ -28,7 +28,7 @@ def test_turkish_variants_fold_to_same_key():
     assert fold_tr("Isparta") == fold_tr("ısparta") == fold_tr("İSPARTA") == fold_tr("isparta")
 
 
-def test_qml_js_fold_matches_python_fold():
+def test_qml_js_fold_matches_python_fold(qapp):
     """qml/js/text.js ile utils/text_utils.fold_tr ayni kurali uygulamali (arama sonuclari tutarli olsun)."""
     js_path = Path(__file__).resolve().parents[2] / "qml" / "js" / "text.js"
     source = js_path.read_text(encoding="utf-8").replace(".pragma library", "")
