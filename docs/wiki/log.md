@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FEAT | pdfkit Faz 6a: tam metin dizini (FTS5) ve arka plan indeksleyici
+
+Faz 6 alt fazlara bölündü (`docs/plans/pdfkit-faz6-plani.md`). 6a arka uç: `pdf_text_index` + FTS5 `pdf_page_fts` (migration `b7e3c5a91d04`; Türkçe katlama uygulama tarafında, rowid = belge × 10000 + sayfa), güvenli sorgu kurucu ve özet parçası (`domain/search.py`), `SearchService`/`IndexService`, `iter_page_texts` (sayfa başına PDFium kilidi), `TextIndexer` (worker'da çıkarım, ana thread'de 10 sayfalık yazım dilimleri, iptal, yarım dizin aranmaz). İçe aktarma/indirme/açılışta kendiliğinden dizinlenir (`AUTO_INDEX`). Test: +41 (892); ayrıca `test_deep_links` çerçeve testi sabit beklemeden koşula bağlı beklemeye çevrildi. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz6a-raporu.md`.
+
+---
+
 ## [2026-10-13] FEAT | pdfkit Faz 5d: kütüphane dizini, kelime defteri, serbest etiketler
 
 Vault'a `Papers/_Index.md` (kütüphane dizini) ve `Papers/_Kelimeler.md` (kelime defteri) özet notları eklendi (`domain/vault_summary.py`, `VaultWriter.write_summary`, `VaultSync` önbelleği; önbellek tam değilken özet yazılmaz, boş özet oluşturulmaz, bloğun dışı kullanıcıya aittir). Serbest etiketler Bilgi Havuzu'nda chip + süzgeç olarak ve Markdown dışa aktarmada `Etiketler:` satırı olarak göründü. `core/single_instance.py` gönderim sonucu düzeltildi (`waitForBytesWritten` veriyi gönderse bile False dönebiliyordu → ikinci uygulama örneği başlayabilirdi). 851 test geçti. Ayrıntı: [[pdfkit]], `docs/plans/pdfkit-faz5d-raporu.md`.

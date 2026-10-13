@@ -113,6 +113,9 @@ Modeller `pdfkit/infra/orm.py` (ortak `Base`). `pdf_documents`: id, `sha256` (be
 ### `pdf_vault_notes` (pdfkit vault citekey — 2026-10-13, migration `a5d1e7c3b920`)
 `PdfVaultNoteRow`: `document_id` (PK, FK → pdf_documents, CASCADE), `citekey` (benzersiz, ≤80; `[a-z0-9]`), `created_at`. Citekey ilk atamada yazılır ve değişmez; not yolu `Papers/<citekey>.md`. Servis `pdfkit/app/vault.py::CitekeyService`; bkz. [[pdfkit]] 'Obsidian vault: not modeli (Faz 5a)'.
 
+### `pdf_text_index` / `pdf_page_fts` (pdfkit tam metin dizini — 2026-10-13, migration `b7e3c5a91d04`)
+`PdfTextIndexRow`: `document_id` (PK, FK → pdf_documents, CASCADE), `status` (`indexing|ok|no_text|failed`), `page_count`, `version`, `indexed_at`. `pdf_page_fts`: FTS5 sanal tablosu (`folded` dizinli, `original` dizinsiz; `rowid = belge × 10000 + sayfa`); ORM metadata'sında yoktur (Alembic `include_object` ile karşılaştırma dışı). Yalnız `ok` belgeler aranır. Ayrıntı: [[pdfkit]] 'Kitaplık araması: tam metin dizini (Faz 6a)'.
+
 ### `pdf_reading_state` (pdfkit okuma durumu — 2026-10-13, migration `f2c8d4a61b93`)
 Modeller `pdfkit/infra/orm.py::PdfReadingStateRow`. Birincil anahtar `document_id` (FK → pdf_documents, CASCADE). `last_page`, `loc_x`, `loc_y` (görünümün üstündeki sayfa ve sayfa içi konum), `zoom`, `max_page` (en uzak görülen sayfa; kart ilerlemesi), `total_seconds` (aktif okuma süresi), `updated_at`. Servis `pdfkit/app/reading.py::ReadingService`; bkz. [[pdfkit]] 'Okuma durumu (Faz 4a)'.
 
