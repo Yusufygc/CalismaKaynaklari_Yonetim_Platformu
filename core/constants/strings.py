@@ -166,6 +166,7 @@ class AppStrings:
     NOTIFICATION_TAG_ADDED_FMT = "#{name} etiketi eklendi."
     NOTIFICATION_TAG_UPDATED = "Etiket güncellendi."
     NOTIFICATION_TAG_DELETED = "Etiket silindi."
+    NOTIFICATION_URL_DUPLICATE_FMT = "Bu bağlantı zaten kayıtlı: '{title}'."
     NOTIFICATION_INVALID_FORM_DATA = "Kategori veya öncelik değeri geçersiz."
     NOTIFICATION_PDF_DOWNLOAD_FAILED = "PDF indirilemedi, metin okuyucusunda açılıyor."
     NOTIFICATION_CITATION_COPIED_FMT = "Atıf panoya kopyalandı ({style})."

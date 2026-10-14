@@ -153,6 +153,8 @@ ApplicationWindow {
         InspectorDrawer {
             id: inspectorDrawer
             anchors.top: parent.top
+            // Vitrinde çekmece üst çubuğun altından başlar: kayıttan sonra açılsa da "Yeni Ekle" örtülmez.
+            anchors.topMargin: bridge.currentView === "showcase" ? showcaseView.topBarHeight : 0
             anchors.bottom: parent.bottom
             onEditRequested: function(res) {
                 formModal.openForEdit(res)

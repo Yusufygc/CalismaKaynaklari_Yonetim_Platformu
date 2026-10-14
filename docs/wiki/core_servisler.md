@@ -194,3 +194,5 @@ UI ile service arasındaki köprü. Her method try/except ile sarılır; hata �
 
 ## İlgili Sayfalar
 [[veritabani_semasi]] · [[dizin_yapisi]] · [[mimari_kurallari]] · [[event_bus]]
+
+**OpenAccessService (guncelleme 2026-10-14):** `find_pdf_url(doi=None, title=None)`: once DOI, yoksa/sonucsuzsa OpenAlex baslik aramasi; yalniz harf/rakam bazinda birebir ayni baslik kabul edilir (12 karakterden kisa basliklar aranmaz). `utils/url_utils.py::normalize_url` ayni sayfanin farkli yazimlarini esitler (kopya adres denetimi).

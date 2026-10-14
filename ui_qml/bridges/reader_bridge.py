@@ -15,7 +15,7 @@ from ui_qml.export_view import export_view
 from ui_qml.file_export import write_export
 from utils.doi_utils import doi_from_url, normalize_doi
 from utils.html_highlights import apply_highlights
-from utils.url_utils import is_safe_external_link, is_video_url
+from utils.url_utils import detect_category_name, is_safe_external_link, is_video_url
 from workers import OpenAccessWorker, PdfOutlineWorker
 
 
@@ -97,6 +97,13 @@ class ReaderBridge(QObject):
         """Acik kaynagin DOI'si (kunyeden ya da doi.org adresinden); yoksa bos."""
         doi = (self._current.get("paper") or {}).get("doi") or doi_from_url(self._current.get("url"))
         return normalize_doi(doi)
+
+    @Property(bool, notify=currentReaderResourceChanged)
+    def canFindOpenAccess(self) -> bool:
+        """Acik erisimli PDF aranabilir mi: DOI'si var, ya da adresi akademik bir site (baslikla aranir)."""
+        if self.readerDoi:
+            return True
+        return bool(self._current.get("title")) and detect_category_name(self._current.get("url")) == "Makale"
 
     @Property(dict, notify=pdfOutlinesChanged)
     def pdfOutlines(self) -> dict:
@@ -226,7 +233,7 @@ class ReaderBridge(QObject):
             return
         self.extractionStateChanged.emit()
         failed = self._ctx.extractor.state(resource_id) == "failed"
-        if failed and self.readerDoi and resource_id not in self._open_access:
+        if failed and self.canFindOpenAccess and resource_id not in self._open_access:
             self._start_open_access(resource_id)  # yayinci sayfasi acilmadi: acik erisimli kopya kendiliginden aranir
 
     def _on_pdf_detected(self, resource_id: int) -> None:
@@ -259,7 +266,7 @@ class ReaderBridge(QObject):
     def findOpenAccessPdf(self) -> None:
         """Acik kaynagin DOI'si icin acik erisimli bir PDF kopyasi arar (yayinci sayfasi robotlara kapaliysa)."""
         resource_id = self._current.get("id")
-        if resource_id and self.readerDoi:
+        if resource_id and self.canFindOpenAccess:
             self._start_open_access(resource_id)
 
     def _start_open_access(self, resource_id: int) -> None:
@@ -267,7 +274,7 @@ class ReaderBridge(QObject):
             return
         self._open_access[resource_id] = "searching"
         self.extractionStateChanged.emit()
-        worker = OpenAccessWorker(resource_id, self.readerDoi)
+        worker = OpenAccessWorker(resource_id, self.readerDoi, str(self._current.get("title") or ""))
         worker.signals.finished.connect(self._on_open_access_result)
         self._ctx.thread_pool.start(worker)
 

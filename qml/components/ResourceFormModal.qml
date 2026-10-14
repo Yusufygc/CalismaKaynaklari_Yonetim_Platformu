@@ -17,6 +17,17 @@ Item {
     property int initialPriority: 2
     property var selectedTagIds: []
     property bool isScraping: false
+    property string loadedUrl: ""  // düzenlemede forma ilk yüklenen adres (kopya uyarısı yalnız değişince çıkar)
+
+    // Adres alanının altındaki uyarı: biçim hatası ya da aynı adresin zaten kayıtlı olması ("" = uyarı yok).
+    readonly property string urlHint: {
+        const value = urlInput.text.trim()
+        if (value === "" || value === root.loadedUrl) return ""
+        if (!/^(https?:\/\/[^\s\/]+\.[^\s]+|file:\/\/\/.+)$/i.test(value))
+            return "Adres http:// ya da https:// ile başlamalı (örnek: https://ornek.com/makale)."
+        const duplicate = bridge.library.duplicateTitleFor(value, root.resourceId)
+        return duplicate !== "" ? "Bu bağlantı zaten kayıtlı: " + duplicate : ""
+    }
 
     signal closed()
 
@@ -27,6 +38,7 @@ Item {
 
     function openForNew() {
         resourceId = 0
+        loadedUrl = ""
         urlInput.text = ""
         titleInput.text = ""
         categoryCombo.currentIndex = 0
@@ -39,6 +51,7 @@ Item {
 
     function openForEdit(res) {
         resourceId = res.id
+        loadedUrl = (res.url || "").trim()
         urlInput.text = res.url || ""
         titleInput.text = res.title || ""
         
@@ -211,6 +224,17 @@ Item {
                     }
                 }
 
+                Text {
+                    objectName: "urlHintText"
+                    width: parent.width
+                    visible: root.urlHint !== ""
+                    text: root.urlHint
+                    wrapMode: Text.WordWrap
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSm
+                    color: Theme.dangerText
+                }
+
                 // Yeni kaynakta: bilgisayardan bir veya birden fazla PDF seç (kopyalanıp
                 // uygulama depolamasına alınır, native okuyucuda açılır).
                 AppButton {
@@ -265,6 +289,17 @@ Item {
                             visible: !titleInput.text && !titleInput.activeFocus
                         }
                     }
+                }
+
+                Text {
+                    objectName: "titleHintText"
+                    width: parent.width
+                    visible: titleInput.text.trim() === "" && urlInput.text.trim() !== "" && !root.isScraping
+                    text: "Başlık gerekli: «Bilgi Çek» ile doldurabilir ya da kendin yazabilirsin."
+                    wrapMode: Text.WordWrap
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSm
+                    color: Theme.textMuted
                 }
             }
 
@@ -407,7 +442,8 @@ Item {
             data["id"] = root.resourceId
         }
 
-        bridge.library.saveResource(data)
-        closeModal()
+        // Kayıt reddedilirse (kopya/geçersiz adres) form açık kalır: girilenler kaybolmaz.
+        if (bridge.library.saveResource(data))
+            closeModal()
     }
 }

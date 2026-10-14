@@ -169,7 +169,7 @@ def test_when_no_open_access_copy_exists_the_state_says_so_and_nothing_is_downlo
     assert bridge.reader.extractionState == "noOpenAccess" and downloads == [] and bridge.currentView == "reader"
 
 
-def test_a_resource_without_a_doi_never_searches_for_open_access(bridge, qapp):
+def test_a_generic_web_page_without_a_doi_never_searches_for_open_access(bridge, qapp):
     resource = _add(bridge, url="https://example.org/yazi")
     bridge.reader.openReader(resource.id)
     with patch("workers.open_access_worker.OpenAccessService") as service:
@@ -177,7 +177,23 @@ def test_a_resource_without_a_doi_never_searches_for_open_access(bridge, qapp):
         bridge.ctx.extractor.statusChanged.emit(resource.id)
         bridge.reader.findOpenAccessPdf()
     service.assert_not_called()
-    assert bridge.reader.readerDoi == "" and bridge.reader.extractionState == "failed"
+    assert bridge.reader.readerDoi == "" and not bridge.reader.canFindOpenAccess and bridge.reader.extractionState == "failed"
+
+
+def test_an_academic_page_without_a_doi_is_looked_up_by_its_title(bridge, qapp):
+    resource = _add(bridge, url="https://www.sciencedirect.com/science/article/pii/S0000000000000000")
+    bridge.reader.openReader(resource.id)
+    downloads = []
+    bridge.ctx.pdf_files.start_download = lambda res, url=None: downloads.append(url)
+
+    with patch("workers.open_access_worker.OpenAccessService") as service:
+        service.return_value.find_pdf_url.return_value = "https://arxiv.org/pdf/1207.0203"
+        assert bridge.reader.canFindOpenAccess
+        bridge.ctx.extractor._failed.add(resource.id)
+        bridge.ctx.extractor.statusChanged.emit(resource.id)
+
+    service.return_value.find_pdf_url.assert_called_once_with("", resource.title)
+    assert downloads == ["https://arxiv.org/pdf/1207.0203"] and bridge.currentView == "pdfReader"
 
 
 def test_old_pdf_text_without_the_new_paragraph_format_is_re_extracted_once(bridge, qapp, monkeypatch):

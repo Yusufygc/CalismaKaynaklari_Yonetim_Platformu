@@ -38,6 +38,19 @@ class SearchGroup:
         return max(self.matches, len(self.hits))
 
 
+def _distinct_snippets(hits: list[SearchHit]) -> list[SearchHit]:
+    """Ayni belgede birebir ayni ozeti veren sayfalardan yalniz en alakalisini tutar. Eslesme her sayfada tekrar eden
+    ust/alt bilgide (dergi adi, makale basligi) ise hepsi ayni cumleyi gosterirdi; tek kayit yeter."""
+    seen: set[str] = set()
+    kept = []
+    for hit in hits:
+        if hit.snippet.text in seen:
+            continue
+        seen.add(hit.snippet.text)
+        kept.append(hit)
+    return kept
+
+
 class SearchService:
     """Kutuphane geneli tam metin arama (yalniz tam dizinlenmis belgeler)."""
 
@@ -78,11 +91,15 @@ class SearchService:
                 hit.document_id, SearchGroup(owner[0], owner[1] or "", hit.document_id, matches=counts.get(hit.document_id, 0))
             )
             group.hits.append(hit)
+        for group in groups.values():
+            distinct = _distinct_snippets(group.hits)
+            group.matches = max(len(distinct), group.matches - (len(group.hits) - len(distinct)))
+            group.hits = distinct
         return list(groups.values())
 
     def pages_of(self, text: str, document_id: int, limit: int = EXPAND_LIMIT) -> list[SearchHit]:
         """Tek belgenin eslesen sayfalari (en alakali once): sonuc kartindaki "tumunu goster"."""
-        return self.search(text, limit, document_id)
+        return _distinct_snippets(self.search(text, limit, document_id))
 
     def _match_counts(self, text: str) -> dict[int, int]:
         query = parse_query(text)

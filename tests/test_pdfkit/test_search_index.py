@@ -275,6 +275,16 @@ def test_results_are_grouped_by_resource_and_documents_without_a_resource_are_sk
     assert [g.document_id for g in SearchService(session).search_by_resource("kuantum")] == [document.id]
 
 
+def test_pages_with_an_identical_snippet_collapse_to_the_most_relevant_one(session, document):
+    header = "Dergi Adi Kuantum Hesaplama Dergisi 2024"
+    _index(session, document.id, [header, header, header, "kuantum bilgisayarlar ozel bir konudur ve ayri bir cumledir"])
+
+    (group,) = SearchService(session).search_by_resource("kuantum")
+    assert len(group.hits) == 2 and len({h.snippet.text for h in group.hits}) == 2
+    assert group.total == 2  # sayfa basina degil, gosterilen farkli ozet sayisina gore
+    assert len(SearchService(session).pages_of("kuantum", document.id)) == 2
+
+
 def test_the_write_slice_adapts_to_its_time_budget_unless_a_size_is_fixed(library):
     adaptive = TextIndexer(library, lambda: _InlinePool())
     adaptive._tune_chunk(10, 0.001)  # 0,1 ms/sayfa -> 8 ms butcesine 80 sayfa sigar, ust sinir 50

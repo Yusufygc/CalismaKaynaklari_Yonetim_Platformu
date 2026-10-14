@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from core.constants.strings import AppStrings
 from models import Resource, ResourceStatus
 from ui_qml.context import BridgeContext
+from utils.url_utils import normalize_url
 
 
 @dataclass
@@ -38,6 +39,16 @@ class ResourceFormHandler:
             "content": data.get("content", ""),
             "tag_names": self._tag_names(data),
         }
+
+    def find_duplicate(self, url: str, exclude_id: int = 0) -> Resource | None:
+        """Ayni adrese (bkz. `normalize_url`) sahip baska bir kaynak; yoksa None."""
+        key = normalize_url(url)
+        if not key:
+            return None
+        for resource in self._ctx.controllers.resources.load_resources_with_filters({"urls_only": True}):
+            if resource.id != exclude_id and normalize_url(resource.url) == key:
+                return resource
+        return None
 
     def _tag_names(self, data: dict) -> list[str]:
         if "tag_names" in data:

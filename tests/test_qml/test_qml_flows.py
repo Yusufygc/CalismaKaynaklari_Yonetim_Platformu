@@ -398,3 +398,84 @@ def test_scraped_page_title_fills_the_empty_title_field_but_never_overwrites_a_t
     bridge.library.urlScraped.emit({"og_title": "Baska bir baslik"})
     pump(qapp, 10)
     assert title.property("text") == "Benim basligim" and modal is not None and engine.captured_warnings == []
+
+
+def _open_new_form(qapp, bridge):
+    from PySide6.QtCore import QMetaObject
+
+    engine, window = open_window(qapp, bridge, "showcase", width=1280, height=800)
+    modal = window.findChild(QObject, "resourceFormModal")
+    QMetaObject.invokeMethod(modal, "openForNew")
+    pump(qapp, 20)
+    return engine, window, modal
+
+
+def _hint(window, name):
+    item = next((i for i in _walk_all(window) if i.objectName() == name), None)
+    return item.property("text") if item is not None and item.property("visible") else ""
+
+
+def test_form_explains_a_malformed_address_a_duplicate_address_and_a_missing_title(qapp, bridge):
+    bridge.controllers.resources.add_resource({"title": "Attention", "url": "https://arxiv.org/abs/1706.03762", "category_id": None, "priority": 2})
+    engine, window, modal = _open_new_form(qapp, bridge)
+    inputs = [i for i in _walk_visible(window) if "TextInput" in i.metaObject().className()]
+    url_input, title_input = inputs[-2], inputs[-1]
+
+    url_input.setProperty("text", "abc")
+    pump(qapp, 10)
+    assert "http" in _hint(window, "urlHintText") and "Başlık gerekli" in _hint(window, "titleHintText")
+
+    url_input.setProperty("text", "http://www.arxiv.org/abs/1706.03762/")
+    pump(qapp, 10)
+    assert _hint(window, "urlHintText") == "Bu bağlantı zaten kayıtlı: Attention"
+
+    url_input.setProperty("text", "https://example.com/yeni-makale")
+    title_input.setProperty("text", "Yeni")
+    pump(qapp, 10)
+    assert _hint(window, "urlHintText") == "" and _hint(window, "titleHintText") == ""
+    assert engine.captured_warnings == []
+
+
+def test_a_rejected_save_keeps_the_form_open_and_a_valid_one_closes_it(qapp, bridge):
+    bridge.controllers.resources.add_resource({"title": "Attention", "url": "https://arxiv.org/abs/1706.03762", "category_id": None, "priority": 2})
+    engine, window, modal = _open_new_form(qapp, bridge)
+    inputs = [i for i in _walk_visible(window) if "TextInput" in i.metaObject().className()]
+    url_input, title_input = inputs[-2], inputs[-1]
+    save = find_text(window, "Kaydet ve Ekle")
+
+    url_input.setProperty("text", "https://www.arxiv.org/abs/1706.03762")
+    title_input.setProperty("text", "Kopya")
+    pump(qapp, 10)
+    click(qapp, window, save)
+    pump(qapp, 20)
+    assert modal.property("isOpen") is True
+    assert len(bridge.controllers.resources.load_resources_with_filters({})) == 1
+
+    url_input.setProperty("text", "https://example.com/yeni-makale")
+    pump(qapp, 10)
+    click(qapp, window, save)
+    pump(qapp, 20)
+    assert modal.property("isOpen") is False
+    assert len(bridge.controllers.resources.load_resources_with_filters({})) == 2
+    assert engine.captured_warnings == []
+
+
+def test_editing_a_resource_whose_old_duplicate_exists_is_not_blocked_unless_the_address_changes(qapp, bridge):
+    first = bridge.controllers.resources.add_resource({"title": "A", "url": "https://example.com/x", "category_id": None, "priority": 2})
+    second = bridge.controllers.resources.add_resource({"title": "B", "url": "https://example.com/x/", "category_id": None, "priority": 2})
+    assert bridge.library.saveResource({"id": second.id, "title": "B yeni", "url": "https://example.com/x/", "priority": 2}) is True
+    assert bridge.library.saveResource({"id": second.id, "title": "B", "url": "https://example.com/y", "priority": 2}) is True
+    assert bridge.library.saveResource({"id": second.id, "title": "B", "url": "https://example.com/x", "priority": 2}) is False
+    assert first.id != second.id
+
+
+def test_the_inspector_drawer_opens_below_the_top_bar_so_new_resource_stays_clickable(qapp, bridge):
+    resource = bridge.controllers.resources.add_resource({"title": "Makale", "url": "https://example.com/m", "category_id": None, "priority": 2})
+    engine, window = open_window(qapp, bridge, "showcase", width=1280, height=800)
+    bridge.library.selectResource(resource.id)
+    pump(qapp, 40)
+    drawer = next(i for i in _walk_all(window) if i.property("drawerWidth") is not None)
+    new_button = find_text(window, "Yeni Ekle")
+    assert drawer.isVisible() and drawer.y() >= 64
+    assert new_button.mapToScene(new_button.boundingRect().bottomLeft()).y() <= drawer.mapToScene(drawer.boundingRect().topLeft()).y()
+    assert engine.captured_warnings == []

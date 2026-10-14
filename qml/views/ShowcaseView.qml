@@ -11,6 +11,7 @@ Item {
     property int selectedCategoryId: 0
     property string selectedStatus: "ALL"
     property bool favoriteOnly: false
+    readonly property int topBarHeight: 64
 
     signal newResourceRequested()
     signal cardSelected(int resourceId)
@@ -32,7 +33,7 @@ Item {
         // 1. Üst Bar: Arama, Hızlı Kategori Seçimi & Yeni Ekle
         Item {
             width: parent.width
-            height: 64
+            height: root.topBarHeight
 
             // Sol Taraf: Arama Kutusu
             AppSearchBar {

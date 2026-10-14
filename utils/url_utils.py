@@ -51,6 +51,33 @@ def youtube_video_id(url: str | None) -> str | None:
     return None
 
 
+_TRACKING_PARAM = re.compile(r"^(utm_[a-z]+|fbclid|gclid|igshid|mc_cid|mc_eid)$", re.IGNORECASE)
+
+
+def normalize_url(url: str | None) -> str:
+    """Ayni kaynagi gosteren adresleri esitlemek icin anahtar: sema/alan adi kucuk harf, `www.`, parca (#...), sondaki
+    `/` ve izleme parametreleri (utm_*, fbclid...) atilir; YouTube video adresleri video kimligine indirgenir.
+    Bos ya da anlamsiz giris icin bos dizge doner."""
+    text = (url or "").strip()
+    if not text:
+        return ""
+    video_id = youtube_video_id(text)
+    if video_id:
+        return f"youtube:{video_id}"
+    parsed = urlparse(text)
+    if parsed.scheme.lower() == "file":
+        return f"file:{unquote(parsed.path)}"
+    host = (parsed.hostname or "").lower().removeprefix("www.")
+    if not host:
+        return text.lower()
+    query = "&".join(
+        sorted(part for part in parsed.query.split("&") if part and not _TRACKING_PARAM.match(part.split("=")[0]))
+    )
+    path = parsed.path.rstrip("/")
+    port = f":{parsed.port}" if parsed.port and parsed.port not in (80, 443) else ""
+    return f"{host}{port}{path}" + (f"?{query}" if query else "")
+
+
 def is_video_url(url: str | None) -> bool:
     """Kaynak bir video mu? Yalnizca YouTube video adresleri otomatik tanınır; diger video siteleri elle yonetilir
     (okuyucuda acilir)."""

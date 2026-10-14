@@ -265,9 +265,9 @@ Item {
                             visible: !statusPanel.busy
                             text: {
                                 if (statusPanel.phase === "noOpenAccess")
-                                    return "Yayıncı sayfası otomatik okumaya kapalı ve DOI için ücretsiz bir PDF bulunamadı. Makaleyi tarayıcıda açıp kendi PDF'ini indirebilir, sonra \"Bilgisayardan PDF Yükle\" ile ekleyebilirsin."
-                                if (bridge.reader.readerDoi !== "")
-                                    return "Yayıncı sayfaları (örneğin Elsevier, Springer) robotların okumasına izin vermeyebilir. Makalenin DOI'si var; ücretsiz (açık erişimli) bir PDF kopyası arayabilirsin."
+                                    return "Yayıncı sayfası otomatik okumaya kapalı ve ücretsiz bir PDF bulunamadı. Makaleyi tarayıcıda açıp kendi PDF'ini indirebilir, sonra \"Bilgisayardan PDF Yükle\" ile ekleyebilirsin."
+                                if (bridge.reader.canFindOpenAccess)
+                                    return "Yayıncı sayfaları (örneğin Elsevier, Springer) robotların okumasına izin vermeyebilir. Makalenin ücretsiz (açık erişimli) bir PDF kopyasını arayabilirsin."
                                 return "Site otomatik okumaya izin vermiyor olabilir ya da sayfada okunacak makale metni yok. Tekrar deneyebilir ya da sayfayı tarayıcıda açabilirsin."
                             }
                         }
@@ -277,7 +277,7 @@ Item {
                             visible: !statusPanel.busy
                             AppButton {
                                 objectName: "findOpenAccessButton"
-                                visible: bridge.reader.readerDoi !== "" && statusPanel.phase !== "noOpenAccess"
+                                visible: bridge.reader.canFindOpenAccess && statusPanel.phase !== "noOpenAccess"
                                 text: "Açık erişimli PDF ara"
                                 iconName: "fa5s.file-pdf"
                                 variant: "primary"

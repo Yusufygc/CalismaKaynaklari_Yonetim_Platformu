@@ -10,6 +10,7 @@ from ui_qml.importers import MetadataScraper, PdfImporter
 from ui_qml.library_events import LibraryEventRouter
 from ui_qml.models.resource_list_model import ResourceListModel
 from ui_qml.resource_form import ResourceFormHandler
+from utils.url_utils import normalize_url
 
 
 def _library_stats(resources: list) -> dict:
@@ -250,15 +251,27 @@ class LibraryBridge(QObject):
             self._ctx.pdf_files.cleanup_local_pdf(pdf_url)
         self._ctx.notify.info(AppStrings.NOTIFICATION_RESOURCE_DELETED)
 
-    @Slot(dict)
-    def saveResource(self, data: dict) -> None:
-        """Yeni kaynak ekler veya mevcudu günceller."""
+    @Slot(str, int, result=str)
+    def duplicateTitleFor(self, url: str, exclude_id: int = 0) -> str:
+        """Ayni adrese sahip baska bir kaynagin basligi (form uyarisi icin); yoksa bos dizge."""
+        duplicate = self._form.find_duplicate(url, exclude_id)
+        return (duplicate.title or "") if duplicate else ""
+
+    @Slot(dict, result=bool)
+    def saveResource(self, data: dict) -> bool:
+        """Yeni kaynak ekler veya mevcudu gunceller. Basariliysa True; hata/kopya adreste False doner (form acik kalir,
+        kullanici girdisini kaybetmez)."""
         payload = self._form.parse_payload(data)
         if payload is None:
-            return
+            return False
 
         resource_id = data.get("id")
         previous = self._form.snapshot(int(resource_id)) if resource_id else None
+        url_changed = previous is None or normalize_url(previous.url) != normalize_url(payload["url"])
+        duplicate = self._form.find_duplicate(payload["url"] or "", int(resource_id or 0)) if url_changed else None
+        if duplicate is not None:  # adres degismeden duzenleme (baslik/etiket) eski kopyalari engellemez
+            self._ctx.notify.error(AppStrings.NOTIFICATION_URL_DUPLICATE_FMT.format(title=duplicate.title))
+            return False
         if resource_id:
             res = self._resources.update_resource(int(resource_id), payload)
             action_text = AppStrings.NOTIFICATION_ACTION_UPDATED
@@ -269,13 +282,14 @@ class LibraryBridge(QObject):
                 self._scraper.schedule(res.id, res.url)  # Otomatik arka plan metadata cekimi
 
         if res is None:
-            return
+            return False
         if previous is not None:
             self._form.cleanup_replaced_url(previous, res)
 
         self.reload()
         self.selectResource(res.id)
         self._ctx.notify.info(AppStrings.NOTIFICATION_RESOURCE_SAVED_FMT.format(action=action_text))
+        return True
 
     @Slot(str)
     def scrapeUrl(self, url: str) -> None:

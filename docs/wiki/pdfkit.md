@@ -223,3 +223,5 @@ Spike sonuçları ve performans tabanı: `docs/plans/pdfkit-faz0-raporu.md` (pyp
 Faz 2 alıntı alanı ve çapa çözümleyici · Faz 3 UI veri akışı (artımlı model) · Faz 4 okuma deneyimi · Faz 5 Obsidian vault (klasörü kullanıcı uygulama içinden seçer) · Faz 6 kitaplık araması · Faz 7 sentez matrisi · Faz 8 eski kodun temizliği.
 
 **İlgili sayfalar:** [[qml_arayuz]] · [[core_servisler]] · [[dizin_yapisi]] · [[log]]
+
+**Metinde Ara - tekrarlayan ozet (2026-10-14):** `SearchService` ayni belgede birebir ayni ozeti (`snippet.text`) veren sayfalardan yalniz en alakalisini tutar (tekrar eden ust/alt bilgi); `group.matches` dusulen sayfa kadar azalir; `pages_of` de ayni kurali uygular.

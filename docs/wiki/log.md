@@ -4,6 +4,14 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-14] FIX | Test gözlemleri: kopya adres, form ipuçları, çekmece konumu, tekrarlayan özet, başlıkla açık erişim (`ui` dalı)
+
+Obsidian eşitlemesi (klasör seçimi, geçersiz klasör, bloğun dışına yazılan metnin korunması, silinen/bozulan notların onarımı, Matris sütun ayarları, `pkm://` bağlantıları) gerçek uygulamada denendi; hata çıkmadı. Ardından gözlemler düzeltildi: aynı adres (www/sondaki `/`/izleme parametresi/YouTube biçimi fark etmez, `utils/url_utils.py::normalize_url`) yeniden eklenemez, `saveResource` artık bool döner ve reddedilen kayıtta form açık kalır; formda biçim/kopya/başlık ipuçları; çekmece vitrinde üst çubuğun altından açılır ("Yeni Ekle" örtülmez); Metinde Ara birebir aynı özeti veren sayfaları (tekrarlayan üst bilgi) tek kayda indirir; DOI'siz akademik sitedeki kaynak için açık erişimli PDF başlıkla aranır (`OpenAccessService.find_pdf_url(doi, title)`, yalnız harf/rakam bazında birebir aynı başlık). Test 1173. Ayrıntı: [[qml_arayuz]], [[core_servisler]], [[pdfkit]].
+
+---
+
+---
+
 ## [2026-10-14] FIX | Gerçek kullanıcı testi: başlık çekme, metin vurgusu, vurgu renk noktaları, matris süzgeci (`ui` dalı)
 
 Uygulama gerçek veritabanıyla fare/klavye olaylarıyla elle denendi. Bulunan hatalar: "Bilgi Çek" başlığı doldurmuyordu (tarayıcı `og_title` döndürür, form `title` okuyordu), bu yüzden "Kaydet ve Ekle" kapalı kalıyordu; metin okuyucusunda atıf/üst simge etiketine yayılan alıntı boyanmıyordu (`utils/html_highlights.py` etiketler arası eşleşir); renk noktaları Repeater içinde `verticalCenter` hatası veriyordu (`Item` hücre sarmalayıcısı); `ReaderView` seçim yokken negatif konum uyarısı; Matris "Süzgeçleri temizle" üst çubuktaki arama metnini silmiyordu. Test 1156. Ayrıntı: [[qml_arayuz]].

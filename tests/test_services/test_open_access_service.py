@@ -70,3 +70,27 @@ def test_nothing_is_returned_without_an_open_copy_a_bad_doi_a_bad_status_or_a_ne
 def test_a_non_http_pdf_address_is_never_returned(monkeypatch):
     _patch_get(monkeypatch, FakeResponse({"best_oa_location": {"pdf_url": "file:///c:/gizli.pdf"}, "locations": [{"is_oa": True, "pdf_url": "ftp://x/a.pdf"}]}))
     assert OpenAccessService().find_pdf_url("10.1234/abc") is None
+
+
+def test_without_a_doi_the_exact_title_match_provides_the_open_copy(monkeypatch):
+    results = {"results": [
+        {"title": "Baska Bir Makale Hakkinda Uzun Baslik", "best_oa_location": {"pdf_url": "https://yanlis.example/a.pdf"}},
+        {"title": "Deep Learning: A Survey of Methods!", "best_oa_location": {"pdf_url": "https://dogru.example/b.pdf"}},
+    ]}
+    calls = _patch_get(monkeypatch, FakeResponse(results))
+
+    url = OpenAccessService().find_pdf_url(None, "deep learning - a survey of methods")
+
+    assert url == "https://dogru.example/b.pdf"
+    assert calls[0][0] == "https://api.openalex.org/works" and calls[0][1]["params"]["search"] == "deep learning - a survey of methods"
+
+
+def test_the_title_lookup_falls_back_after_a_doi_without_copy_and_skips_short_or_unmatched_titles(monkeypatch):
+    responses = iter([FakeResponse({"best_oa_location": None, "locations": []}), FakeResponse({"results": [{"title": "Ayni Baslik Burada Var", "best_oa_location": {"pdf_url": "https://x.example/a.pdf"}}]})])
+    monkeypatch.setattr("services.open_access_service.requests.get", lambda url, **kw: next(responses))
+    assert OpenAccessService().find_pdf_url("10.1234/abc", "Ayni baslik burada var") == "https://x.example/a.pdf"
+
+    calls = _patch_get(monkeypatch, FakeResponse({"results": []}))
+    assert OpenAccessService().find_pdf_url(None, "Kisa") is None and calls == []  # kisa baslik aranmaz
+    _patch_get(monkeypatch, FakeResponse({"results": [{"title": "Tamamen Farkli Bir Makale Basligi", "best_oa_location": {"pdf_url": "https://x.example/a.pdf"}}]}))
+    assert OpenAccessService().find_pdf_url(None, "Aranan Uzun Bir Makale Basligi") is None
