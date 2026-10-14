@@ -4,6 +4,14 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-14] FIX | Gerçek kullanıcı testi: başlık çekme, metin vurgusu, vurgu renk noktaları, matris süzgeci (`ui` dalı)
+
+Uygulama gerçek veritabanıyla fare/klavye olaylarıyla elle denendi. Bulunan hatalar: "Bilgi Çek" başlığı doldurmuyordu (tarayıcı `og_title` döndürür, form `title` okuyordu), bu yüzden "Kaydet ve Ekle" kapalı kalıyordu; metin okuyucusunda atıf/üst simge etiketine yayılan alıntı boyanmıyordu (`utils/html_highlights.py` etiketler arası eşleşir); renk noktaları Repeater içinde `verticalCenter` hatası veriyordu (`Item` hücre sarmalayıcısı); `ReaderView` seçim yokken negatif konum uyarısı; Matris "Süzgeçleri temizle" üst çubuktaki arama metnini silmiyordu. Test 1156. Ayrıntı: [[qml_arayuz]].
+
+---
+
+---
+
 ## [2026-10-13] FIX | Okuyucu: vurgulama, içerik durumu, açık erişimli PDF, PDF metni, seçim çubukları (`ui` dalı)
 
 Metin okuyucusunda vurgulama QML-slot argüman uyumsuzluğundan çalışmıyordu; düzeltildi, alıntılar metinde boyanıyor ve seçim çubuğu seçimin yanında. "İçerik çekiliyor veya metin bulunamadı" sonsuz mesajı yerine durum paneli ve eylemler; DOI'li kaynakta yayıncı sayfası okunamazsa OpenAlex'ten açık erişimli PDF aranıp native okuyucuda açılıyor (kullanıcının Elsevier DOI'si için arXiv kopyası bulundu). `.pdf` uzantısız ama aslında PDF olan adresler (DergiPark) native PDF okuyucusuna yönleniyor; metin okuyucusundaki PDF metni paragraflara bölünüyor (tire birleştirme, ust/alt bilgi atma). Bilgi Havuzu üst çubuğu çakışması, çekmecenin pencere genişletilirken görünmesi ve PDF seçim çubuğunun hizası/konumu düzeltildi. Test 1151+. Ayrıntı: [[qml_arayuz]], [[core_servisler]].

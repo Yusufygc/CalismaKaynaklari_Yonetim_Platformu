@@ -372,8 +372,10 @@ Item {
         target: bridge.library
         function onUrlScraped(metadata) {
             root.isScraping = false
-            if (metadata && metadata.title && !titleInput.text) {
-                titleInput.text = metadata.title
+            // Kazıyıcı başlığı `og_title` anahtarıyla döndürür (`title` yalnızca eski/yedek ad).
+            const scrapedTitle = metadata ? (metadata.og_title || metadata.title) : ""
+            if (scrapedTitle && !titleInput.text) {
+                titleInput.text = scrapedTitle
             }
         }
     }

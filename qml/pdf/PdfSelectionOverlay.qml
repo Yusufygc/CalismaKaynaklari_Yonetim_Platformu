@@ -131,29 +131,37 @@ Item {
 
             Repeater {
                 model: bridge.pdf.labels
-                delegate: Rectangle {
+                // Sarmalayıcı Item satır yüksekliğini doldurur, renk noktası içinde ortalanır (Row çocukları
+                // üstten hizalar; Repeater temsilcisinde `parent.verticalCenter` yaratılırken null olurdu).
+                delegate: Item {
+                    id: dotCell
                     required property var modelData
-                    anchors.verticalCenter: parent.verticalCenter
-                    objectName: "pdfHighlightDot"
                     width: 24
-                    height: 24
-                    radius: 12
-                    color: modelData.color
-                    border.width: 1
-                    border.color: Theme.swatchBorderLight
+                    height: newHighlightRow.height
 
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        ToolTip.visible: containsMouse
-                        ToolTip.text: parent.modelData.name
-                        onClicked: {
-                            if (newHighlightToolbar.capturedText.trim().length > 0) {
-                                bridge.pdf.addHighlight(
-                                    newHighlightToolbar.selectionMap(root.pageIndex), parent.modelData.key)
+                    Rectangle {
+                        objectName: "pdfHighlightDot"
+                        anchors.centerIn: parent
+                        width: 24
+                        height: 24
+                        radius: 12
+                        color: dotCell.modelData.color
+                        border.width: 1
+                        border.color: Theme.swatchBorderLight
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            ToolTip.visible: containsMouse
+                            ToolTip.text: dotCell.modelData.name
+                            onClicked: {
+                                if (newHighlightToolbar.capturedText.trim().length > 0) {
+                                    bridge.pdf.addHighlight(
+                                        newHighlightToolbar.selectionMap(root.pageIndex), dotCell.modelData.key)
+                                }
+                                root.pdfSelection.clear()
                             }
-                            root.pdfSelection.clear()
                         }
                     }
                 }

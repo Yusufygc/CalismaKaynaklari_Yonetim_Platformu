@@ -330,8 +330,9 @@ Item {
                 objectName: "selectionBar"
                 // Seçili metnin hemen üstünde (yer yoksa altında) durur; kaydırınca seçimle birlikte hareket eder.
                 readonly property bool hasSelection: textContent.visible && textContent.selectedText.trim().length > 0
-                readonly property rect startRect: textContent.positionToRectangle(textContent.selectionStart)
-                readonly property rect endRect: textContent.positionToRectangle(textContent.selectionEnd)
+                // Seçim yokken selectionStart/End geçersizdir (-1): o konumda hesaplanmaz.
+                readonly property rect startRect: hasSelection ? textContent.positionToRectangle(textContent.selectionStart) : Qt.rect(0, 0, 0, 0)
+                readonly property rect endRect: hasSelection ? textContent.positionToRectangle(textContent.selectionEnd) : Qt.rect(0, 0, 0, 0)
                 readonly property point startPoint: { flickable.contentY; return textContent.mapToItem(parent, startRect.x, startRect.y) }
                 readonly property point endPoint: { flickable.contentY; return textContent.mapToItem(parent, endRect.x, endRect.y) }
                 readonly property real aboveY: startPoint.y - height - 8
@@ -371,24 +372,31 @@ Item {
                     // 5 Fosforlu Renk Yuvarlağı
                     Repeater {
                         model: Theme.highlightPalette
-                        Rectangle {
-                            anchors.verticalCenter: parent.verticalCenter
-                            objectName: "highlightColorDot"
+                        Item {
+                            id: colorCell
+                            required property string modelData
                             width: 22
-                            height: 22
-                            radius: 11
-                            color: modelData
-                            border.width: 1
-                            border.color: Qt.alpha(Theme.textOnAccent, 0.27)
+                            height: selRow.height
 
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (root.resource) {
-                                        bridge.annotations.addHighlight(root.resource.id, textContent.selectedText, modelData)
-                                        textContent.deselect()
+                            Rectangle {
+                                objectName: "highlightColorDot"
+                                anchors.centerIn: parent
+                                width: 22
+                                height: 22
+                                radius: 11
+                                color: colorCell.modelData
+                                border.width: 1
+                                border.color: Qt.alpha(Theme.textOnAccent, 0.27)
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (root.resource) {
+                                            bridge.annotations.addHighlight(root.resource.id, textContent.selectedText, colorCell.modelData)
+                                            textContent.deselect()
+                                        }
                                     }
                                 }
                             }

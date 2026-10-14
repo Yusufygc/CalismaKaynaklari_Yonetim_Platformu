@@ -378,3 +378,23 @@ def test_the_closed_inspector_drawer_stays_hidden_while_the_window_is_widened(qa
         qapp.processEvents()  # animasyon beklenmeden: kapali cekmece her adimda ekranin disinda
         assert not drawer.isVisible() and drawer.x() >= drawer.parent().width()
     assert engine.captured_warnings == []
+
+
+def test_scraped_page_title_fills_the_empty_title_field_but_never_overwrites_a_typed_one(qapp, bridge):
+    from PySide6.QtCore import QMetaObject
+
+    engine, window = open_window(qapp, bridge, "showcase", width=1280, height=800)
+    QMetaObject.invokeMethod(window.findChild(QObject, "resourceFormModal"), "openForNew")
+    pump(qapp, 20)
+    modal = window.findChild(QObject, "resourceFormModal")
+    title_inputs = [i for i in _walk_visible(window) if "TextInput" in i.metaObject().className() and i.property("text") == ""]
+    title = title_inputs[-1]  # url ve baslik alanlarindan sonuncusu: baslik
+
+    bridge.library.urlScraped.emit({"og_title": "Attention Is All You Need", "og_description": "x"})
+    pump(qapp, 10)
+    assert title.property("text") == "Attention Is All You Need"
+
+    title.setProperty("text", "Benim basligim")
+    bridge.library.urlScraped.emit({"og_title": "Baska bir baslik"})
+    pump(qapp, 10)
+    assert title.property("text") == "Benim basligim" and modal is not None and engine.captured_warnings == []

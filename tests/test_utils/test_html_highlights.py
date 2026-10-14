@@ -1,3 +1,4 @@
+import re
 from utils.html_highlights import apply_highlights
 
 YELLOW = "#EAB308"
@@ -45,3 +46,24 @@ def test_two_highlights_and_an_already_marked_span_are_not_marked_twice():
     assert result.count("<span") == 1 and "#22C55E" not in result  # ayni metin tekrar boyanmaz (ilk renk kalir)
     both = apply_highlights(html, [{"content": "alfa", "color": YELLOW}, {"content": "delta", "color": "#22C55E"}])
     assert both.count("<span") == 2
+
+
+def test_a_selection_crossing_inline_tags_is_painted_across_them():
+    """Wikipedia benzeri metin: baglanti, ust simge (atif) ve kalin etiketler secimin ortasina girer."""
+    html = '<p>Metin <b>onemli</b> bir <a href="/x">baglanti</a> ve<sup>[1]</sup> devami burada.</p>'
+
+    result = apply_highlights(html, [{"content": "onemli bir baglanti ve[1] devami", "color": YELLOW}])
+
+    assert result.count("<span") == 6  # onemli | " bir " | baglanti | " ve" | "[1]" | " devami": her metin parcasi ayri boyanir
+    plain = "".join(part for part in re.split(r"<[^>]*>", result))
+    assert plain == "Metin onemli bir baglanti ve[1] devami burada."  # gorunen metin degismedi
+    assert "<a href=\"/x\">" in result and "<b>" in result and "</sup>" in result  # etiketler yerinde
+
+
+def test_an_already_painted_region_is_a_barrier_so_the_next_match_is_painted():
+    html = "<p>alfa beta. alfa beta.</p>"
+
+    result = apply_highlights(html, [{"content": "alfa beta", "color": YELLOW}, {"content": "alfa beta", "color": "#22C55E"}])
+
+    assert result.count(YELLOW) == 1 and result.count("#22C55E") == 1  # ikincisi ikinci gecisi boyar
+    assert result.index(YELLOW) < result.index("#22C55E")

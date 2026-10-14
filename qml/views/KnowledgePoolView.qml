@@ -207,6 +207,8 @@ Item {
 
                 // Arama Kutusu
                 AppSearchBar {
+                    id: poolSearchBar
+                    objectName: "poolSearchBar"
                     anchors.verticalCenter: parent.verticalCenter
                     width: topBar.searchWidth
                     placeholder: root.activeTab === 0 ? "Alıntılarda ara..." : (root.activeTab === 1 ? "Kelimelerde ara..." : (root.activeTab === 2 ? "PDF'lerin içinde ara..." : "Kaynak ara (başlık, atıf anahtarı)..."))
@@ -289,6 +291,7 @@ Item {
 
             MatrixTab {
                 anchors.fill: parent
+                onFiltersCleared: poolSearchBar.text = ""
                 visible: root.activeTab === 3
             }
         }

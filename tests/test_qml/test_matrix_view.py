@@ -186,6 +186,21 @@ def test_the_tab_shows_the_table_with_filter_chips_and_filters_on_click(matrix_e
     assert engine.captured_warnings == []
 
 
+def test_clearing_matrix_filters_also_empties_the_search_box(matrix_env, qapp):
+    bridge, resource, _toasts = matrix_env
+    engine, window = _open_matrix(qapp, bridge)
+    search = find_named(window, "poolSearchBar")
+
+    search.setProperty("text", "zzz-eslesmeyen")
+    pump(qapp, 20)
+    assert bridge.synthesis.filtered
+
+    click(qapp, window, find_named(window, "clearMatrixFiltersButton"))
+    pump(qapp, 20)
+    assert search.property("text") == "" and not bridge.synthesis.filtered
+    assert engine.captured_warnings == []
+
+
 def test_clicking_a_quote_opens_the_pdf_reader_on_that_annotation(matrix_env, qapp):
     bridge, resource, _toasts = matrix_env
     engine, window = _open_matrix(qapp, bridge)

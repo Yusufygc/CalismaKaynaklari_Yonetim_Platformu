@@ -10,6 +10,7 @@ import "../theme"
 // dışa aktarılır ya da panoya kopyalanır (Obsidian'a yapıştırılabilir).
 Item {
     id: root
+    signal filtersCleared()
 
     readonly property var matrix: bridge.synthesis.matrix
     readonly property var activeLabels: bridge.synthesis.activeLabels
@@ -75,7 +76,7 @@ Item {
                     text: "Süzgeçleri temizle"
                     variant: "ghost"
                     implicitHeight: 28
-                    onClicked: bridge.synthesis.clearFilters()
+                    onClicked: { bridge.synthesis.clearFilters(); root.filtersCleared() }
                 }
                 AppButton {
                     objectName: "copyMatrixButton"
