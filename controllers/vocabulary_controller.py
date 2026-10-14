@@ -35,8 +35,5 @@ class VocabularyController:
             event_bus.error_occurred.emit(str(exc))
             return False
 
-    def load_resource_vocabulary(self, resource_id: int) -> list:
-        return self._svc.get_by_resource(resource_id)
-
     def load_all_vocabulary(self) -> list:
         return self._svc.get_all()

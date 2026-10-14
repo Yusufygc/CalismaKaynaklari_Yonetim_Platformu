@@ -83,8 +83,6 @@ Item {
     }
 
     property alias currentPage: pageNavigator.currentPage
-    property alias backEnabled: pageNavigator.backAvailable
-    property alias forwardEnabled: pageNavigator.forwardAvailable
 
     function back() { pageNavigator.back() }
     function forward() { pageNavigator.forward() }
@@ -138,10 +136,6 @@ Item {
         id: pageSyncTimer
         interval: 120
         onTriggered: root.syncCurrentPage()
-    }
-
-    function scaleToWidth(width, height) {
-        root.renderScale = width / (tableView.rot90 ? tableView.firstPagePointSize.height : tableView.firstPagePointSize.width)
     }
 
     property alias searchModel: searchModel

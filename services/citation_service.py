@@ -73,10 +73,6 @@ class CitationService:
     venue, doi. Eksik alanlar atlanır; en azından başlık zorunludur.
     """
 
-    @staticmethod
-    def supported_styles() -> tuple[str, ...]:
-        return _STYLES
-
     @classmethod
     def format(cls, title: str, metadata: dict, style: str) -> str:
         style = style.lower()

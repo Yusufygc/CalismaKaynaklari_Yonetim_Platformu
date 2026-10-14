@@ -173,9 +173,6 @@ class IndexService:
         """Aranamayan belgeler (taranmis, dizini basarisiz, metin cikmayan): (belge id, kaynak id, baslik)."""
         return self._repo.unsearchable()
 
-    def statistics(self) -> dict[str, int]:
-        return self._repo.count_by_status()
-
     def _write(self, change):
         try:
             result = change()

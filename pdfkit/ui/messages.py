@@ -5,7 +5,6 @@ HIGHLIGHT_RELABELED = "Aynı metin zaten alıntılanmıştı; anlam etiketi gün
 HIGHLIGHT_RELINKED = "Alıntı yeni konuma bağlandı."
 HIGHLIGHT_DELETED = "Alıntı silindi."
 HIGHLIGHTS_DELETED_FMT = "{count} alıntı silindi."
-NOTE_SAVED = "Not kaydedildi."
 TERM_SAVED_FMT = "'{word}' kelime havuzuna eklendi."
 TERM_DELETED = "Kelime silindi."
 NO_SELECTION = "Seçili metin alınamadı."

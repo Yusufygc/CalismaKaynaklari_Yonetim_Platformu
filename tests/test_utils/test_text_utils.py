@@ -1,4 +1,5 @@
-from utils.text_utils import extract_sentence, sanitize_utf8
+from pdfkit.domain.sentences import extract_sentence
+from utils.text_utils import sanitize_utf8
 
 TEXT = (
     "Stock price prediction is important. Traditional models like ARIMA, often used\r\n"

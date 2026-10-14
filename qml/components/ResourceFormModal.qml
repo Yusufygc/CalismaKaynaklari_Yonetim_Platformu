@@ -10,11 +10,6 @@ Item {
 
     property bool isOpen: false
     property int resourceId: 0
-    property string initialUrl: ""
-    property string initialTitle: ""
-    property int initialCategoryId: 0
-    property string initialStatus: "INBOX"
-    property int initialPriority: 2
     property var selectedTagIds: []
     property bool isScraping: false
     property string loadedUrl: ""  // düzenlemede forma ilk yüklenen adres (kopya uyarısı yalnız değişince çıkar)

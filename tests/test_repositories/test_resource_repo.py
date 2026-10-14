@@ -18,60 +18,35 @@ def test_get_all_returns_pinned_first(session):
     assert result[0].id == pinned.id
 
 
-def test_get_by_status_filters_correctly(session):
+def test_query_filtered_by_status_alone(session):
     repo = ResourceRepository(session)
     repo.create(_make_resource(title="Planli", status=ResourceStatus.PLANNED))
     repo.create(_make_resource(title="Tamamlandi", status=ResourceStatus.COMPLETED))
 
-    result = repo.get_by_status(ResourceStatus.COMPLETED)
+    result = repo.query_filtered(ResourceFilter(statuses=[ResourceStatus.COMPLETED]))
 
     assert [r.title for r in result] == ["Tamamlandi"]
 
 
-def test_search_by_keyword_matches_title_url_and_content(session):
+def test_query_filtered_keyword_matches_title_url_and_content(session):
     repo = ResourceRepository(session)
     repo.create(_make_resource(title="Django Ogren", url=None, content=None))
     repo.create(_make_resource(title="Baska", url="https://django-example.com", content=None))
     repo.create(_make_resource(title="Baska2", url=None, content="django hakkinda not"))
     repo.create(_make_resource(title="Alakasiz"))
 
-    result = repo.search_by_keyword("django")
+    result = repo.query_filtered(ResourceFilter(keyword="django"))
 
     assert len(result) == 3
 
 
-def test_get_by_category_filters_correctly(session):
-    repo = ResourceRepository(session)
-    cat_repo_session = session
-    category = Category(name="Yazilim", color_hex="#3776AB")
-    cat_repo_session.add(category)
-    cat_repo_session.flush()
-
-    repo.create(_make_resource(title="Kategorili", category_id=category.id))
-    repo.create(_make_resource(title="Kategorisiz"))
-
-    result = repo.get_by_category(category.id)
-
-    assert [r.title for r in result] == ["Kategorili"]
-
-
-def test_get_favorites_filters_correctly(session):
-    repo = ResourceRepository(session)
-    repo.create(_make_resource(title="Favori", is_favorite=True))
-    repo.create(_make_resource(title="Favori Degil"))
-
-    result = repo.get_favorites()
-
-    assert [r.title for r in result] == ["Favori"]
-
-
-def test_get_urls_only_excludes_empty_and_null_urls(session):
+def test_query_filtered_urls_only_excludes_empty_and_null_urls(session):
     repo = ResourceRepository(session)
     repo.create(_make_resource(title="URL'li", url="https://example.com"))
     repo.create(_make_resource(title="Bos URL", url=""))
     repo.create(_make_resource(title="URL Yok", url=None))
 
-    result = repo.get_urls_only()
+    result = repo.query_filtered(ResourceFilter(urls_only=True))
 
     assert [r.title for r in result] == ["URL'li"]
 

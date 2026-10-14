@@ -25,10 +25,6 @@ def create_fts_table(connection: Connection | Session) -> bool:
     return True
 
 
-def drop_fts_table(connection: Connection | Session) -> None:
-    connection.execute(text(f"DROP TABLE IF EXISTS {FTS_TABLE}"))
-
-
 def include_object(obj, name, type_, reflected, compare_to) -> bool:
     """Alembic `include_object` suzgeci: FTS5 sanal tablosu ve SQLite'in urettigi golge tablolari (`pdf_page_fts_data`,
     `_idx`, `_content`, `_docsize`, `_config`) ORM metadata'sinda yoktur; otomatik karsilastirma bunlari silmeyi onermesin."""

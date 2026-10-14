@@ -75,9 +75,6 @@ class AnnotationRepository:
     def get_annotation(self, annotation_id: int) -> PdfAnnotationRow | None:
         return self._session.get(PdfAnnotationRow, annotation_id)
 
-    def annotation_by_uid(self, uid: str) -> PdfAnnotationRow | None:
-        return self._session.scalar(select(PdfAnnotationRow).where(PdfAnnotationRow.uid == uid))
-
     def annotations_for_document(self, document_id: int) -> list[PdfAnnotationRow]:
         return list(
             self._session.scalars(

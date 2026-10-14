@@ -1,4 +1,3 @@
-from pdfkit.domain.sentences import extract_sentence  # noqa: F401  (geriye uyumluluk; Faz 8'de kalkar)
 
 
 def sanitize_utf8(text: str) -> str:

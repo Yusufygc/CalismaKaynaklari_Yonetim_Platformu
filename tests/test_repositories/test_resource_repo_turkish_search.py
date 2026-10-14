@@ -31,9 +31,8 @@ def repo(session):
         ("ozet", "Düz ASCII kaynak"),  # URL'de
     ],
 )
-@pytest.mark.parametrize("method", ["search_by_keyword", "query_filtered"])
-def test_keyword_search_is_turkish_case_and_diacritic_insensitive(repo, method, keyword, expected_title):
-    result = repo.search_by_keyword(keyword) if method == "search_by_keyword" else repo.query_filtered(ResourceFilter(keyword=keyword))
+def test_keyword_search_is_turkish_case_and_diacritic_insensitive(repo, keyword, expected_title):
+    result = repo.query_filtered(ResourceFilter(keyword=keyword))
 
     assert [r.title for r in result] == [expected_title]
 

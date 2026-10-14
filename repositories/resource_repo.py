@@ -58,29 +58,6 @@ class ResourceRepository(BaseRepository[Resource]):
     def get_all(self) -> list[Resource]:
         return list(_default_order(self._base_query()).all())
 
-    def get_by_status(self, status: ResourceStatus) -> list[Resource]:
-        q = self._base_query().filter(Resource.status == status)
-        return list(_default_order(q).all())
-
-    def search_by_keyword(self, keyword: str) -> list[Resource]:
-        q = self._base_query().filter(_keyword_condition(keyword))
-        return list(_default_order(q).all())
-
-    def get_by_category(self, category_id: int) -> list[Resource]:
-        q = self._base_query().filter(Resource.category_id == category_id)
-        return list(_default_order(q).all())
-
-    def get_favorites(self) -> list[Resource]:
-        q = self._base_query().filter(Resource.is_favorite.is_(True))
-        return list(_default_order(q).all())
-
-    def get_urls_only(self) -> list[Resource]:
-        """Sadece URL alani dolu kaynaklari dondurur (URL Vitrini icin)."""
-        q = self._base_query().filter(
-            Resource.url.isnot(None), Resource.url != ""
-        )
-        return list(_default_order(q).all())
-
     def query_filtered(self, criteria: ResourceFilter | None = None) -> list[Resource]:
         """Kombinasyonel filtre — bos/None alanlar koşula donusmez.
 

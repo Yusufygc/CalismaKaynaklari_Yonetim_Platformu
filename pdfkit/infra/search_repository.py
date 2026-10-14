@@ -69,10 +69,6 @@ class PageIndexRepository:
                 pending.append(document_id)
         return pending
 
-    def count_by_status(self) -> dict[str, int]:
-        rows = self._session.execute(select(PdfTextIndexRow.status, text("count(*)")).group_by(PdfTextIndexRow.status))
-        return {status: count for status, count in rows}
-
     # ---- sayfalar ----
     def delete_pages(self, document_id: int) -> None:
         self._session.execute(

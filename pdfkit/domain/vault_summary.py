@@ -14,7 +14,7 @@ from typing import ClassVar
 from pdfkit.domain.annotations import Term
 from pdfkit.domain.models import Document
 from pdfkit.domain.synthesis import MatrixFilter, MatrixOptions, MatrixRow, build_row, make_matrix, matrix_summary, render_table
-from pdfkit.domain.vault_note import NOTE_DIRECTORY, NoteContent, inline_text, replace_block, term_line
+from pdfkit.domain.vault_note import NoteContent, inline_text, replace_block, term_line
 
 INDEX_FILE = "_Index.md"
 VOCABULARY_FILE = "_Kelimeler.md"
@@ -168,10 +168,6 @@ class MatrixContent:
 
 
 SummaryContent = IndexContent | VocabularyContent | MatrixContent
-
-
-def summary_rel_path(content: SummaryContent) -> str:
-    return f"{NOTE_DIRECTORY}/{content.filename}"
 
 
 def render_summary_block(content: SummaryContent) -> str:

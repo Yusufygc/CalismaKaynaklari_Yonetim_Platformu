@@ -4,6 +4,14 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-14] REFACTOR | Ölü kod temizliği (`ui` dalı)
+
+Hiçbir yerden çağrılmayan kod silindi (davranış değişmedi): `AppStrings`'in QML'e taşındığı için artık okunmayan ~95 metni, `ResourceRepository`'nin `query_filtered`'ın gölgesindeki `get_by_status/search_by_keyword/get_by_category/get_favorites/get_urls_only` yöntemleri (testleri `query_filtered`'a çevrildi), `load_resource_vocabulary`, `IndexService.statistics` + `count_by_status`, `summary_rel_path`, `annotation_by_uid`, `drop_fts_table`, `CitationService.supported_styles`, `utils.text_utils.extract_sentence` yeniden dışa aktarımı, `Settings.DEFAULT_THEME` (+ `.env.example`), `pdfkit/ui/messages.py::NOTE_SAVED`, `qml/js/highlights.js`, `ResourceFormModal.initial*` özellikleri, `PdfPageArea.scaleToWidth/backEnabled/forwardEnabled`, kullanılmayan `chevron_down.svg` ve `hamburger.svg`. Yalnız testlerce çağrılan ama pdfkit genel API'si sayılan yöntemler (`get_highlight`, `apply_resolution`, `deleteTerm`, `is_open`...) bilerek bırakıldı. Test 1163.
+
+---
+
+---
+
 ## [2026-10-14] FIX | Test gözlemleri: kopya adres, form ipuçları, çekmece konumu, tekrarlayan özet, başlıkla açık erişim (`ui` dalı)
 
 Obsidian eşitlemesi (klasör seçimi, geçersiz klasör, bloğun dışına yazılan metnin korunması, silinen/bozulan notların onarımı, Matris sütun ayarları, `pkm://` bağlantıları) gerçek uygulamada denendi; hata çıkmadı. Ardından gözlemler düzeltildi: aynı adres (www/sondaki `/`/izleme parametresi/YouTube biçimi fark etmez, `utils/url_utils.py::normalize_url`) yeniden eklenemez, `saveResource` artık bool döner ve reddedilen kayıtta form açık kalır; formda biçim/kopya/başlık ipuçları; çekmece vitrinde üst çubuğun altından açılır ("Yeni Ekle" örtülmez); Metinde Ara birebir aynı özeti veren sayfaları (tekrarlayan üst bilgi) tek kayda indirir; DOI'siz akademik sitedeki kaynak için açık erişimli PDF başlıkla aranır (`OpenAccessService.find_pdf_url(doi, title)`, yalnız harf/rakam bazında birebir aynı başlık). Test 1173. Ayrıntı: [[qml_arayuz]], [[core_servisler]], [[pdfkit]].

@@ -24,10 +24,6 @@ Python `TypeVar` + `Generic` ile tüm modellere hizmet veren CRUD sınıfı.
 
 | Metod | Açıklama |
 |-------|----------|
-| `get_by_status(status: ResourceStatus)` | Duruma göre filtrele (inbox/planned/in_progress/completed) |
-| `search_by_keyword(keyword: str)` | Başlık/URL/içerik — ILIKE |
-| `get_by_category(category_id: int)` | Kategoriye göre filtrele |
-| `get_urls_only()` | URL alanı dolu kaynaklar (Vitrin için) |
 | `query_filtered(...)` | Kombinasyonel filtre (durum+kategori+etiket+öncelik+favori+url+arama) — `ContentWorkspace` tarafından kullanılan asıl sorgu yolu |
 
 **N+1 önleme (2026-07-03):** Tüm sorgu metotları tek bir private `_base_query()` helper'ından geçer — `joinedload(Resource.category)` + `selectinload(Resource.tags)` ile ilişkiler eager-load edilir. Öncesinde her metot bağımsız `session.query(Resource)` açıyordu; kart render sırasında (`ContentWorkspace._render_resources`, `UrlShowcaseView.load_resources`) her kaynak için `.category`/`.tags` erişimi ayrı bir lazy-load sorgusuna yol açıyordu (N+1). `get_with_tags`/`get_pinned` (sıfır çağrısı olan ölü metotlar) kaldırıldı. **`highlights`/`vocabulary` bilerek bu eager-load setine eklenmedi (2026-07-06):** okuyucu paneli her zaman TEK bir `Resource` tutar (liste değil), bu yüzden `resource.highlights`/`resource.vocabulary` erişimi N+1 değil tek ekstra sorgudur — session app ömrü boyunca açık kaldığı için (`main.py`, bkz. [[mimari_kurallari]]) lazy-load sorunsuz çalışır. `resource_repo.py`'a dokunulmadı.
@@ -144,7 +140,7 @@ Makale Market kayıtlı aramaları: `create(topic, filters, tag_name, seen_ids)`
 **Toplu alıntı silme (2026-09-30):** `HighlightService.delete_highlights(ids)` tek commit'le siler (olmayan/yinelenen kimlikler atlanır, hata olursa hiçbiri silinmez); `HighlightController.delete_highlights` hata olursa `None` döner ve `highlight_deleted` sinyalini tek kez yayar. `ReaderBridge.deleteHighlights(list)` tek yenileme + tek toast ("N alıntı silindi.") yapar, açık okuyucuyu tazeler.
 
 ### Türkçe Duyarsız Arama — `utils/text_utils.py::fold_tr` (2026-09-30)
-Kaynak araması (`ResourceRepository.search_by_keyword` / `query_filtered(keyword=...)`) artık SQLite `ILIKE` (yalnız ASCII) yerine `fold_tr` SQL fonksiyonunu kullanır: büyük/küçük harf **ve** diyakritik duyarsız (`İ I ı → i`, `Ş → s`, `Ğ → g`, `Ü → u`, `Ö → o`, `Ç → c`, sonra `casefold`). Böylece "istanbul", "ISTANBUL", "İstanbul" aynı sonucu verir; "seker" → "Şeker". Fonksiyon her SQLite bağlantısına `utils/db_utils.py::register_sqlite_functions` ile eklenir (test motorları `tests/conftest.py`'de aynısını çağırır). Kullanıcı metnindeki `%`, `_`, `\\` LIKE joker karakteri değil literaldir. QML tarafı (`KnowledgePoolView` alıntı/kelime araması) aynı kuralı `qml/js/text.js::foldTr` ile uygular; iki uygulamanın eşitliği `tests/test_utils/test_fold_tr.py` ile doğrulanır. Etiket adı normalizasyonu (`name.lower()`) bilinçli olarak dokunulmadı (kimlik alanı).
+Kaynak araması (`ResourceRepository.query_filtered(keyword=...)`) artık SQLite `ILIKE` (yalnız ASCII) yerine `fold_tr` SQL fonksiyonunu kullanır: büyük/küçük harf **ve** diyakritik duyarsız (`İ I ı → i`, `Ş → s`, `Ğ → g`, `Ü → u`, `Ö → o`, `Ç → c`, sonra `casefold`). Böylece "istanbul", "ISTANBUL", "İstanbul" aynı sonucu verir; "seker" → "Şeker". Fonksiyon her SQLite bağlantısına `utils/db_utils.py::register_sqlite_functions` ile eklenir (test motorları `tests/conftest.py`'de aynısını çağırır). Kullanıcı metnindeki `%`, `_`, `\\` LIKE joker karakteri değil literaldir. QML tarafı (`KnowledgePoolView` alıntı/kelime araması) aynı kuralı `qml/js/text.js::foldTr` ile uygular; iki uygulamanın eşitliği `tests/test_utils/test_fold_tr.py` ile doğrulanır. Etiket adı normalizasyonu (`name.lower()`) bilinçli olarak dokunulmadı (kimlik alanı).
 
 ### Tipli sorgu/girdi nesneleri (2026-09-30, REFACTOR)
 - `repositories/resource_repo.py::ResourceFilter` (frozen dataclass: `statuses, category_id, tag_ids, priorities, favorites_only, urls_only, keyword`) — `ResourceRepository.query_filtered(criteria)` tek parametre alır (önceden 7 anahtar kelimeli parametre). Bridge/controller'ın gevşek sözlüğü `services/resource_service.py::_resource_filter_from_dict` ile (çoğul/tekil takma adlar, skaler değerler) buna çevrilir.
@@ -179,7 +175,7 @@ UI ile service arasındaki köprü. Her method try/except ile sarılır; hata �
 | `create_highlight(resource_id, content, color)` / `delete_highlight(id)` | `highlight_added/deleted` emit (2026-07-06) |
 | `load_resource_highlights(resource_id)` / `load_all_highlights()` | Kaynağa scope'lu / Bilgi Havuzu için tümü |
 | `create_vocabulary(resource_id, word, translation, context_sentence)` / `delete_vocabulary(id)` | `vocabulary_added/deleted` emit |
-| `load_resource_vocabulary(resource_id)` / `load_all_vocabulary()` | Kaynağa scope'lu / Bilgi Havuzu için tümü |
+| `load_all_vocabulary()` | Bilgi Havuzu için tümü |
 
 ---
 
