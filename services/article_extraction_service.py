@@ -9,6 +9,7 @@ import trafilatura
 from core.logger import log
 from core.net_utils import is_blocked_host, safe_http_get
 from pdfkit.api import extract_page_texts
+from utils.pdf_reflow import reflow_pages_html
 from utils.text_utils import sanitize_utf8
 
 _TIMEOUT_SECONDS = 10
@@ -28,18 +29,13 @@ def _looks_like_pdf(url: str, content: bytes) -> bool:
 
 
 def _extract_pdf_html(content: bytes) -> str | None:
-    """PDF sayfalarini sayfa-numarali HTML'e cevirir (<h3>Sayfa N</h3><p>...</p>).
+    """PDF sayfalarini sayfa-numarali HTML'e cevirir (`<h3>Sayfa N</h3>` + paragraflar/basliklar).
 
-    Sayfa ici satir kirilimlari (print-genisligi kaynakli) paragraf siniri
-    sayilmiyor -- tum sayfa metni tek paragrafta normalize ediliyor. PDF'ten
-    guvenilir paragraf tespiti zor oldugu icin bilincli bir basitlestirme.
-    """
-    parts = []
-    for i, raw in enumerate(extract_page_texts(content), start=1):
-        text = sanitize_utf8(" ".join(raw.split()))
-        if text:
-            parts.append(f"<h3>Sayfa {i}</h3><p>{html.escape(text)}</p>")
-    return "".join(parts) or None
+    Paragraf tespiti metin sezgileriyle yapilir (tireli sozcuk birlestirme, ust/alt bilgi ve sayfa numarasi atma, kisa
+    cumle sonu satirinda paragraf, numarali/buyuk harfli baslik; bkz. `utils/pdf_reflow.py`). PDFium'dan sutun/konum
+    bilgisi gelmedigi icin cok sutunlu duzenler tam cozulemez; yerel PDF okuyucusu her zaman daha dogrudur."""
+    pages = [sanitize_utf8(raw) for raw in extract_page_texts(content)]
+    return reflow_pages_html(pages, html.escape) or None
 
 
 class ArticleExtractionService:
@@ -50,6 +46,12 @@ class ArticleExtractionService:
     yapar, burada ya trafilatura'nin boilerplate-temizleme sezgiseli ya da
     (PDF'lerde) pypdfium2 calisir -- farkli sorumluluk, farkli hata modu (None doner).
     """
+
+    def __init__(self) -> None:
+        # Son `extract_full_text` cagrisi URL'nin aslinda bir PDF dosyasi oldugunu gordu mu? (`.pdf` uzantisi olmayan
+        # sayfalar bile dogrudan PDF'e yonlenebilir: DergiPark, DOI baglantilari...) Okuyucu bunu native PDF'e
+        # yonlendirmek icin kullanir.
+        self.detected_pdf = False
 
     def extract_full_text(self, url: str) -> str | None:
         """Makale govdesini semantik HTML olarak dondurur.
@@ -74,6 +76,7 @@ class ArticleExtractionService:
                 return None
 
             if _looks_like_pdf(response.url, response.content):
+                self.detected_pdf = response.content[:5] == _PDF_MAGIC
                 return _extract_pdf_html(response.content)
 
             return trafilatura.extract(

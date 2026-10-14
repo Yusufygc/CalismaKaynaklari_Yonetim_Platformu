@@ -1,3 +1,4 @@
+import html
 from collections.abc import Callable
 from pathlib import Path
 
@@ -8,13 +9,14 @@ from core.constants.strings import AppStrings
 from core.events import event_bus
 from core.logger import log
 from services.export_service import ExportService
-from services.pdf_download_service import looks_like_remote_pdf
 from ui_qml.bridges.library_bridge import LibraryBridge
 from ui_qml.context import BridgeContext
 from ui_qml.export_view import export_view
 from ui_qml.file_export import write_export
+from utils.doi_utils import doi_from_url, normalize_doi
+from utils.html_highlights import apply_highlights
 from utils.url_utils import is_safe_external_link, is_video_url
-from workers import PdfOutlineWorker
+from workers import OpenAccessWorker, PdfOutlineWorker
 
 
 class ReaderBridge(QObject):
@@ -22,6 +24,7 @@ class ReaderBridge(QObject):
     `AnnotationsBridge`'de, atif ve OpenAlex bilgisi `CitationsBridge`'dedir."""
 
     currentReaderResourceChanged = Signal()
+    extractionStateChanged = Signal()
     pdfOutlinesChanged = Signal()
     readerArticleUpdated = Signal(int, str)
 
@@ -40,10 +43,14 @@ class ReaderBridge(QObject):
         # PDF anahatlari (dosya URL'si -> liste) arka planda okunur; yuklenirken anahtar yoktur.
         self._pdf_outlines: dict[str, list] = {}
         self._pdf_outlines_loading: set[str] = set()
+        # Acik erisimli PDF aramasi (DOI'li kaynak): kaynak kimligi -> "searching" | "none" | "found"
+        self._open_access: dict[int, str] = {}
 
         ctx.pdf_files.downloadFinished.connect(self._on_pdf_download_finished)
         ctx.pdf_files.documentReleased.connect(self._on_document_released)
         ctx.extractor.extracted.connect(self._on_full_text_extracted)
+        ctx.extractor.statusChanged.connect(self._on_extraction_status)
+        ctx.extractor.pdfDetected.connect(self._on_pdf_detected)
         event_bus.resource_deleted.connect(self._on_resource_deleted)
         for signal in (event_bus.category_updated, event_bus.category_deleted,
                        event_bus.tag_updated, event_bus.tag_deleted):
@@ -56,6 +63,40 @@ class ReaderBridge(QObject):
     @Property(dict, notify=currentReaderResourceChanged)
     def currentReaderResource(self) -> dict:
         return self._current
+
+    @Property(str, notify=extractionStateChanged)
+    def extractionState(self) -> str:
+        """Acik metin okuyucusunun icerik durumu: "ready" (metin var), "pending" (cekiliyor), "searching" (acik erisimli
+        PDF araniyor), "noOpenAccess" (aranip bulunamadi), "failed" (cikarim basarisiz), "empty" (hic denenmedi)."""
+        resource_id = self._current.get("id")
+        if not resource_id:
+            return ""
+        if self._current.get("fullText") or self._current.get("content"):
+            return "ready"
+        searching = self._open_access.get(resource_id)
+        if searching == "searching":
+            return "searching"
+        extraction = self._ctx.extractor.state(resource_id)
+        if extraction == "pending":
+            return "pending"
+        if searching == "none":
+            return "noOpenAccess"
+        return "failed" if extraction == "failed" else "empty"
+
+    @Property(str, notify=currentReaderResourceChanged)
+    def readerHtml(self) -> str:
+        """Metin okuyucusunda gosterilen HTML: tam metin (yoksa kisisel not) uzerinde kayitli alintilar boyanmis."""
+        text = self._current.get("fullText")
+        if not text:
+            content = self._current.get("content")
+            text = f"<p>{html.escape(content)}</p>" if content else ""
+        return apply_highlights(text, self._current.get("highlights") or [])
+
+    @Property(str, notify=currentReaderResourceChanged)
+    def readerDoi(self) -> str:
+        """Acik kaynagin DOI'si (kunyeden ya da doi.org adresinden); yoksa bos."""
+        doi = (self._current.get("paper") or {}).get("doi") or doi_from_url(self._current.get("url"))
+        return normalize_doi(doi)
 
     @Property(dict, notify=pdfOutlinesChanged)
     def pdfOutlines(self) -> dict:
@@ -83,6 +124,7 @@ class ReaderBridge(QObject):
         if res:
             self._current = self._ctx.serializer.serialize(res)
             self.currentReaderResourceChanged.emit()
+            self.extractionStateChanged.emit()
 
     def refresh_if_open(self, resource_id: int) -> None:
         """`resource_id` su an okuyucuda aciksa yeniden serilestirir."""
@@ -107,10 +149,12 @@ class ReaderBridge(QObject):
         pdf_files = self._ctx.pdf_files
         self._current = self._ctx.serializer.serialize(resource)
         self.currentReaderResourceChanged.emit()
+        self.extractionStateChanged.emit()
         if pdf_files.pdf_file_url(resource):
             self._navigate("pdfReader")
-        elif looks_like_remote_pdf(resource.url) and not pdf_files.has_failed(resource.id):
-            # Web PDF'i: once yerel diske indirilir, sonra native okuyucuda acilir.
+        elif pdf_files.remote_pdf_url(resource) and not pdf_files.has_failed(resource.id):
+            # Web PDF'i (URL'si PDF'e benzeyen, daha once PDF oldugu anlasilan ya da acik erisimli kopyasi bulunan
+            # kaynak): once yerel diske indirilir, sonra native okuyucuda acilir.
             self._navigate("pdfReader")
             pdf_files.start_download(resource)
         else:
@@ -119,7 +163,9 @@ class ReaderBridge(QObject):
 
         # Eger tam metin bossa ve url varsa arka planda cikar. Indirilecek web
         # PDF'inde cikarim indirme bitince yerel dosyadan yapilir (cift indirme yok).
-        if not resource.full_text and resource.url and not pdf_files.is_downloading(resource.id):
+        stale = bool(resource.full_text) and resource.full_text.startswith("<h3>Sayfa ") and (resource.extra_metadata or {}).get("reflow") != 2
+        if (not resource.full_text or stale) and resource.url and not pdf_files.is_downloading(resource.id):
+            # `stale`: PDF'ten cikarilmis eski bicimli metin (tum sayfa tek paragraf); yeni paragraf bicimiyle yeniden olusturulur.
             self._ctx.extractor.schedule(resource.id, pdf_files.pdf_file_url(resource) or resource.url)
 
     @Slot()
@@ -170,6 +216,79 @@ class ReaderBridge(QObject):
             self._ctx.notify.error(AppStrings.NOTIFICATION_PDF_DOWNLOAD_FAILED)
             self.refresh_current(resource_id)
             self._navigate("reader")
+
+    # ------------------------------------------------------------------ #
+    # Icerik durumu: yeniden deneme, PDF tespiti, acik erisimli PDF
+    # ------------------------------------------------------------------ #
+
+    def _on_extraction_status(self, resource_id: int) -> None:
+        if self._current.get("id") != resource_id:
+            return
+        self.extractionStateChanged.emit()
+        failed = self._ctx.extractor.state(resource_id) == "failed"
+        if failed and self.readerDoi and resource_id not in self._open_access:
+            self._start_open_access(resource_id)  # yayinci sayfasi acilmadi: acik erisimli kopya kendiliginden aranir
+
+    def _on_pdf_detected(self, resource_id: int) -> None:
+        """Adres bir web sayfasi sanilirken PDF dosyasi cikti: kaynak PDF olarak isaretlenir; okuyucuda aciksa native
+        PDF okuyucusuna gecilir (metin okuyucusundaki kopya yedek olarak kalir)."""
+        resources = self._ctx.controllers.resources
+        resource = resources.get_resource(resource_id)
+        if resource is None:
+            return
+        metadata = dict(resource.extra_metadata or {})
+        if not metadata.get("remote_pdf"):
+            metadata["remote_pdf"] = True
+            resources.update_resource(resource_id, {"extra_metadata": metadata})
+            resource = resources.get_resource(resource_id) or resource
+        pdf_files = self._ctx.pdf_files
+        if self._current.get("id") == resource_id and not pdf_files.pdf_file_url(resource) and not pdf_files.has_failed(resource_id):
+            self._navigate("pdfReader")
+            pdf_files.start_download(resource)
+
+    @Slot()
+    def retryExtraction(self) -> None:
+        """Acik kaynagin metnini yeniden cekmeyi dener."""
+        resource_id = self._current.get("id")
+        url = self._current.get("url")
+        if resource_id and url:
+            self._open_access.pop(resource_id, None)
+            self._ctx.extractor.schedule(resource_id, url)
+
+    @Slot()
+    def findOpenAccessPdf(self) -> None:
+        """Acik kaynagin DOI'si icin acik erisimli bir PDF kopyasi arar (yayinci sayfasi robotlara kapaliysa)."""
+        resource_id = self._current.get("id")
+        if resource_id and self.readerDoi:
+            self._start_open_access(resource_id)
+
+    def _start_open_access(self, resource_id: int) -> None:
+        if self._open_access.get(resource_id) == "searching":
+            return
+        self._open_access[resource_id] = "searching"
+        self.extractionStateChanged.emit()
+        worker = OpenAccessWorker(resource_id, self.readerDoi)
+        worker.signals.finished.connect(self._on_open_access_result)
+        self._ctx.thread_pool.start(worker)
+
+    def _on_open_access_result(self, resource_id: int, pdf_url: str | None) -> None:
+        resources = self._ctx.controllers.resources
+        resource = resources.get_resource(resource_id)
+        if not pdf_url or resource is None:
+            self._open_access[resource_id] = "none"
+            self.extractionStateChanged.emit()
+            return
+        self._open_access[resource_id] = "found"
+        metadata = dict(resource.extra_metadata or {})
+        metadata["oa_pdf_url"] = pdf_url
+        resources.update_resource(resource_id, {"extra_metadata": metadata})
+        pdf_files = self._ctx.pdf_files
+        pdf_files.clear_failed(resource_id)
+        if self._current.get("id") == resource_id:
+            self._navigate("pdfReader")
+            pdf_files.start_download(resources.get_resource(resource_id) or resource, pdf_url)
+            self._ctx.notify.info("Açık erişimli PDF bulundu, indiriliyor.")
+        self.extractionStateChanged.emit()
 
     def _on_full_text_extracted(self, resource_id: int, full_text: str) -> None:
         if self._current.get("id") == resource_id:

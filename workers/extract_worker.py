@@ -6,6 +6,7 @@ from services.article_extraction_service import ArticleExtractionService
 
 class ExtractWorkerSignals(QObject):
     finished = Signal(int, object)  # resource_id, str | None
+    pdfDetected = Signal(int)  # URL web sayfasi sanilirken aslinda bir PDF dosyasiydi
 
 
 class ExtractWorker(QRunnable):
@@ -18,8 +19,11 @@ class ExtractWorker(QRunnable):
         self.signals = ExtractWorkerSignals()
 
     def run(self) -> None:
+        detected_pdf = False
         try:
-            text = ArticleExtractionService().extract_full_text(self._url)
+            service = ArticleExtractionService()
+            text = service.extract_full_text(self._url)
+            detected_pdf = getattr(service, "detected_pdf", False) is True
         except Exception:
             log.exception(
                 "Arka planda tam metin cikarma basarisiz: id=%d url=%s",
@@ -27,4 +31,6 @@ class ExtractWorker(QRunnable):
                 self._url,
             )
             text = None
+        if detected_pdf:
+            self.signals.pdfDetected.emit(self._resource_id)
         self.signals.finished.emit(self._resource_id, text)

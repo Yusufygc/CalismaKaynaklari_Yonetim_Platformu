@@ -15,13 +15,17 @@ Rectangle {
 
     width: drawerWidth
     height: parent.height
-    x: isOpen ? (parent.width - width) : parent.width
+    // Kayma, `reveal` (0 = kapalı, 1 = açık) üzerinden canlandırılır; x doğrudan animasyonlu olsaydı pencere genişletilirken
+    // (parent.width hızla artar, x gecikir) çekmece kapalıyken bile içeri kayıp görünürdü.
+    property real reveal: isOpen ? 1 : 0
+    visible: reveal > 0
+    x: parent.width - width * reveal
     color: Theme.bgElevated
     border.width: 1
     border.color: Theme.borderSubtle
     clip: true
 
-    Behavior on x { NumberAnimation { duration: Theme.animBase; easing.type: Easing.OutCubic } }
+    Behavior on reveal { NumberAnimation { duration: Theme.animBase; easing.type: Easing.OutCubic } }
 
     // Dışarı tıklama / Karartma gölgesi
     Rectangle {

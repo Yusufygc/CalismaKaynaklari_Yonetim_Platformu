@@ -229,6 +229,23 @@ class PdfBridge(QObject):
     def labels(self) -> list:
         return [{"key": label.key, "name": label.name, "color": label.color} for label in LABELS]
 
+    @Slot("QVariantList", result="QVariantMap")
+    def polygonBounds(self, polygons: list) -> dict:
+        """QML'in `PdfSelection.geometry` (QPolygonF listesi; JS'ten okunamaz) cokgenlerinin ortak sinir kutusu:
+        {x, y, width, height}; cokgen yoksa bos sozluk. Secim araci cubugu bunu secili metne binmemek icin kullanir."""
+        left = top = float("inf")
+        right = bottom = float("-inf")
+        for polygon in polygons or []:
+            try:
+                box = polygon.boundingRect()
+            except AttributeError:
+                continue
+            left, top = min(left, box.left()), min(top, box.top())
+            right, bottom = max(right, box.right()), max(bottom, box.bottom())
+        if left == float("inf"):
+            return {}
+        return {"x": left, "y": top, "width": right - left, "height": bottom - top}
+
     @Slot(int, result=bool)
     def openDocument(self, resource_id: int) -> bool:
         self._flush_reading_state()

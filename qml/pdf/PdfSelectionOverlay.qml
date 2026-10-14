@@ -22,6 +22,13 @@ Item {
     // Her popover açılışında artar (bkz. PdfHighlightHits.openCount).
     property int openCount: 0
 
+    // `PdfSelection.geometry` (QPolygonF listesi, piksel; JS'ten okunamaz) -> sınır kutusu (Python'da hesaplanır);
+    // geometri yoksa boş kutu.
+    function boundsOf(geometry) {
+        const box = bridge.pdf.polygonBounds(geometry)
+        return box.width > 0 ? Qt.rect(box.x, box.y, box.width, box.height) : Qt.rect(0, 0, 0, 0)
+    }
+
     anchors.fill: parent
     z: 20
 
@@ -33,8 +40,8 @@ Item {
         objectName: "newHighlightToolbar"
         visible: root.pdfSelection.hold && root.pdfSelection.text.trim().length > 0
         z: 20
-        implicitWidth: (root.relinkTargetId > 0 ? relinkButton.implicitWidth : newHighlightRow.implicitWidth) + 16
-        implicitHeight: 36
+        implicitWidth: (root.relinkTargetId > 0 ? relinkButton.implicitWidth : newHighlightRow.implicitWidth) + 24
+        implicitHeight: 44
         radius: Theme.radiusPill
         color: Theme.popoverBg
         border.width: 1
@@ -49,11 +56,15 @@ Item {
         property point capturedFrom: Qt.point(0, 0)
         property point capturedTo: Qt.point(0, 0)
         property string capturedText: ""
+        // Seçilen metnin gerçek sınır kutusu (piksel): çubuk, seçimin ilk satırının merkezine değil kutunun
+        // üstüne/altına yerleşir, böylece seçili ya da komşu satırların üstüne binmez.
+        property rect capturedBounds: Qt.rect(0, 0, 0, 0)
         onVisibleChanged: {
             if (visible) {
                 capturedFrom = root.pdfSelection.from
                 capturedTo = root.pdfSelection.to
                 capturedText = root.pdfSelection.text
+                capturedBounds = root.boundsOf(root.pdfSelection.geometry)
             }
         }
 
@@ -68,15 +79,21 @@ Item {
             return { page: page, fromX: pointFrom.x, fromY: pointFrom.y, toX: pointTo.x, toY: pointTo.y }
         }
 
-        property real selectionCenterX: (capturedFrom.x + capturedTo.x) / 2
-        property real selectionTopY: Math.min(capturedFrom.y, capturedTo.y)
-        property real selectionBottomY: Math.max(capturedFrom.y, capturedTo.y)
-        property bool fitsAbove: selectionTopY - height - 10 >= 0
+        readonly property bool hasBounds: capturedBounds.width > 0 && capturedBounds.height > 0
+        property real selectionCenterX: hasBounds ? capturedBounds.x + capturedBounds.width / 2 : (capturedFrom.x + capturedTo.x) / 2
+        property real selectionTopY: hasBounds ? capturedBounds.y : Math.min(capturedFrom.y, capturedTo.y)
+        property real selectionBottomY: hasBounds ? capturedBounds.y + capturedBounds.height : Math.max(capturedFrom.y, capturedTo.y)
+        property bool fitsAbove: selectionTopY - height - 8 >= 0
 
         x: Math.max(0, Math.min(selectionCenterX - width / 2, parent.width - width))
         y: {
-            if (fitsAbove) return selectionTopY - height - 10
-            return Math.min(selectionBottomY + 10, parent.height - height)
+            if (fitsAbove) return selectionTopY - height - 8
+            return Math.min(selectionBottomY + 8, parent.height - height)
+        }
+
+        // Çubuğun boş yerlerine basmak seçimi kaldırmasın
+        MouseArea {
+            anchors.fill: parent
         }
 
         AppButton {
@@ -100,15 +117,27 @@ Item {
             id: newHighlightRow
             visible: root.relinkTargetId === 0
             anchors.centerIn: parent
+            height: parent.height
             spacing: 8
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Vurgula:"
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontXs
+                font.weight: Font.DemiBold
+                color: Theme.textSecondary
+            }
 
             Repeater {
                 model: bridge.pdf.labels
                 delegate: Rectangle {
                     required property var modelData
-                    width: 22
-                    height: 22
-                    radius: 11
+                    anchors.verticalCenter: parent.verticalCenter
+                    objectName: "pdfHighlightDot"
+                    width: 24
+                    height: 24
+                    radius: 12
                     color: modelData.color
                     border.width: 1
                     border.color: Theme.swatchBorderLight
@@ -139,8 +168,11 @@ Item {
 
             AppIconButton {
                 anchors.verticalCenter: parent.verticalCenter
+                objectName: "pdfAddTermButton"
                 iconName: "fa5s.language"
-                iconSize: 13
+                iconSize: 15
+                implicitWidth: 32
+                implicitHeight: 32
                 tooltip: "Kelime Havuzuna Ekle"
                 onClicked: {
                     newVocabPopover.word = newHighlightToolbar.capturedText.trim()

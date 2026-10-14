@@ -185,3 +185,25 @@ def test_extract_full_text_sanitizes_lone_surrogates_from_broken_pdf_fonts(monke
     assert result is not None
     result.encode("utf-8")  # UnicodeEncodeError firlatirsa test kirmizi olur
     assert chr(0xD835) not in result
+
+
+def test_a_pdf_served_from_a_page_url_is_detected_as_pdf_and_reflowed(monkeypatch):
+    """DergiPark gibi sitelerde `.pdf` uzantisi olmayan adres dogrudan PDF dosyasi verebilir."""
+    monkeypatch.setattr(
+        "services.article_extraction_service.requests.get",
+        lambda *args, **kwargs: FakeResponse(content=build_text_pdf(["Birinci cumle burada biter.", "Ikinci cumle devam eder."]), url="https://dergipark.org.tr/tr/download/article-file/1"),
+    )
+    service = ArticleExtractionService()
+    assert service.detected_pdf is False
+
+    result = service.extract_full_text("https://dergipark.org.tr/tr/download/article-file/1")
+
+    assert service.detected_pdf is True and result.startswith("<h3>Sayfa 1</h3>")
+
+
+def test_a_normal_html_page_is_not_flagged_as_pdf(monkeypatch):
+    monkeypatch.setattr("services.article_extraction_service.requests.get", lambda *args, **kwargs: FakeResponse(text="<html></html>"))
+    monkeypatch.setattr("services.article_extraction_service.trafilatura.extract", lambda *args, **kwargs: "<p>metin</p>")
+    service = ArticleExtractionService()
+
+    assert service.extract_full_text("https://example.com/yazi") == "<p>metin</p>" and service.detected_pdf is False

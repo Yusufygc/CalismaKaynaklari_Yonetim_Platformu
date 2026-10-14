@@ -83,7 +83,8 @@ def test_drag_selection_on_a_rotated_page_saves_the_word_and_places_the_highligh
 
     _drag(window, *_word_drag_points(rect, rotation, x_left, y_top, scale))
     toolbar = next(i for i in walk(window.contentItem()) if i.objectName() == "newHighlightToolbar" and i.isVisible())
-    scene = toolbar.mapToScene(QPointF(19, toolbar.property("height") / 2))
+    dot = next(i for i in walk(toolbar) if i.objectName() == "pdfHighlightDot")  # ilk renk (Onemli)
+    scene = dot.mapToScene(QPointF(dot.width() / 2, dot.height() / 2))
     QTest.mouseClick(window, Qt.LeftButton, Qt.NoModifier, QPoint(int(scene.x()), int(scene.y())))
     pump(qapp, 40)
 

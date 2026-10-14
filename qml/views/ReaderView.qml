@@ -210,16 +210,104 @@ Item {
                     }
 
                     // Makale İçeriği (HTML / RichText Destekli)
+                    // Metin henüz yokken: çekiliyor mu, bulunamadı mı? (aksiyonlarla)
+                    Column {
+                        id: statusPanel
+                        objectName: "readerStatusPanel"
+                        visible: bridge.reader.extractionState !== "ready"
+                        width: parent.width
+                        spacing: 12
+                        topPadding: 8
+
+                        readonly property string phase: bridge.reader.extractionState
+                        readonly property bool busy: phase === "pending" || phase === "searching"
+
+                        Row {
+                            spacing: 10
+                            BusyIndicator {
+                                running: statusPanel.busy
+                                visible: statusPanel.busy
+                                width: 22
+                                height: 22
+                            }
+                            AppIcon {
+                                visible: !statusPanel.busy
+                                anchors.verticalCenter: parent.verticalCenter
+                                name: "fa5s.exclamation-circle"
+                                size: 16
+                                color: Theme.textMuted
+                            }
+                            Text {
+                                objectName: "readerStatusText"
+                                anchors.verticalCenter: parent.verticalCenter
+                                font.family: Theme.fontHeading
+                                font.pixelSize: Theme.fontMd
+                                font.weight: Font.DemiBold
+                                color: Theme.textPrimary
+                                text: {
+                                    switch (statusPanel.phase) {
+                                    case "pending": return "İçerik çekiliyor…"
+                                    case "searching": return "Açık erişimli PDF aranıyor…"
+                                    case "noOpenAccess": return "Bu makalenin açık erişimli bir kopyası bulunamadı"
+                                    case "failed": return "Sayfanın metni alınamadı"
+                                    default: return "Henüz metin yok"
+                                    }
+                                }
+                            }
+                        }
+
+                        Text {
+                            width: parent.width
+                            wrapMode: Text.Wrap
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSm
+                            color: Theme.textSecondary
+                            visible: !statusPanel.busy
+                            text: {
+                                if (statusPanel.phase === "noOpenAccess")
+                                    return "Yayıncı sayfası otomatik okumaya kapalı ve DOI için ücretsiz bir PDF bulunamadı. Makaleyi tarayıcıda açıp kendi PDF'ini indirebilir, sonra \"Bilgisayardan PDF Yükle\" ile ekleyebilirsin."
+                                if (bridge.reader.readerDoi !== "")
+                                    return "Yayıncı sayfaları (örneğin Elsevier, Springer) robotların okumasına izin vermeyebilir. Makalenin DOI'si var; ücretsiz (açık erişimli) bir PDF kopyası arayabilirsin."
+                                return "Site otomatik okumaya izin vermiyor olabilir ya da sayfada okunacak makale metni yok. Tekrar deneyebilir ya da sayfayı tarayıcıda açabilirsin."
+                            }
+                        }
+
+                        Row {
+                            spacing: 8
+                            visible: !statusPanel.busy
+                            AppButton {
+                                objectName: "findOpenAccessButton"
+                                visible: bridge.reader.readerDoi !== "" && statusPanel.phase !== "noOpenAccess"
+                                text: "Açık erişimli PDF ara"
+                                iconName: "fa5s.file-pdf"
+                                variant: "primary"
+                                onClicked: bridge.reader.findOpenAccessPdf()
+                            }
+                            AppButton {
+                                objectName: "retryExtractionButton"
+                                text: "Yeniden dene"
+                                iconName: "fa5s.redo"
+                                variant: "secondary"
+                                onClicked: bridge.reader.retryExtraction()
+                            }
+                            AppButton {
+                                objectName: "openInBrowserButton"
+                                text: "Tarayıcıda aç"
+                                iconName: "fa5s.external-link-alt"
+                                variant: "ghost"
+                                onClicked: if (root.resource && root.resource.url) Qt.openUrlExternally(root.resource.url)
+                            }
+                        }
+                    }
+
                     TextEdit {
                         id: textContent
+                        objectName: "readerText"
+                        visible: bridge.reader.extractionState === "ready"
                         width: parent.width
                         textFormat: TextEdit.RichText
-                        text: {
-                            if (!root.resource) return ""
-                            if (root.resource.fullText) return root.resource.fullText
-                            if (root.resource.content) return "<p>" + root.resource.content + "</p>"
-                            return "<p><i>İçerik çekiliyor veya metin bulunamadı...</i></p>"
-                        }
+                        text: bridge.reader.readerHtml
+                        persistentSelection: true  // renk düğmesine basılırken seçim kaybolmasın
                         font.family: Theme.fontFamily
                         font.pixelSize: root.baseFontSize + root.zoomLevel * 2
                         color: Theme.textPrimary
@@ -239,20 +327,36 @@ Item {
             // 3. Kindle/Notion Tarzı Yüzen Seçim Araç Çubuğu (Selection Bar)
             Rectangle {
                 id: selectionBar
-                visible: textContent.selectedText.trim().length > 0
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: 24
-                anchors.horizontalCenter: parent.horizontalCenter
-                implicitWidth: selRow.implicitWidth + 20
-                implicitHeight: 40
+                objectName: "selectionBar"
+                // Seçili metnin hemen üstünde (yer yoksa altında) durur; kaydırınca seçimle birlikte hareket eder.
+                readonly property bool hasSelection: textContent.visible && textContent.selectedText.trim().length > 0
+                readonly property rect startRect: textContent.positionToRectangle(textContent.selectionStart)
+                readonly property rect endRect: textContent.positionToRectangle(textContent.selectionEnd)
+                readonly property point startPoint: { flickable.contentY; return textContent.mapToItem(parent, startRect.x, startRect.y) }
+                readonly property point endPoint: { flickable.contentY; return textContent.mapToItem(parent, endRect.x, endRect.y) }
+                readonly property real aboveY: startPoint.y - height - 8
+                visible: hasSelection && endPoint.y + endRect.height > 0 && startPoint.y < parent.height
+                implicitWidth: selRow.implicitWidth + 24
+                implicitHeight: 44
+                width: implicitWidth
+                height: implicitHeight
+                x: Math.max(8, Math.min(parent.width - width - 8, startPoint.x))
+                y: Math.max(8, Math.min(parent.height - height - 8, aboveY >= 8 ? aboveY : endPoint.y + endRect.height + 8))
+                z: 5
                 radius: Theme.radiusPill
                 color: Theme.bgElevated
                 border.width: 1
                 border.color: Theme.borderStrong
 
+                // Çubuğun boş yerlerine basmak seçimi kaldırmasın
+                MouseArea {
+                    anchors.fill: parent
+                }
+
                 Row {
                     id: selRow
                     anchors.centerIn: parent
+                    height: parent.height
                     spacing: 8
 
                     Text {
@@ -268,6 +372,8 @@ Item {
                     Repeater {
                         model: Theme.highlightPalette
                         Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            objectName: "highlightColorDot"
                             width: 22
                             height: 22
                             radius: 11
@@ -281,7 +387,7 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     if (root.resource) {
-                                        bridge.annotations.addHighlight(root.resource.id, textContent.selectedText, modelData, -1, -1, -1)
+                                        bridge.annotations.addHighlight(root.resource.id, textContent.selectedText, modelData)
                                         textContent.deselect()
                                     }
                                 }
@@ -298,6 +404,7 @@ Item {
 
                     // Kelime Olarak Ekle Butonu
                     AppButton {
+                        anchors.verticalCenter: parent.verticalCenter
                         text: "Kelime Havuzuna Ekle"
                         iconName: "fa5s.language"
                         variant: "subtle"

@@ -12,6 +12,7 @@ from PySide6.QtCore import QObject, QTimer, QUrl, Signal
 from core.logger import log
 from core.paths import pdf_storage_dir
 from models import Resource
+from services.pdf_download_service import looks_like_remote_pdf
 
 if TYPE_CHECKING:
     from ui_qml.context import BridgeContext
@@ -86,11 +87,24 @@ class PdfFileManager(QObject):
     # Indirme
     # ------------------------------------------------------------------ #
 
-    def start_download(self, resource: Resource) -> None:
-        if resource.id in self._downloads_in_progress or not resource.url:
+    @staticmethod
+    def remote_pdf_url(resource: Resource) -> str | None:
+        """Kaynagin indirilecek web PDF adresi: URL'nin kendisi PDF'e benziyorsa o; degilse bulunmus acik erisimli kopya
+        (`extra_metadata["oa_pdf_url"]`) ya da cikarimin PDF oldugunu gordugu URL (`extra_metadata["remote_pdf"]`)."""
+        meta = resource.extra_metadata or {}
+        if looks_like_remote_pdf(resource.url):
+            return resource.url
+        if meta.get("oa_pdf_url"):
+            return str(meta["oa_pdf_url"])
+        return resource.url if meta.get("remote_pdf") and resource.url else None
+
+    def start_download(self, resource: Resource, url: str | None = None) -> None:
+        """Web PDF'ini indirir; `url` verilmezse `remote_pdf_url(resource)`."""
+        target = url or self.remote_pdf_url(resource) or resource.url
+        if resource.id in self._downloads_in_progress or not target:
             return
         self._downloads_in_progress.add(resource.id)
-        self._ctx.pdf_library.download_remote(resource.id, resource.url)
+        self._ctx.pdf_library.download_remote(resource.id, target)
 
     def on_download_finished(self, resource_id: int, path: Path | None) -> None:
         """`PdfLibrary.downloadFinished` sonucu: depodaki dosya yolu ya da basarisizlik (None)."""

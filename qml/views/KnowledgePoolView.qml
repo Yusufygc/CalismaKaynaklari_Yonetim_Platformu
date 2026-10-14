@@ -27,21 +27,29 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        // 1. Üst Bar: Sekmeler ve Arama
+        // 1. Üst Bar: Sekmeler, Arama ve dışa aktarma. Dar pencerede sekmeler ve arama küçülür, dışa aktarma düğmesi
+        // yalnız simgeye iner; böylece hiçbiri üst üste binmez (en küçük pencere 960 px).
         Item {
+            id: topBar
             width: parent.width
             height: 64
+            readonly property bool compactExport: width < 1100
+            readonly property int exportWidth: compactExport ? 36 : exportButton.implicitWidth
+            readonly property int available: width - 48 - exportWidth - 32  // iki boşluk (16) ve sağdaki düğme payı
+            readonly property int tabsWidth: Math.round(Math.min(540, available * 0.66))
+            readonly property int searchWidth: Math.max(150, Math.min(280, available - tabsWidth))
 
             Row {
-                anchors.fill: parent
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
                 anchors.leftMargin: 24
-                anchors.rightMargin: 24
                 spacing: 16
 
                 // Sekme Butonları (Pill Bar)
                 Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 540
+                    width: topBar.tabsWidth
                     height: 36
                     radius: Theme.radiusSm
                     color: Theme.bgElevated
@@ -200,7 +208,7 @@ Item {
                 // Arama Kutusu
                 AppSearchBar {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 280
+                    width: topBar.searchWidth
                     placeholder: root.activeTab === 0 ? "Alıntılarda ara..." : (root.activeTab === 1 ? "Kelimelerde ara..." : (root.activeTab === 2 ? "PDF'lerin içinde ara..." : "Kaynak ara (başlık, atıf anahtarı)..."))
                     onSearchChanged: function(q) { root.searchQuery = TextUtils.foldTr(q); root.rawQuery = q }
                     onSearchCleared: { root.searchQuery = ""; root.rawQuery = "" }
@@ -209,12 +217,30 @@ Item {
 
             // Tüm kütüphanenin alıntı/not/kelimelerini tek Markdown'a aktar (literatür taraması)
             AppButton {
+                id: exportButton
+                objectName: "libraryExportButton"
+                visible: !topBar.compactExport
                 anchors.right: parent.right
                 anchors.rightMargin: 24
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Tümünü Dışa Aktar (.md)"
                 iconName: "fa5s.file-export"
                 variant: "subtle"
+                onClicked: libraryExportDialog.open()
+            }
+
+            AppIconButton {
+                objectName: "libraryExportIconButton"
+                visible: topBar.compactExport
+                anchors.right: parent.right
+                anchors.rightMargin: 24
+                anchors.verticalCenter: parent.verticalCenter
+                iconName: "fa5s.file-export"
+                iconSize: 14
+                implicitWidth: 36
+                implicitHeight: 36
+                tooltip: "Tümünü Dışa Aktar (.md)"
+                tooltipPosition: "bottom"
                 onClicked: libraryExportDialog.open()
             }
 

@@ -220,7 +220,13 @@ def test_pdf_reader_drag_selection_highlights_exactly_the_selected_word(qapp, br
 
         toolbar = next(i for i in walk(window.contentItem()) if i.objectName() == "newHighlightToolbar" and i.isVisible())
         from PySide6.QtCore import QPoint, QPointF
-        scene = toolbar.mapToScene(QPointF(19, toolbar.property("height") / 2))
+        dot = next(i for i in walk(toolbar) if i.objectName() == "pdfHighlightDot")  # ilk renk (Onemli)
+        bounds = toolbar.property("capturedBounds")
+        assert bounds.width() > 0 and bounds.height() > 0  # secimin gercek sinir kutusu yakalandi
+        above, below = toolbar.y() + toolbar.height() <= bounds.y(), toolbar.y() >= bounds.y() + bounds.height()
+        assert above or below, "arac cubugu secili metnin ustune binmemeli"
+        assert abs(dot.mapToScene(dot.boundingRect().center()).y() - toolbar.mapToScene(toolbar.boundingRect().center()).y()) <= 2  # dikey ortada
+        scene = dot.mapToScene(QPointF(dot.width() / 2, dot.height() / 2))
         QTest.mouseClick(window, Qt.LeftButton, Qt.NoModifier, QPoint(int(scene.x()), int(scene.y())))
         pump(qapp, 30)
 
@@ -344,3 +350,31 @@ def test_video_cards_show_a_play_badge_and_the_drawer_offers_to_open_the_video(q
     pump(qapp, 30)
     button = find_item(window, lambda i: i.objectName() == "openReaderButton")
     assert button.property("text") == "Videoyu Aç" and engine.captured_warnings == []
+
+
+def _walk_all(window):
+    from tests.test_qml.qml_harness import walk
+    return list(walk(window.contentItem()))
+
+
+def test_knowledge_pool_top_bar_never_overlaps_at_any_window_width(qapp, bridge):
+    for window_width in (960, 1078, 1280, 1700):
+        engine, window = open_window(qapp, bridge, "knowledge", width=window_width, height=800)
+        pump(qapp, 20)
+        top = next(i for i in _walk_visible(window) if i.property("tabsWidth") is not None)
+        tabs, search, export_width = top.property("tabsWidth"), top.property("searchWidth"), top.property("exportWidth")
+        assert tabs >= 380 and search >= 150
+        assert 24 + tabs + 16 + search + 16 <= top.width() - 24 - export_width, (window_width, tabs, search, export_width)
+        assert engine.captured_warnings == []
+
+
+def test_the_closed_inspector_drawer_stays_hidden_while_the_window_is_widened(qapp, bridge):
+    engine, window = open_window(qapp, bridge, "showcase", width=1100, height=800)
+    drawer = next(i for i in _walk_all(window) if i.property("drawerWidth") is not None)
+    assert not drawer.isVisible() and drawer.x() >= drawer.parent().width()
+
+    for width in (1200, 1400, 1700):
+        window.setWidth(width)
+        qapp.processEvents()  # animasyon beklenmeden: kapali cekmece her adimda ekranin disinda
+        assert not drawer.isVisible() and drawer.x() >= drawer.parent().width()
+    assert engine.captured_warnings == []

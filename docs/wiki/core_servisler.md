@@ -112,6 +112,9 @@ Aynı desen: `create_vocabulary(resource_id, word, translation, context_sentence
 
 **Test kapsamı:** `tests/test_core/test_net_utils.py` (SSRF koruması, 13 test), `tests/test_services/test_article_extraction_service.py` (HTML/PDF çıkarım, redirect takibi, SSRF blok, 9+ test).
 
+### OpenAccessService — `services/open_access_service.py` (2026-10-13)
+DOI'si olan makalenin açık erişimli PDF kopyasını OpenAlex'ten (`best_oa_location.pdf_url`, yoksa açık konumlardan biri) bulur. Hedef host sabit (api.openalex.org), girdi yalnız doğrulanmış DOI; yalnız http(s) adres döner; ağ/API hatasında ve kopya yoksa `None`. `OpenAccessWorker` arka planda çalıştırır; `ReaderBridge` yayıncı sayfası okunamayınca kendiliğinden kullanır. `ArticleExtractionService` PDF içeriğini `utils/pdf_reflow.py` ile paragraflara böler ve `detected_pdf` ile PDF olduğunu bildirir.
+
 ### PaperMarketService — `services/paper_market_service.py` (2026-09-28)
 Konu bazlı akademik makale araması. [OpenAlex Works API](https://api.openalex.org) — ücretsiz, API key yok. Sabit/güvenilir bir host'a sorgu atıldığı için `is_blocked_host` SSRF kontrolüne gerek yok (kullanıcı girdisi arama metni, URL değil). `search(topic) -> {"recent": [...], "popular": [...], "cited": [...]}` — üç ayrı sıralama (`publication_date:desc` / relevance / `cited_by_count:desc`), her biri kendi try/except'inde (biri başarısız olursa diğerleri etkilenmez). `abstract_inverted_index` (OpenAlex'in kelime→pozisyon ters-indeks formatı) düz metne çevrilir. URL seçimi: `pdf_url` → `landing_page_url` → `doi` → hiçbiri yoksa sonuç elenir (kaydedilemeyecek bir sonucu göstermenin anlamı yok). Anonim havuzda 429 (rate limit) canlı testte gözlendi — bir kez kısa bekleyip yeniden dener.
 

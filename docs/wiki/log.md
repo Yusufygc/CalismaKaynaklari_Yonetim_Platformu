@@ -4,6 +4,12 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-13] FIX | Okuyucu: vurgulama, içerik durumu, açık erişimli PDF, PDF metni, seçim çubukları (`ui` dalı)
+
+Metin okuyucusunda vurgulama QML-slot argüman uyumsuzluğundan çalışmıyordu; düzeltildi, alıntılar metinde boyanıyor ve seçim çubuğu seçimin yanında. "İçerik çekiliyor veya metin bulunamadı" sonsuz mesajı yerine durum paneli ve eylemler; DOI'li kaynakta yayıncı sayfası okunamazsa OpenAlex'ten açık erişimli PDF aranıp native okuyucuda açılıyor (kullanıcının Elsevier DOI'si için arXiv kopyası bulundu). `.pdf` uzantısız ama aslında PDF olan adresler (DergiPark) native PDF okuyucusuna yönleniyor; metin okuyucusundaki PDF metni paragraflara bölünüyor (tire birleştirme, ust/alt bilgi atma). Bilgi Havuzu üst çubuğu çakışması, çekmecenin pencere genişletilirken görünmesi ve PDF seçim çubuğunun hizası/konumu düzeltildi. Test 1151+. Ayrıntı: [[qml_arayuz]], [[core_servisler]].
+
+---
+
 ## [2026-10-13] FEAT | Yazı tipleri uygulamayla paketlendi (`ui` dalı)
 
 Kullanıcı onayıyla Google Fonts'tan (SIL OFL) 10 aile indirilip `assets/fonts/` altına konuldu (≈ 11 MB; Inter, EB Garamond, Lato, Playfair Display, Source Sans 3, Source Serif 4, Cormorant Garamond, IBM Plex Sans/Serif, Montserrat; lisanslar `LICENSES.txt`). `core/fonts.py` uygulama açılışında kaydeder; Görünüm'deki varsayılan dışı tüm yazı tipi çiftleri artık kurulum gerektirmez. Merriweather çok büyük olduğundan (4,6 MB) paketlenmedi. Test 1120. Ayrıntı: [[qml_arayuz]].

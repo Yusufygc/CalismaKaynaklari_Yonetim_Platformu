@@ -48,7 +48,8 @@ class Reader:
 
     def click_first_swatch(self):
         toolbar = self.toolbar()
-        scene = toolbar.mapToScene(QPointF(19, toolbar.property("height") / 2))
+        dot = next(i for i in walk(toolbar) if i.objectName() == "pdfHighlightDot")  # ilk renk
+        scene = dot.mapToScene(QPointF(dot.width() / 2, dot.height() / 2))
         QTest.mouseClick(self.window, Qt.LeftButton, Qt.NoModifier, QPoint(int(scene.x()), int(scene.y())))
         pump(self.app, 30)
 
