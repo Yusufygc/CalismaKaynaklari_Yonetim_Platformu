@@ -38,11 +38,12 @@
 |-------|------|
 | [[qml_arayuz]] | QML/QtQuick mimarisi: Notion/Linear tasarım dili, Slide-over Inspector, QmlBridge, ResourceListModel |
 
-## Altyapı
+## Altyapı ve Dağıtım
 
 | Sayfa | Özet |
 |-------|------|
 | [[event_bus]] | Singleton+Observer event sistemi, sinyaller, emit/connect kuralları |
+| [[exe_dagitim_ve_guncelleme]] | Kararlı exe (deterministic launcher), Smart App Control koruması, Inno Setup, GitHub Actions yayını ve uygulama içi güncelleme |
 
 ## Meta
 

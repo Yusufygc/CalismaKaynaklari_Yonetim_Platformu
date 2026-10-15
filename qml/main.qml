@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Window
 import "theme"
 import "components"
+import "dialogs"
 import "pdf"
 import "views"
 
@@ -66,7 +67,9 @@ ApplicationWindow {
     Shortcut {
         sequence: "Esc"
         onActivated: {
-            if (formModal.isOpen) {
+            if (updateDialog.opened && !bridge.update.isDownloading) {
+                updateDialog.close()
+            } else if (formModal.isOpen) {
                 formModal.closeModal()
             } else if (bridge.library.isDrawerOpen) {
                 bridge.library.closeDrawer()
@@ -170,6 +173,18 @@ ApplicationWindow {
         // 4. Yeni / Düzenle Kaynak Modalı
         ResourceFormModal {
             id: formModal
+        }
+
+        // Güncelleme Modalı
+        UpdateDialog {
+            id: updateDialog
+        }
+
+        Connections {
+            target: bridge.update
+            function onUpdateDialogRequested() {
+                updateDialog.open()
+            }
         }
 
         // 5. Toast Bildirim Rozeti (Sağ Altta Modern Bildirim)

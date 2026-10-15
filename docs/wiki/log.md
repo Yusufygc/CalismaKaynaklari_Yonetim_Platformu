@@ -4,6 +4,18 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-15] FEAT | Prod hazırlığı: Kararlı exe, Inno Setup, sürümleme ve uygulama içi güncelleme sistemi
+
+`C:\2UYGULAMALAR\D002-HazirPromptlar\Prod hazırlığı` rehberleri doğrultusunda prod dağıtım ve otomatik güncelleme mimarisi entegre edildi:
+1. **Kararlı Exe (Deterministic Launcher):** Smart App Control (SAC) engellerini aşmak için sabit 3 satırlık `packaging/launcher.py`, `LAUNCHER_EPOCH=1700000000`, PyInstaller `--debug=noarchive` (`_internal` .pyc yapısı) ve sabit `1.0.0.0` Windows PE sürüm bilgisi (`packaging/launcher_version_info.txt`) kuruldu. Onay kapısı `packaging/launcher.sha256` ile doğrulanır (`build_exe.py`).
+2. **Inno Setup 6:** `packaging/P011_KaynakYonetim.iss` ile kullanıcı yetkisi düzeyinde (`PrivilegesRequired=lowest` -> `%LOCALAPPDATA%\Programs`) kurulum hazırlandı. Sessiz güncelleme sonrası otomatik yeniden başlatma (`Check: RelaunchAfterUpdate`) ve çalışan uygulamayı kapatma eklendi.
+3. **Doğrulama ve Orkestrasyon:** `build_verify.py` (Registry korumalı sessiz test kurulumu, exe launch testi, kaldırıcı testi) ve `build_installer.py` (tek komutla derleme ve `.sha256` üretimi) oluşturuldu.
+4. **Sürümleme ve CI/CD:** Tek sürüm kaynağı `core/version.py` (`__version__ = "1.0.0"`, `RELEASE_REPO = "Yusufygc/CalismaKaynaklari_Yonetim_Platformu"`), `tools/release.py` (sürüm yükseltme, etiket ve `--check-tag`) ve GitHub Actions `.github/workflows/release.yml` eklendi.
+5. **Uygulama İçi Güncelleme:** `services/update_service.py`, `workers/update_worker.py`, `ui_qml/bridges/update_bridge.py`, `qml/dialogs/UpdateDialog.qml` ve Ayarlar ekranına `UpdateSettingsPanel.qml` (7. sekme) eklendi. Zorunlu SHA-256 doğrulama, URL/dosya adı güvenlik filtreleri ve SAC engeline karşı 15 sn x 40 döngülü otomatik yeniden deneme mekanizması kuruldu.
+Ayrıntı: [[exe_dagitim_ve_guncelleme]].
+
+---
+
 ## [2026-10-15] FIX | Konsol uyarıları: eksik glif, pencere geometrisi (`ui` dalı)
 
 Konsola basılan `DirectWrite: CreateFontFaceFromHDC() failed ... Fixedsys/8514oem` uyarısı, Market yazar süzgeci çipindeki `✕` (U+2715) simgesinin hiçbir tema yazı tipinde bulunmamasından geliyordu (Windows eksik glif için eski bitmap yazı tiplerinde yedek arar); `×` (U+00D7) ile değiştirildi, `tests/test_qml/test_glyphs.py` QML metinlerinde güvenli listede olmayan simgeyi engeller. `QWindowsWindow::setGeometry: Unable to set geometry` uyarısı, 1280x800 mantıksal (2560x1600 fiziksel) ekranda 800 px'lik pencerenin kullanılabilir alana (752 px) sığmamasındandı; `main.qml` açılışta boyutu `Screen.desktopAvailable*`'a sığdırıp çerçeveyi ortalıyor. Kalan: kaynağı kapalı PDF adreslerinin 404'ü (veri sorunu, kaynak her açılışta bir kez denenir) ve `QIODevice::read (QSslSocket): device not open` (uzak küçük resim yüklenirken kart yok olunca Qt'nin zararsız iletisi). Ayrıntı: [[qml_arayuz]].

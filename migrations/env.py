@@ -1,5 +1,8 @@
 import sys
-from logging.config import fileConfig
+try:
+    from logging.config import fileConfig
+except ImportError:
+    fileConfig = None
 from pathlib import Path
 
 from sqlalchemy import engine_from_config
@@ -29,8 +32,11 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name, disable_existing_loggers=False)
+if fileConfig is not None and config.config_file_name is not None and config.attributes.get("configure_logger", True):
+    try:
+        fileConfig(config.config_file_name, disable_existing_loggers=False)
+    except Exception:
+        pass
 
 # Uygulamanin gercek DB URL'i (core/config.py) tek dogruluk kaynagi;
 # alembic.ini'deki sqlalchemy.url yer tutucusunu ezer.

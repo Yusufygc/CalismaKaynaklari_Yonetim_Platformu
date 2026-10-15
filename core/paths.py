@@ -56,3 +56,17 @@ def pdf_storage_dir() -> Path:
     target = user_data_dir() / "pdfs"
     target.mkdir(parents=True, exist_ok=True)
     return target
+
+
+def updates_file_path() -> Path:
+    """Guncelleme ayarlari ve atlanan surum bilgisinin tutuldugu JSON dosyasi."""
+    return user_data_dir() / "updates.json"
+
+
+def update_download_dir() -> Path:
+    """Guncelleme kurulum dosyasinin indirildigi gecici dizin."""
+    import tempfile
+
+    target = Path(tempfile.gettempdir()) / "KaynakYonetimPlatformuUpdate"
+    target.mkdir(parents=True, exist_ok=True)
+    return target

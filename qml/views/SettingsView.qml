@@ -7,7 +7,7 @@ import "../theme"
 Item {
     id: root
 
-    property int activeTab: 0 // 0: Kategoriler, 1: Etiketler, 2: Obsidian, 3: Künye, 4: Matris, 5: Görünüm
+    property int activeTab: 0 // 0: Kategoriler, 1: Etiketler, 2: Obsidian, 3: Künye, 4: Matris, 5: Görünüm, 6: Güncellemeler
     property string newCategoryColor: Theme.accent
 
     // Silme onayı bekleyen öğe: kind "category" | "tag"
@@ -52,7 +52,7 @@ Item {
                 spacing: 16
 
                 Rectangle {
-                    width: 780
+                    width: 920
                     height: 36
                     radius: Theme.radiusSm
                     color: Theme.bgElevated
@@ -65,7 +65,7 @@ Item {
                         spacing: 4
 
                         Rectangle {
-                            width: (parent.width - 20) / 6
+                            width: (parent.width - 24) / 7
                             height: parent.height
                             radius: Theme.radiusXs
                             color: root.activeTab === 0 ? Theme.bgSurface : "transparent"
@@ -99,7 +99,7 @@ Item {
                         }
 
                         Rectangle {
-                            width: (parent.width - 20) / 6
+                            width: (parent.width - 24) / 7
                             height: parent.height
                             radius: Theme.radiusXs
                             color: root.activeTab === 1 ? Theme.bgSurface : "transparent"
@@ -134,7 +134,7 @@ Item {
 
                         Rectangle {
                             objectName: "vaultTab"
-                            width: (parent.width - 20) / 6
+                            width: (parent.width - 24) / 7
                             height: parent.height
                             radius: Theme.radiusXs
                             color: root.activeTab === 2 ? Theme.bgSurface : "transparent"
@@ -169,7 +169,7 @@ Item {
 
                         Rectangle {
                             objectName: "metadataTab"
-                            width: (parent.width - 20) / 6
+                            width: (parent.width - 24) / 7
                             height: parent.height
                             radius: Theme.radiusXs
                             color: root.activeTab === 3 ? Theme.bgSurface : "transparent"
@@ -204,7 +204,7 @@ Item {
 
                         Rectangle {
                             objectName: "matrixSettingsTab"
-                            width: (parent.width - 20) / 6
+                            width: (parent.width - 24) / 7
                             height: parent.height
                             radius: Theme.radiusXs
                             color: root.activeTab === 4 ? Theme.bgSurface : "transparent"
@@ -239,7 +239,7 @@ Item {
 
                         Rectangle {
                             objectName: "appearanceTab"
-                            width: (parent.width - 20) / 6
+                            width: (parent.width - 24) / 7
                             height: parent.height
                             radius: Theme.radiusXs
                             color: root.activeTab === 5 ? Theme.bgSurface : "transparent"
@@ -269,6 +269,41 @@ Item {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: root.activeTab = 5
+                            }
+                        }
+
+                        Rectangle {
+                            objectName: "updateTab"
+                            width: (parent.width - 24) / 7
+                            height: parent.height
+                            radius: Theme.radiusXs
+                            color: root.activeTab === 6 ? Theme.bgSurface : "transparent"
+                            border.width: root.activeTab === 6 ? 1 : 0
+                            border.color: Theme.borderStrong
+
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: 6
+                                AppIcon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    name: "fa5s.sync-alt"
+                                    size: 11
+                                    color: root.activeTab === 6 ? Theme.accentText : Theme.textSecondary
+                                }
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Güncellemeler"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSm
+                                    font.weight: root.activeTab === 6 ? Font.DemiBold : Font.Normal
+                                    color: root.activeTab === 6 ? Theme.textPrimary : Theme.textSecondary
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.activeTab = 6
                             }
                         }
                     }
@@ -319,6 +354,12 @@ Item {
                 // --- MATRİS PANELİ ---
                 MatrixSettingsPanel {
                     visible: root.activeTab === 4
+                    width: parent.width
+                }
+
+                // --- GÜNCELLEMELER PANELİ ---
+                UpdateSettingsPanel {
+                    visible: root.activeTab === 6
                     width: parent.width
                 }
 

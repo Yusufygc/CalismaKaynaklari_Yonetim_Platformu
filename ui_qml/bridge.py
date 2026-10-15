@@ -1,4 +1,4 @@
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, Signal, Slot, QTimer
 from sqlalchemy.orm import Session
 
 from core.constants.appearance import SETTING_DARK
@@ -16,6 +16,7 @@ from ui_qml.bridges.settings_bridge import SettingsBridge
 from ui_qml.bridges.metadata_bridge import MetadataBridge
 from ui_qml.bridges.search_bridge import SearchBridge
 from ui_qml.bridges.synthesis_bridge import SynthesisBridge
+from ui_qml.bridges.update_bridge import UpdateBridge
 from ui_qml.bridges.vault_bridge import VaultBridge
 from ui_qml.context import BridgeContext, Controllers
 from ui_qml.deep_links import DeepLinkRouter
@@ -99,6 +100,7 @@ class QmlBridge(QObject):
         self._market = MarketBridge(self._ctx, self._library, search_state, self)
         self._discovery = DiscoveryBridge(self._ctx, self._library, self)
         self._searches = SearchesBridge(self._ctx, self._market, search_state, self)
+        self._update = UpdateBridge(self._ctx, self)
 
         self.refresh_all()  # Ilk veri yuklemesi
 
@@ -162,6 +164,10 @@ class QmlBridge(QObject):
     def settings(self) -> QObject:
         return self._settings
 
+    @Property(QObject, constant=True)
+    def update(self) -> QObject:
+        return self._update
+
     def _on_pdf_content_changed(self, resource_id: int) -> None:
         """PDF'te alinti/not/kelime degisti: havuz birlestirilerek tazelenir, acik cekmece guncellenir."""
         self._annotations.schedule_refresh()
@@ -189,9 +195,11 @@ class QmlBridge(QObject):
     # ------------------------------------------------------------------ #
 
     def run_startup_tasks(self) -> None:
-        """Pencere acildiktan sonra bir kez: PDF deposu bakimi (cop toplama, eski PDF'leri depoya alma)."""
+        """Pencere acildiktan sonra bir kez: PDF deposu bakimi ve sessiz guncelleme denetimi."""
         self._vault.restore()
         self._ctx.pdf_library.start_maintenance()
+        # Pencere çizildikten 3 sn sonra sessiz güncelleme denetimi (testlerde ağa çıkmaz)
+        QTimer.singleShot(3000, self._update.startupCheck)
 
     @Property(bool, notify=isDarkThemeChanged)
     def isDarkTheme(self) -> bool:

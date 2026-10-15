@@ -1,0 +1,2 @@
+# Windows dagitim ve paketleme araclari
+pyinstaller==6.22.3

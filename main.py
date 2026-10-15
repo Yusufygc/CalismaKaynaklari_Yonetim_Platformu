@@ -7,13 +7,13 @@ if not getattr(sys, "frozen", False):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from PySide6.QtCore import QThreadPool, QTimer
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QGuiApplication, QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 
 from core.fonts import register_bundled_fonts
 from core.logger import log
-from core.paths import pdf_storage_dir
+from core.paths import pdf_storage_dir, resource_path
 from core.single_instance import SingleInstance, default_name, send_message
 from services.pdf_storage_service import PdfStorageService
 from ui_qml.bridge import QmlBridge
@@ -38,14 +38,31 @@ def _install_global_exception_hook() -> None:
 
 
 def _create_application() -> QGuiApplication:
+    # Windows görev çubuğunda uygulamanın kendi kimliği ve ikonuyla gruplanması için AppUserModelID
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("KaynakYonetimPlatformu.PKM.1.0.0")
+        except Exception:
+            pass
+
     # Native (Windows) stil ComboBox/Popup gibi kontrollerin background/contentItem
     # ozellestirmesini yok sayip OS'un kendi acik renkli dropdown'unu gosteriyordu
     # (koyu temayla cakisiyordu). Basic stil tum ozellestirmeleri uyguluyor.
     QQuickStyle.setStyle("Basic")
 
     app = QGuiApplication(sys.argv)
-    app.setApplicationName("PKM")
+    app.setApplicationName("Kaynak Yönetim Platformu")
     app.setOrganizationName("PKM")
+
+    # Pencere başlığı ve görev çubuğu ikonu
+    icon_ico = resource_path("assets/icon.ico")
+    icon_png = resource_path("assets/icon.png")
+    if icon_ico.exists():
+        app.setWindowIcon(QIcon(str(icon_ico)))
+    elif icon_png.exists():
+        app.setWindowIcon(QIcon(str(icon_png)))
+
     # Uygulamayla gelen yazi tipleri (Ayarlar > Gorunum): QML motoru yuklenmeden once kaydedilir.
     register_bundled_fonts()
     return app
@@ -56,7 +73,7 @@ def _create_engine(bridge: QmlBridge) -> QQmlApplicationEngine:
     engine = QQmlApplicationEngine()
     engine.addImageProvider("icon", IconImageProvider())  # qtawesome: image://icon/...
 
-    qml_dir = Path(__file__).resolve().parent / "qml"
+    qml_dir = resource_path("qml")
     engine.addImportPath(str(qml_dir))
     engine.rootContext().setContextProperty("bridge", bridge)
     engine.load(str(qml_dir / "main.qml"))

@@ -16,3 +16,11 @@ class InvalidURLError(ValidationError):
 
 class DuplicateRecordError(PKMBaseError):
     """Ayni isimde kayit eklenmek isteniginde."""
+
+
+class UpdateError(PKMBaseError):
+    """Guncelleme denetimi, indirme veya dogrulama sirasinda olusan hata."""
+
+
+class InstallerBlockedError(UpdateError):
+    """Windows Smart App Control veya guvenlik ilkesi kurulum dosyasini engellediginde."""

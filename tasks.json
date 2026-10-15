@@ -1,0 +1,682 @@
+{
+ "version": 1,
+ "generated": "2026-10-12T17:23:43",
+ "project": "C:\\2UYGULAMALAR\\P011-Kaynak_Yonetim_Platformu",
+ "tool_root": "C:\\Users\\yusuf\\AppData\\Local\\Programs\\GitClean Archiver\\_internal",
+ "batch_size": 15,
+ "health_score": 85.0,
+ "tasks": [
+  {
+   "id": "W0-001",
+   "wave": 0,
+   "rule": "missing-license",
+   "label": "LICENSE eksik",
+   "risk": "düşük",
+   "file": "tasks/W0-001-missing-license.md",
+   "items": [
+    {
+     "fingerprint": "b14205914248",
+     "rule": "missing-license",
+     "severity": "LOW",
+     "category": "hygiene",
+     "path": ".",
+     "line": null,
+     "lines": [],
+     "title": "LICENSE Eksik",
+     "message": "Proje kökünde beklenen 'license' bulunamadı.",
+     "recommendation": "Lisans dosyası ekleyin (lisanssız kod varsayılan olarak başkalarınca kullanılamaz).",
+     "approximate": false,
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "W2-001",
+   "wave": 2,
+   "rule": "swallowed-exception",
+   "label": "Yutulan hata",
+   "risk": "orta",
+   "file": "tasks/W2-001-swallowed-exception.md",
+   "items": [
+    {
+     "fingerprint": "ae77d518e70c",
+     "rule": "swallowed-exception",
+     "severity": "MEDIUM",
+     "category": "reliability",
+     "path": "utils/pdf_outline.py",
+     "line": 30,
+     "lines": [
+      30
+     ],
+     "title": "Hata sessizce yutuluyor (except Exception: pass): pdf_outline.py",
+     "message": "Hata sessizce yutuluyor (except Exception: pass). 1 yerde, satır: 30.",
+     "recommendation": "Hatayı loglayın (`logger.exception`), daha dar bir tür yakalayın veya yeniden fırlatın.",
+     "approximate": false,
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "W3-001",
+   "wave": 3,
+   "rule": "naive-datetime",
+   "label": "Saat dilimsiz tarih",
+   "risk": "orta",
+   "file": "tasks/W3-001-naive-datetime.md",
+   "items": [
+    {
+     "fingerprint": "54044d4dafeb",
+     "rule": "naive-datetime",
+     "severity": "LOW",
+     "category": "reliability",
+     "path": "services/export_service.py",
+     "line": 107,
+     "lines": [
+      107
+     ],
+     "title": "Saat dilimsiz datetime (now/utcnow/today): export_service.py",
+     "message": "Saat dilimsiz datetime (now/utcnow/today). 1 yerde, satır: 107.",
+     "recommendation": "`datetime.now(timezone.utc)` gibi saat dilimli değerler kullanın.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "c8ca8ae24619",
+     "rule": "naive-datetime",
+     "severity": "LOW",
+     "category": "reliability",
+     "path": "utils/db_utils.py",
+     "line": 131,
+     "lines": [
+      131
+     ],
+     "title": "Saat dilimsiz datetime (now/utcnow/today): db_utils.py",
+     "message": "Saat dilimsiz datetime (now/utcnow/today). 1 yerde, satır: 131.",
+     "recommendation": "`datetime.now(timezone.utc)` gibi saat dilimli değerler kullanın.",
+     "approximate": false,
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "W3-002",
+   "wave": 3,
+   "rule": "unused-import",
+   "label": "Kullanılmayan import",
+   "risk": "düşük",
+   "file": "tasks/W3-002-unused-import.md",
+   "items": [
+    {
+     "fingerprint": "7a8c54c48fd5",
+     "rule": "unused-import",
+     "severity": "LOW",
+     "category": "deadcode",
+     "path": "migrations/versions/ff016ad9bf6e_kaynak_filtre_kolonlarina_index_ekle.py",
+     "line": 11,
+     "lines": [
+      11
+     ],
+     "title": "Kullanılmayan Import: ff016ad9bf6e_kaynak_filtre_kolonlarina_index_ekle.py",
+     "message": "'sa' içe aktarılmış ama kullanılmıyor (satır 11).",
+     "recommendation": "Kullanılmayan importları silin; yan etkisi olan modüller için nedenini bir yorumla belirtin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "9ce2a3ce064d",
+     "rule": "unused-import",
+     "severity": "LOW",
+     "category": "deadcode",
+     "path": "repositories/resource_repo.py",
+     "line": 2,
+     "lines": [
+      2
+     ],
+     "title": "Kullanılmayan Import: resource_repo.py",
+     "message": "'Iterable' içe aktarılmış ama kullanılmıyor (satır 2).",
+     "recommendation": "Kullanılmayan importları silin; yan etkisi olan modüller için nedenini bir yorumla belirtin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "8a87f22bc03c",
+     "rule": "unused-import",
+     "severity": "LOW",
+     "category": "deadcode",
+     "path": "scripts/make_lock.py",
+     "line": 5,
+     "lines": [
+      5
+     ],
+     "title": "Kullanılmayan Import: make_lock.py",
+     "message": "'re' içe aktarılmış ama kullanılmıyor (satır 5).",
+     "recommendation": "Kullanılmayan importları silin; yan etkisi olan modüller için nedenini bir yorumla belirtin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "d85e95d7449b",
+     "rule": "unused-import",
+     "severity": "LOW",
+     "category": "deadcode",
+     "path": "tests/test_qml/test_inspector_drawer_flow.py",
+     "line": 4,
+     "lines": [
+      4
+     ],
+     "title": "Kullanılmayan Import: test_inspector_drawer_flow.py",
+     "message": "'focus' içe aktarılmış ama kullanılmıyor (satır 4).",
+     "recommendation": "Kullanılmayan importları silin; yan etkisi olan modüller için nedenini bir yorumla belirtin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "f6267677febe",
+     "rule": "unused-import",
+     "severity": "LOW",
+     "category": "deadcode",
+     "path": "tests/test_qml/test_pdf_reader_overlays.py",
+     "line": 4,
+     "lines": [
+      4
+     ],
+     "title": "Kullanılmayan Import: test_pdf_reader_overlays.py",
+     "message": "'QMetaObject' içe aktarılmış ama kullanılmıyor (satır 4).",
+     "recommendation": "Kullanılmayan importları silin; yan etkisi olan modüller için nedenini bir yorumla belirtin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "7f815eafd388",
+     "rule": "unused-import",
+     "severity": "LOW",
+     "category": "deadcode",
+     "path": "tests/test_qml/test_pdf_selection.py",
+     "line": 7,
+     "lines": [
+      7
+     ],
+     "title": "Kullanılmayan Import: test_pdf_selection.py",
+     "message": "'QPointF' içe aktarılmış ama kullanılmıyor (satır 7).",
+     "recommendation": "Kullanılmayan importları silin; yan etkisi olan modüller için nedenini bir yorumla belirtin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "708b2bf56cc3",
+     "rule": "unused-import",
+     "severity": "LOW",
+     "category": "deadcode",
+     "path": "tests/test_qml/test_qml_bridge.py",
+     "line": 1,
+     "lines": [
+      1
+     ],
+     "title": "Kullanılmayan Import: test_qml_bridge.py",
+     "message": "'Path' içe aktarılmış ama kullanılmıyor (satır 1).",
+     "recommendation": "Kullanılmayan importları silin; yan etkisi olan modüller için nedenini bir yorumla belirtin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "6cc83b8f1e65",
+     "rule": "unused-import",
+     "severity": "LOW",
+     "category": "deadcode",
+     "path": "tests/test_repositories/test_db_utils.py",
+     "line": 4,
+     "lines": [
+      4
+     ],
+     "title": "Kullanılmayan Import: test_db_utils.py",
+     "message": "'Category' içe aktarılmış ama kullanılmıyor (satır 4).",
+     "recommendation": "Kullanılmayan importları silin; yan etkisi olan modüller için nedenini bir yorumla belirtin.",
+     "approximate": false,
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "W4-001",
+   "wave": 4,
+   "rule": "unused-dependency",
+   "label": "Kullanılmayan bağımlılık",
+   "risk": "orta",
+   "file": "tasks/W4-001-unused-dependency.md",
+   "items": [
+    {
+     "fingerprint": "0b4bd4689c93",
+     "rule": "unused-dependency",
+     "severity": "MEDIUM",
+     "category": "dependency",
+     "path": "requirements.txt",
+     "line": null,
+     "lines": [],
+     "title": "Kullanılmayan Kütüphane Tespit Edildi: python-dotenv",
+     "message": "'python-dotenv' kütüphanesi requirements.txt içinde tanımlı fakat kodda import edilmemiş.",
+     "recommendation": "Eğer bu kütüphaneyi kullanmıyorsanız requirements.txt dosyasından silerek bağımlılıkları temizleyin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "ed06f31e40df",
+     "rule": "unused-dependency",
+     "severity": "MEDIUM",
+     "category": "dependency",
+     "path": "requirements.txt",
+     "line": null,
+     "lines": [],
+     "title": "Kullanılmayan Kütüphane Tespit Edildi: markdown",
+     "message": "'markdown' kütüphanesi requirements.txt içinde tanımlı fakat kodda import edilmemiş.",
+     "recommendation": "Eğer bu kütüphaneyi kullanmıyorsanız requirements.txt dosyasından silerek bağımlılıkları temizleyin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "547765db8e49",
+     "rule": "unused-dependency",
+     "severity": "MEDIUM",
+     "category": "dependency",
+     "path": "requirements.txt",
+     "line": null,
+     "lines": [],
+     "title": "Kullanılmayan Kütüphane Tespit Edildi: lxml_html_clean",
+     "message": "'lxml_html_clean' kütüphanesi requirements.txt içinde tanımlı fakat kodda import edilmemiş.",
+     "recommendation": "Eğer bu kütüphaneyi kullanmıyorsanız requirements.txt dosyasından silerek bağımlılıkları temizleyin.",
+     "approximate": false,
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "W4-002",
+   "wave": 4,
+   "rule": "empty-folder",
+   "label": "Boş klasör",
+   "risk": "düşük",
+   "file": "tasks/W4-002-empty-folder.md",
+   "items": [
+    {
+     "fingerprint": "db1f3976c323",
+     "rule": "empty-folder",
+     "severity": "LOW",
+     "category": "structure",
+     "path": "scratch",
+     "line": null,
+     "lines": [],
+     "title": "Boş klasör: scratch",
+     "message": "Bu klasör boş.",
+     "recommendation": "",
+     "approximate": false,
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "W4-003",
+   "wave": 4,
+   "rule": "unpinned-dependencies",
+   "label": "Sabitlenmemiş bağımlılık",
+   "risk": "orta",
+   "file": "tasks/W4-003-unpinned-dependencies.md",
+   "items": [
+    {
+     "fingerprint": "fd00f83bd055",
+     "rule": "unpinned-dependencies",
+     "severity": "LOW",
+     "category": "dependency",
+     "path": "requirements.txt",
+     "line": null,
+     "lines": [],
+     "title": "Sabitlenmemiş Bağımlılıklar: requirements.txt",
+     "message": "12 bağımlılığın sürümü sabit değil: PySide6>=6.5.0, SQLAlchemy>=2.0.0, alembic>=1.13.0, qtawesome>=1.2.0, requests>=2.31.0, beautifulsoup4>=4.12.0, pydantic-settings>=2.1.0, python-dotenv>=1.0.0 ... (+4). Her kurulumda farklı sürüm gelebilir (tekrarlanamayan derleme, tedarik zinciri riski).",
+     "recommendation": "Sürümleri tam sürüme sabitleyin (==, ^/~ aralığı) ve kilit dosyası (lock) kullanın.",
+     "approximate": false,
+     "count": 12
+    }
+   ]
+  },
+  {
+   "id": "W5-001",
+   "wave": 5,
+   "rule": "test-sleep",
+   "label": "Testte sleep",
+   "risk": "düşük",
+   "file": "tasks/W5-001-test-sleep.md",
+   "items": [
+    {
+     "fingerprint": "5f419c4f3982",
+     "rule": "test-sleep",
+     "severity": "LOW",
+     "category": "testing",
+     "path": "tests/test_qml/qml_harness.py",
+     "line": 25,
+     "lines": [
+      25
+     ],
+     "title": "Testte Gerçek Bekleme (sleep): qml_harness.py",
+     "message": "Testte Gerçek Bekleme (sleep), kararsız (flaky) test göstergesi. Satır: 25.",
+     "recommendation": "Zamanı sahtelemek (fake timers / freezegun) veya olay beklemek için yoklama (polling) kullanın.",
+     "approximate": true,
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "W6-001",
+   "wave": 6,
+   "rule": "file-length",
+   "label": "Aşırı uzun dosyalar",
+   "risk": "yüksek",
+   "file": "tasks/W6-001-file-length.md",
+   "items": [
+    {
+     "fingerprint": "94197f0d1bd7",
+     "rule": "file-length",
+     "severity": "MEDIUM",
+     "category": "complexity",
+     "path": "tests/test_qml/test_qml_bridge.py",
+     "line": null,
+     "lines": [],
+     "title": "Aşırı Şişmiş Dosya: test_qml_bridge.py",
+     "message": "Dosya toplam 996 satır (boş ve yorum satırları dahil; 697 kod satırı). Eşik: 500 toplam satır.",
+     "recommendation": "Bu dosyayı mantıksal olarak daha küçük, tek sorumluluğa (SRP) sahip modüllere veya alt sınıflara parçalayın.",
+     "approximate": false,
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "W6-002",
+   "wave": 6,
+   "rule": "function-metrics",
+   "label": "Karmaşık / uzun işlevler",
+   "risk": "orta",
+   "file": "tasks/W6-002-function-metrics.md",
+   "items": [
+    {
+     "fingerprint": "fb09483009ea",
+     "rule": "function-metrics",
+     "severity": "LOW",
+     "category": "complexity",
+     "path": "migrations/versions/3997fe50be13_baseline.py",
+     "line": 21,
+     "lines": [
+      21
+     ],
+     "title": "Karmaşık Fonksiyon: upgrade()",
+     "message": "upgrade() eşikleri aşıyor: satır sayısı 72 (Eşik: 50).",
+     "recommendation": "Fonksiyonu tek sorumluluğa sahip daha küçük fonksiyonlara bölün.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "fd11c022a7ca",
+     "rule": "function-metrics",
+     "severity": "MEDIUM",
+     "category": "complexity",
+     "path": "services/paper_market_service.py",
+     "line": 220,
+     "lines": [
+      220
+     ],
+     "title": "Karmaşık Fonksiyon: search_page()",
+     "message": "search_page() eşikleri aşıyor: siklomatik karmaşıklık 11 (Eşik: 10).",
+     "recommendation": "Metodu alt metotlara bölün (Extract Method); çok dallı koşulları sadeleştirin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "12f4226d5ba1",
+     "rule": "function-metrics",
+     "severity": "MEDIUM",
+     "category": "complexity",
+     "path": "services/reading_suggestion_service.py",
+     "line": 25,
+     "lines": [
+      25
+     ],
+     "title": "Karmaşık Fonksiyon: suggest()",
+     "message": "suggest() eşikleri aşıyor: siklomatik karmaşıklık 11 (Eşik: 10).",
+     "recommendation": "Metodu alt metotlara bölün (Extract Method); çok dallı koşulları sadeleştirin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "298c3d134943",
+     "rule": "function-metrics",
+     "severity": "MEDIUM",
+     "category": "complexity",
+     "path": "services/resource_service.py",
+     "line": 89,
+     "lines": [
+      89
+     ],
+     "title": "Karmaşık Fonksiyon: _url_tag_names()",
+     "message": "_url_tag_names() eşikleri aşıyor: siklomatik karmaşıklık 11 (Eşik: 10).",
+     "recommendation": "Metodu alt metotlara bölün (Extract Method); çok dallı koşulları sadeleştirin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "0ea6499b6df2",
+     "rule": "function-metrics",
+     "severity": "MEDIUM",
+     "category": "complexity",
+     "path": "services/scraper_service.py",
+     "line": 60,
+     "lines": [
+      60
+     ],
+     "title": "Karmaşık Fonksiyon: _parse_html()",
+     "message": "_parse_html() eşikleri aşıyor: siklomatik karmaşıklık 11 (Eşik: 10).",
+     "recommendation": "Metodu alt metotlara bölün (Extract Method); çok dallı koşulları sadeleştirin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "b52995f8bfac",
+     "rule": "function-metrics",
+     "severity": "MEDIUM",
+     "category": "complexity",
+     "path": "services/scraper_service.py",
+     "line": 152,
+     "lines": [
+      152
+     ],
+     "title": "Karmaşık Fonksiyon: _youtube_video_id()",
+     "message": "_youtube_video_id() eşikleri aşıyor: siklomatik karmaşıklık 11 (Eşik: 10).",
+     "recommendation": "Metodu alt metotlara bölün (Extract Method); çok dallı koşulları sadeleştirin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "58d56f19c78d",
+     "rule": "function-metrics",
+     "severity": "MEDIUM",
+     "category": "complexity",
+     "path": "tests/test_qml/test_market_saved_searches.py",
+     "line": 74,
+     "lines": [
+      74
+     ],
+     "title": "Karmaşık Fonksiyon: test_run_saved_search_applies_form_marks_seen_and_tags_saves()",
+     "message": "test_run_saved_search_applies_form_marks_seen_and_tags_saves() eşikleri aşıyor: siklomatik karmaşıklık 13 (Eşik: 10).",
+     "recommendation": "Metodu alt metotlara bölün (Extract Method); çok dallı koşulları sadeleştirin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "96b038a8542e",
+     "rule": "function-metrics",
+     "severity": "LOW",
+     "category": "complexity",
+     "path": "tests/test_qml/test_pdf_reader_overlays.py",
+     "line": 27,
+     "lines": [
+      27
+     ],
+     "title": "Karmaşık Fonksiyon: __init__()",
+     "message": "__init__() eşikleri aşıyor: parametre sayısı 9 (Eşik: 5).",
+     "recommendation": "İlgili parametreleri bir nesnede toplayın (Introduce Parameter Object).",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "3feced5ae365",
+     "rule": "function-metrics",
+     "severity": "MEDIUM",
+     "category": "complexity",
+     "path": "tests/test_qml/test_qml_bridge.py",
+     "line": 18,
+     "lines": [
+      18
+     ],
+     "title": "Karmaşık Fonksiyon: test_qml_bridge_initial_state()",
+     "message": "test_qml_bridge_initial_state() eşikleri aşıyor: siklomatik karmaşıklık 12 (Eşik: 10).",
+     "recommendation": "Metodu alt metotlara bölün (Extract Method); çok dallı koşulları sadeleştirin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "429521c764c9",
+     "rule": "function-metrics",
+     "severity": "MEDIUM",
+     "category": "complexity",
+     "path": "tests/test_qml/test_qml_bridge.py",
+     "line": 34,
+     "lines": [
+      34
+     ],
+     "title": "Karmaşık Fonksiyon: test_qml_bridge_theme_and_view_toggle()",
+     "message": "test_qml_bridge_theme_and_view_toggle() eşikleri aşıyor: siklomatik karmaşıklık 11 (Eşik: 10).",
+     "recommendation": "Metodu alt metotlara bölün (Extract Method); çok dallı koşulları sadeleştirin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "dd343e541b91",
+     "rule": "function-metrics",
+     "severity": "MEDIUM",
+     "category": "complexity",
+     "path": "tests/test_qml/test_qml_bridge.py",
+     "line": 66,
+     "lines": [
+      66
+     ],
+     "title": "Karmaşık Fonksiyon: test_qml_bridge_resource_crud_and_drawer()",
+     "message": "test_qml_bridge_resource_crud_and_drawer() eşikleri aşıyor: siklomatik karmaşıklık 11 (Eşik: 10).",
+     "recommendation": "Metodu alt metotlara bölün (Extract Method); çok dallı koşulları sadeleştirin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "6e679415eecf",
+     "rule": "function-metrics",
+     "severity": "MEDIUM",
+     "category": "complexity",
+     "path": "tests/test_qml/test_qml_flows.py",
+     "line": 184,
+     "lines": [
+      184
+     ],
+     "title": "Karmaşık Fonksiyon: test_pdf_reader_drag_selection_highlights_exactly_the_selected_word()",
+     "message": "test_pdf_reader_drag_selection_highlights_exactly_the_selected_word() eşikleri aşıyor: siklomatik karmaşıklık 15 (Eşik: 10); satır sayısı 53 (Eşik: 50).",
+     "recommendation": "Metodu alt metotlara bölün (Extract Method); çok dallı koşulları sadeleştirin. Fonksiyonu tek sorumluluğa sahip daha küçük fonksiyonlara bölün.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "8b064f26105f",
+     "rule": "function-metrics",
+     "severity": "MEDIUM",
+     "category": "complexity",
+     "path": "tests/test_qml/test_resource_list_model.py",
+     "line": 5,
+     "lines": [
+      5
+     ],
+     "title": "Karmaşık Fonksiyon: test_resource_list_model_roles_and_data()",
+     "message": "test_resource_list_model_roles_and_data() eşikleri aşıyor: siklomatik karmaşıklık 13 (Eşik: 10).",
+     "recommendation": "Metodu alt metotlara bölün (Extract Method); çok dallı koşulları sadeleştirin.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "ba1bed5fd998",
+     "rule": "function-metrics",
+     "severity": "MEDIUM",
+     "category": "complexity",
+     "path": "tests/test_services/test_export_service.py",
+     "line": 23,
+     "lines": [
+      23
+     ],
+     "title": "Karmaşık Fonksiyon: test_resource_markdown_structure_and_grouping()",
+     "message": "test_resource_markdown_structure_and_grouping() eşikleri aşıyor: siklomatik karmaşıklık 11 (Eşik: 10).",
+     "recommendation": "Metodu alt metotlara bölün (Extract Method); çok dallı koşulları sadeleştirin.",
+     "approximate": false,
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "W6-003",
+   "wave": 6,
+   "rule": "code-clone",
+   "label": "Kod klonları",
+   "risk": "orta",
+   "file": "tasks/W6-003-code-clone.md",
+   "items": [
+    {
+     "fingerprint": "4bcc4bbb34bc",
+     "rule": "code-clone",
+     "severity": "LOW",
+     "category": "duplicate",
+     "path": "tests/test_qml/test_qml_bridge.py",
+     "line": 376,
+     "lines": [
+      376
+     ],
+     "title": "Kod Klonu: test_qml_bridge.py:376 (10 satır, 2 kopya)",
+     "message": "Aynı 10 satırlık blok 2 yerde tekrarlanıyor: tests/test_qml/test_qml_bridge.py:376-390, tests/test_qml/test_qml_bridge.py:416-429.",
+     "recommendation": "Ortak bloğu tek bir fonksiyona / sınıfa çıkarın (Extract Method) ve kopyaların yerine çağırın.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "28f329210866",
+     "rule": "code-clone",
+     "severity": "LOW",
+     "category": "duplicate",
+     "path": "tests/test_services/test_article_extraction_service.py",
+     "line": 24,
+     "lines": [
+      24
+     ],
+     "title": "Kod Klonu: test_article_extraction_service.py:24 (10 satır, 2 kopya)",
+     "message": "Aynı 10 satırlık blok 2 yerde tekrarlanıyor: tests/test_services/test_article_extraction_service.py:24-38, tests/test_services/test_scraper_service.py:26-40.",
+     "recommendation": "Ortak bloğu tek bir fonksiyona / sınıfa çıkarın (Extract Method) ve kopyaların yerine çağırın.",
+     "approximate": false,
+     "count": 1
+    },
+    {
+     "fingerprint": "479017bf5c27",
+     "rule": "code-clone",
+     "severity": "LOW",
+     "category": "duplicate",
+     "path": "tests/test_services/test_scraper_service.py",
+     "line": 51,
+     "lines": [
+      51
+     ],
+     "title": "Kod Klonu: test_scraper_service.py:51 (8 satır, 2 kopya)",
+     "message": "Aynı 8 satırlık blok 2 yerde tekrarlanıyor: tests/test_services/test_scraper_service.py:51-62, tests/test_services/test_scraper_service.py:79-90.",
+     "recommendation": "Ortak bloğu tek bir fonksiyona / sınıfa çıkarın (Extract Method) ve kopyaların yerine çağırın.",
+     "approximate": false,
+     "count": 1
+    }
+   ]
+  }
+ ]
+}
