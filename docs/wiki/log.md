@@ -4,6 +4,14 @@ En yeni girdi her zaman en üstte olmalıdır.
 
 ---
 
+## [2026-10-15] FIX | Konsol uyarıları: eksik glif, pencere geometrisi (`ui` dalı)
+
+Konsola basılan `DirectWrite: CreateFontFaceFromHDC() failed ... Fixedsys/8514oem` uyarısı, Market yazar süzgeci çipindeki `✕` (U+2715) simgesinin hiçbir tema yazı tipinde bulunmamasından geliyordu (Windows eksik glif için eski bitmap yazı tiplerinde yedek arar); `×` (U+00D7) ile değiştirildi, `tests/test_qml/test_glyphs.py` QML metinlerinde güvenli listede olmayan simgeyi engeller. `QWindowsWindow::setGeometry: Unable to set geometry` uyarısı, 1280x800 mantıksal (2560x1600 fiziksel) ekranda 800 px'lik pencerenin kullanılabilir alana (752 px) sığmamasındandı; `main.qml` açılışta boyutu `Screen.desktopAvailable*`'a sığdırıp çerçeveyi ortalıyor. Kalan: kaynağı kapalı PDF adreslerinin 404'ü (veri sorunu, kaynak her açılışta bir kez denenir) ve `QIODevice::read (QSslSocket): device not open` (uzak küçük resim yüklenirken kart yok olunca Qt'nin zararsız iletisi). Ayrıntı: [[qml_arayuz]].
+
+---
+
+---
+
 ## [2026-10-14] REFACTOR | Ölü kod temizliği (`ui` dalı)
 
 Hiçbir yerden çağrılmayan kod silindi (davranış değişmedi): `AppStrings`'in QML'e taşındığı için artık okunmayan ~95 metni, `ResourceRepository`'nin `query_filtered`'ın gölgesindeki `get_by_status/search_by_keyword/get_by_category/get_favorites/get_urls_only` yöntemleri (testleri `query_filtered`'a çevrildi), `load_resource_vocabulary`, `IndexService.statistics` + `count_by_status`, `summary_rel_path`, `annotation_by_uid`, `drop_fts_table`, `CitationService.supported_styles`, `utils.text_utils.extract_sentence` yeniden dışa aktarımı, `Settings.DEFAULT_THEME` (+ `.env.example`), `pdfkit/ui/messages.py::NOTE_SAVED`, `qml/js/highlights.js`, `ResourceFormModal.initial*` özellikleri, `PdfPageArea.scaleToWidth/backEnabled/forwardEnabled`, kullanılmayan `chevron_down.svg` ve `hamburger.svg`. Yalnız testlerce çağrılan ama pdfkit genel API'si sayılan yöntemler (`get_highlight`, `apply_resolution`, `deleteTerm`, `is_open`...) bilerek bırakıldı. Test 1163.

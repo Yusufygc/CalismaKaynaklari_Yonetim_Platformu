@@ -52,8 +52,14 @@ ApplicationWindow {
         // Pencere konumu hic kaydedilmiyor (QSettings yok) -- her acilis sifirdan.
         // Qt/Windows'un varsayilan yerlestirmesi coklu-ekran/DPI degisikliginde
         // ekran disina dusebiliyor; acilista birincil ekrana gore elle ortala.
-        x = Screen.width / 2 - width / 2
-        y = Screen.height / 2 - height / 2
+        // Boyut kullanilabilir alana (gorev cubugu ve baslik cubugu dusulmus) sigdirilir: kucuk/yuksek olcekli ekranda
+        // (ornegin 1280x800 mantiksal) 800 px'lik pencere tasar, Windows geometriyi reddedip uyari basar.
+        const frameAllowance = 48
+        const titleBarAllowance = 32  // x/y istemci alanini gosterir; baslik cubugu bunun ustune biner
+        width = Math.max(minimumWidth, Math.min(width, Screen.desktopAvailableWidth - frameAllowance))
+        height = Math.max(minimumHeight, Math.min(height, Screen.desktopAvailableHeight - frameAllowance))
+        x = Screen.virtualX + (Screen.desktopAvailableWidth - width) / 2
+        y = Screen.virtualY + titleBarAllowance + (Screen.desktopAvailableHeight - height - titleBarAllowance) / 2
     }
 
     // Klavye Kısayolları

@@ -167,7 +167,7 @@ Item {
         AppFilterChip {
             anchors.verticalCenter: parent.verticalCenter
             visible: root.authorId !== ""
-            text: "Yazar: " + (root.authorName.length > 16 ? root.authorName.substring(0, 15) + "…" : root.authorName) + "  ✕"
+            text: "Yazar: " + (root.authorName.length > 16 ? root.authorName.substring(0, 15) + "…" : root.authorName) + "  ×"
             iconName: "fa5s.user"
             isSelected: true
             onClicked: root.authorCleared()
